@@ -1,0 +1,47 @@
+// Copyright (c) 2014
+// INRIA Saclay-Ile de France (France)
+//
+// This file is part of CGAL (www.cgal.org); you can redistribute it and/or
+// modify it under the terms of the GNU Lesser General Public License as
+// published by the Free Software Foundation; either version 3 of the License,
+// or (at your option) any later version.
+//
+// Licensees holding a valid commercial license may use this file in
+// accordance with the commercial license agreement provided with the software.
+//
+// This file is provided AS IS with NO WARRANTY OF ANY KIND, INCLUDING THE
+// WARRANTY OF DESIGN, MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+//
+// $URL: https://github.com/CGAL/cgal/blob/releases/CGAL-5.0-beta1/NewKernel_d/include/CGAL/NewKernel_d/Types/Aff_transformation.h $
+// $Id: Aff_transformation.h 530238d %aI Marc Glisse
+// SPDX-License-Identifier: LGPL-3.0+
+//
+// Author(s)     : Marc Glisse
+
+#ifndef CGAL_KD_TYPE_AFF_TRANSFORMATION_H
+#define CGAL_KD_TYPE_AFF_TRANSFORMATION_H
+#include <CGAL/config.h>
+#include <CGAL/NewKernel_d/store_kernel.h>
+#include <boost/preprocessor/repetition.hpp>
+
+// Dummy, that's all the Kernel_d concept requires, so a useful class will wait.
+
+namespace CGAL {
+template<class R_>
+struct Aff_transformation {
+  typedef R_ R;
+};
+namespace CartesianDKernelFunctors {
+template<class R_> struct Construct_aff_transformation {
+  CGAL_FUNCTOR_INIT_IGNORE(Construct_aff_transformation)
+  typedef R_ R;
+  typedef typename Get_type<R, Aff_transformation_tag>::type result_type;
+  template<class...T>
+  result_type operator()(T&&...)const{return result_type();}
+};
+}
+CGAL_KD_DEFAULT_TYPE(Aff_transformation_tag,(CGAL::Aff_transformation<K>),(),());
+CGAL_KD_DEFAULT_FUNCTOR(Construct_ttag<Aff_transformation_tag>,(CartesianDKernelFunctors::Construct_aff_transformation<K>),(Aff_transformation_tag),());
+
+}
+#endif

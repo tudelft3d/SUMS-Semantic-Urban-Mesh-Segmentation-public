@@ -1,0 +1,1 @@
+C:\Users\geoinfo\AppData\Local\Programs\Python\Python37\Lib\site-packages\imblearn\over_sampling\_smote\

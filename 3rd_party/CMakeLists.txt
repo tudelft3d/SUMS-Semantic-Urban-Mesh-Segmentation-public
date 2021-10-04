@@ -1,0 +1,6 @@
+cmake_minimum_required(VERSION 3.1)
+add_subdirectory("easy3d")
+add_subdirectory("rply")
+add_subdirectory("tinyfiledialogs")
+add_subdirectory("gco")
+add_subdirectory("python_parsing")
