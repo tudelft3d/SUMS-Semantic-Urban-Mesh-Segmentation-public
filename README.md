@@ -33,7 +33,7 @@ To use this program on other operating systems, the source code will need to be 
 If you would like to contribute to this project, please contact the author.
 
 ### Data organization
-For the organization of the data in the folders, please refer to the [demo data](https://3d.bk.tudelft.nl/opendata/sum/1.0/data_cmt_demo/).
+For the organization of the data in the folders, please refer to the [demo data](https://3d.bk.tudelft.nl/opendata/sum/1.0/data_demo/).
 
 ### Data requirements
 For the **format** of input meshes, the current program only support [`*.ply`](http://paulbourke.net/dataformats/ply/) 
