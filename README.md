@@ -104,7 +104,7 @@ To refine the predict results or to label the raw meshes, you can use our [mesh 
 ## Build from source
 
   1. Install following packages: [`boost (>=1.69)`](https://www.boost.org/), [`OpenCV (>=3.4)`](https://opencv.org/), [`Eigen 3`](https://eigen.tuxfamily.org/), [`OpenMP (>=2.0)`](https://www.openmp.org/), [`GMP`](https://gmplib.org/), [`MPFR`](https://www.mpfr.org/), [`Python (>=3.7)`](https://www.python.org/), [`imbalanced-learn`](https://imbalanced-learn.org/), and [`numpy`](https://numpy.org/). 
-     Other required packages, including `CGAL`, `easy3d`, `boost_numpy`, `tbb`, and `gco` etc., are provided in this repository (folder `./3rd_party/`).
+     Other required packages, including `CGAL`, `easy3d`, `boost_numpy`, `tbb`, and `gco` etc., are provided in this repository (folder `..\3rd_party\`).
   1. Build the `boost_numpy` and `tbb` first, then configure the CMake of SUMS with the paths of the all required packages.  
   1. Then build the `python_parsing` project. Rename the built dynamic library `python_parsing.dll` to `libpp.pyd`, and move it to `..\3rd_party\python_parsing\py_aug\`.
      Replace the `..\Python\Python37\Lib\site-packages\imblearn\over_sampling\_smote\filter.py` with provided `..\3rd_party\python_parsing\py_aug\filter.py`.
