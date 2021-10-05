@@ -1,0 +1,17 @@
+pip install torch-scatter -f https://pytorch-geometric.com/whl/torch-1.7.0+cu110.html
+pip install torch-sparse -f https://pytorch-geometric.com/whl/torch-1.7.0+cu110.html
+pip install torch-cluster -f https://pytorch-geometric.com/whl/torch-1.7.0+cu110.html
+pip install torch-spline-conv -f https://pytorch-geometric.com/whl/torch-1.7.0+cu110.html
+pip install torch-geometric
+
+pip install plyfile
+
+python -m unittest -v
+
+conda install pytorch torchvision torchaudio cudatoolkit=11.0 -c pytorch
+
+pip install torch-points-kernels
+
+pip install -r path\requirements.txt
+
+pip install -r C:\data\Algorithms_comparision\torch_point3d\requirements.txt

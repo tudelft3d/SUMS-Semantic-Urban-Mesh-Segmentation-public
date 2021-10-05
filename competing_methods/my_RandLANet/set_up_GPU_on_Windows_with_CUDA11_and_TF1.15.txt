@@ -1,0 +1,15 @@
+python 3.6
+tensorflow 1.15 work with CUDA 11.0
+
+conda create -n randlanet python=3.6
+
+# pip install -U tensorflow-gpu 
+pip install tensorflow-gpu==1.15 
+pip install -r helper_requirements.txt
+pip install plyfile
+
+conda install cudatoolkit=10.0
+conda install cudnn=7.6.0
+
+dll link: https://drive.google.com/file/d/1ETKljz7aWyPyXeBKKc23yqHW5_j_o4bg/view?usp=sharing
+put cuda dll in folder "C:\ProgramData\Anaconda3\envs\randlanet\Library\bin"

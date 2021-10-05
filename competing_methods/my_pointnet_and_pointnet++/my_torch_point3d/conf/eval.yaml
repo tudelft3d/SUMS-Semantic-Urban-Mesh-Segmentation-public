@@ -1,0 +1,21 @@
+num_workers: 1
+batch_size: 1
+cuda: 0 #0
+weight_name: "latest" # Used during resume, select with model to load from [miou, macc, acc..., latest]
+enable_cudnn: True
+checkpoint_dir: "C:/data/Algorithms_comparision/my_torch_point3d_comp/outputs/benchmark/" # "{your_path}/outputs/2020-01-28/11-04-13" for example
+model_name:  pointnet2_charlesmsg # PointNet # pointnet2_largemsg # Res16UNet34C
+precompute_multi_scale: False #True # Compute multiscate features on cpu for faster training / inference
+enable_dropout: False
+voting_runs: 1
+
+defaults:
+  - visualization: default #yaml file name
+
+tracker_options: # Extra options for the tracker
+  full_res: False
+  make_submission: True # False
+
+hydra:
+  run:
+    dir: ${checkpoint_dir}/eval/${now:%Y-%m-%d_%H-%M-%S}
