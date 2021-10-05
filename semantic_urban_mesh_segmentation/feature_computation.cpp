@@ -472,6 +472,8 @@ namespace semantic_mesh_segmentation
 		smesh_tmp->add_vertex_property<bool>("v:visited_vertex", false);
 		auto get_visited_vertex = smesh_tmp->get_vertex_property<bool>("v:visited_vertex");
 
+		smesh_all->textures.insert(smesh_all->textures.end(), smesh_tmp->textures.begin(), smesh_tmp->textures.end());
+		smesh_all->texture_names.insert(smesh_all->texture_names.end(), smesh_tmp->texture_names.begin(), smesh_tmp->texture_names.end());
 		std::map<SFMesh::Vertex, SFMesh::Vertex> vert_in_out;
 		for (auto f : smesh_tmp->faces())
 		{
