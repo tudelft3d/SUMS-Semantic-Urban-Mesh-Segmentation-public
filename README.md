@@ -43,6 +43,7 @@ For the **size** of mesh tiles, each tile should be larger than 50 x 50 m.
 
 ### Running the code
 Before you run the program, make sure that your input data meet the requirements and that you have configured `config.txt`.
+You can refer to the [demo data](https://3d.bk.tudelft.nl/opendata/sum/1.0/data_cmt_demo/) to check how to prepare the configuration file.
 Besides, you need to install [`Python (>=3.7)`](https://www.python.org/), [`imbalanced-learn`](https://imbalanced-learn.org/), and [`numpy`](https://numpy.org/), and replace the `..\Python\Python37\Lib\site-packages\imblearn\over_sampling\_smote\filter.py` with provided `..\3rd_party\python_parsing\py_aug\filter.py`.
 You could run the code as follows: 
 ```
