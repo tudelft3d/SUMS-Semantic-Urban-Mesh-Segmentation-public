@@ -36,7 +36,7 @@
 
 namespace semantic_mesh_segmentation
 {
-    //--- operating modes --- 
+	//--- operating modes --- 
 	enum struct operating_mode
 	{
 		Pipeline,
@@ -59,7 +59,7 @@ namespace semantic_mesh_segmentation
 		Process_semantic_pcl,
 		Feature_diversity_meaure,
 		Compute_mesh_area
-    };
+	};
 
 	//--- global variables for point cloud sampling ---
 	extern easy3d::Box3 mesh_bounding_box;
@@ -143,7 +143,7 @@ namespace semantic_mesh_segmentation
 	extern bool use_pointcloud_region_growing_on_testing;
 	extern bool use_pointcloud_region_growing_on_predicting;
 	extern bool use_pointcloud_region_growing_on_validation;
-	
+
 	extern bool use_existing_mesh_segments;
 	extern bool use_existing_mesh_segments_on_training;
 	extern bool use_existing_mesh_segments_on_testing;
@@ -158,7 +158,7 @@ namespace semantic_mesh_segmentation
 	extern bool use_face_pixels_color_aggregation_on_validation;
 
 	extern bool with_texture;
-	extern bool save_tex_cloud;
+	extern bool save_tex_cloud, save_textures_in_predict;
 	extern bool add_point_color;
 	extern bool add_point_color_for_dp_input;
 	extern bool save_error_map;
@@ -170,7 +170,7 @@ namespace semantic_mesh_segmentation
 
 	//--- Classification parameters ---
 	extern int rf_tree_numbers;
-	extern int rf_tree_depth; 
+	extern int rf_tree_depth;
 
 	//--- Selected features ---//
 	extern std::map<int, bool> use_feas;
@@ -201,7 +201,7 @@ namespace semantic_mesh_segmentation
 		training_file_folders, testing_file_folders, predicting_file_folders, validation_file_folders;
 	extern std::vector<std::string> data_types;
 	extern std::map<std::string, int> file_ind_map, training_file_ind_map, testing_file_ind_map, predicting_file_ind_map, validation_file_ind_map;
-	
+
 	//--- level of details --			
 	extern int train_test_predict_val;
 	extern int batch_size;

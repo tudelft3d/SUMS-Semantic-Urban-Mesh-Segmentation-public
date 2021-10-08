@@ -177,7 +177,7 @@ namespace semantic_mesh_segmentation
 		delete face_center_vertices_cloud;
 		delete initial_sampled_sampled_point_cloud;
 		delete initial_ele_sampled_point_cloud;
-		delete tex_tree; 
+		delete tex_tree;
 		delete center_cloud_tree;
 
 		std::cout << "done in (s): " << omp_get_wtime() - t_total << '\n' << std::endl;
@@ -404,7 +404,7 @@ namespace semantic_mesh_segmentation
 				if (smesh_in->is_boundary(f))
 					spf_temp.contain_mesh_border_facets = true;
 				spf_final.emplace_back(spf_temp);
-				std::vector<int> face_vec{f.idx()};
+				std::vector<int> face_vec{ f.idx() };
 			}
 			else
 			{
@@ -458,7 +458,7 @@ namespace semantic_mesh_segmentation
 		std::vector< std::vector<float> > &color_feas,
 		std::vector< std::vector<float> > &mulsc_ele_feas,
 		PTCloud* fea_cloud
-	) 
+	)
 	{
 		std::cout << "	- Construct feature point clouds, use ";
 		const double t_total = omp_get_wtime();
@@ -484,7 +484,7 @@ namespace semantic_mesh_segmentation
 		fea_cloud->add_all_feature_properties
 		(
 			seg_face_vec,
-			seg_ids, 
+			seg_ids,
 			seg_truth,
 			seg_local_ground_pair,
 			seg_plane_params,
@@ -551,7 +551,8 @@ namespace semantic_mesh_segmentation
 		SFMesh *smesh,
 		const int mi,
 		SFMesh *smesh_seg,
-		std::vector<cv::Mat> &texture_maps
+		std::vector<cv::Mat> &texture_maps,
+		const int batch_index
 	)
 	{
 		input_mesh_configuration(smesh);
@@ -575,6 +576,20 @@ namespace semantic_mesh_segmentation
 			}
 			else
 			{
+				//create batch predict folder 
+				std::string basic_write_path;
+				if (save_textures_in_predict)
+				{
+					if (processing_mode == 0) //RF
+						basic_write_path = root_path + folder_names_level_0[4] + folder_names_level_1[train_test_predict_val];
+					else if (processing_mode == 1) //SOTA
+						basic_write_path = root_path + folder_names_level_0[8] + sota_folder_path + folder_names_level_0[4] + folder_names_level_1[train_test_predict_val];
+
+					basic_write_path += prefixs[9] + std::to_string(batch_index);
+					if (0 != access(basic_write_path.c_str(), 0))
+						mkdir(basic_write_path.c_str());
+				}
+
 				for (auto tex_i : smesh->textures)
 				{
 					if (!tex_i.empty() && tex_i[tex_i.size() - 1] == '\r')
@@ -600,10 +615,21 @@ namespace semantic_mesh_segmentation
 						texture_map = dummy;
 					}
 					texture_maps.emplace_back(texture_map);
+
+					if (save_textures_in_predict)
+					{
+						std::string current_write_path = basic_write_path + "/";
+						current_write_path += tex_i;
+						std::ostringstream write_texture_str_ostemp;
+						write_texture_str_ostemp << current_write_path;
+						std::string write_texture_str_temp = write_texture_str_ostemp.str().data();
+						char * write_texturePath_temp = (char *)write_texture_str_temp.data();
+						cv::imwrite(write_texturePath_temp, texture_map);
+					}
 				}
 			}
 		}
-		
+
 		//get over-segmented mesh information
 		if (use_existing_mesh_segments)
 		{
@@ -625,7 +651,7 @@ namespace semantic_mesh_segmentation
 			smesh->get_face_tile_index[fi] = mi;
 
 			//unclassified = 0, unlabeled = -1
-			if (smesh->get_face_truth_label[fi] != 0 && smesh->get_face_truth_label[fi] != -1 )
+			if (smesh->get_face_truth_label[fi] != 0 && smesh->get_face_truth_label[fi] != -1)
 			{
 				smesh->mesh_area += smesh->get_face_area[fi];
 				smesh->class_area[smesh->get_face_truth_label[fi] - 1] += smesh->get_face_area[fi];
@@ -653,11 +679,11 @@ namespace semantic_mesh_segmentation
 		std::map<int, int> segment_id_vecind;//segment_id and index in the vector
 		smesh_out->add_selected_feature_properties
 		(
-			seg_face_vec, 
-			seg_truth, 
+			seg_face_vec,
+			seg_truth,
 			basic_feas,
 			eigen_feas,
-			color_feas, 
+			color_feas,
 			mulsc_ele_feas
 		);
 	}

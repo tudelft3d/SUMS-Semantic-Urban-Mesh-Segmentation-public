@@ -58,14 +58,14 @@ namespace semantic_mesh_segmentation
 			flip_pair<A, B>);
 		return dst;
 	}
-	
+
 	// --- declared functions ---
 	void sampling_point_cloud_on_mesh(SFMesh*, std::vector<cv::Mat> &, PTCloud *, PTCloud *, PTCloud *, std::map<int, int> &, const int);
 
-	void sampling_point_cloud_on_mesh(SFMesh*,std::vector<cv::Mat> &, PTCloud *,const int);
+	void sampling_point_cloud_on_mesh(SFMesh*, std::vector<cv::Mat> &, PTCloud *, const int);
 
 	void construct_superfacets
-	( 
+	(
 		SFMesh *,
 		PTCloud *,
 		std::vector<superfacets>&,
@@ -80,7 +80,8 @@ namespace semantic_mesh_segmentation
 		SFMesh *,
 		const int,
 		SFMesh *smesh_seg = nullptr,
-		std::vector<cv::Mat> &texture_maps = std::vector<cv::Mat>()
+		std::vector<cv::Mat> &texture_maps = std::vector<cv::Mat>(),
+		const int batch_index = -1
 	);
 
 	void construct_feature_pointclouds
@@ -94,7 +95,7 @@ namespace semantic_mesh_segmentation
 		std::vector< std::vector<float> > &,
 		std::vector< std::vector<float> > &,
 		std::vector< std::vector<float> > &,
-		PTCloud* 
+		PTCloud*
 	);
 
 	void visualization_feature_on_mesh
