@@ -1,10 +1,10 @@
 /*
 *   Name        : mesh_io.cpp
 *   Author      : Weixiao GAO
-*   Date        : 15/09/2021   
+*   Date        : 15/09/2021
 *   Version     : 1.0
 *   Description : input/output of meshes (*.ply), point clouds (*.ply), textures (*.jpg) and texts (*.txt).
-*   Availability: 
+*   Availability:
 *   Copyright   : Copyright (C) 2021 by Weixiao GAO (gaoweixiaocuhk@gmail.com)
 *                 All rights reserved.
 *
@@ -49,7 +49,7 @@ namespace semantic_mesh_segmentation
 		}
 		else
 		{
-			do 
+			do
 			{
 				//if subdirectory
 				if (file.attrib & _A_SUBDIR)
@@ -92,25 +92,25 @@ namespace semantic_mesh_segmentation
 		_findclose(flag);
 	}
 
-    void rply_input
-    (
-        SFMesh* smesh_out,
-        char* file
-    )
-    {
+	void rply_input
+	(
+		SFMesh* smesh_out,
+		char* file
+	)
+	{
 		const double t_total = omp_get_wtime();
-        bool success = easy3d::MeshIO::load(file, smesh_out);
+		bool success = easy3d::MeshIO::load(file, smesh_out);
 
-        //Detected non-manifold vertices, To Do!!!!
+		//Detected non-manifold vertices, To Do!!!!
 
-        if (success)
-            std::cout << "mesh read successful, loading time: "<< omp_get_wtime() - t_total << "s" << std::endl;
+		if (success)
+			std::cout << "mesh read successful, loading time: " << omp_get_wtime() - t_total << "s" << std::endl;
 		else
 		{
 			std::cerr << "File loading failed" << std::endl;
 			throw std::exception();
 		}
-    }
+	}
 
 	void read_pointcloud_data
 	(
@@ -180,7 +180,7 @@ namespace semantic_mesh_segmentation
 		if (sampled_or_ele == 0)
 			std::cout << "Start to reading " << prefixs[2] << " pointcloud " << base_names[mi] << std::endl;
 		else
-			std::cout << "Start to reading "<< prefixs[10] << " pointcloud " << base_names[mi] << std::endl;
+			std::cout << "Start to reading " << prefixs[10] << " pointcloud " << base_names[mi] << std::endl;
 
 		std::string temp_str;
 		if (sampled_or_ele == 0)
@@ -339,7 +339,7 @@ namespace semantic_mesh_segmentation
 		else
 		{
 			std::cout << "	Start to read features " << s1_test << std::endl;
-			
+
 			str_ostemp
 				<< root_path
 				<< folder_names_level_0[1]
@@ -360,7 +360,8 @@ namespace semantic_mesh_segmentation
 	(
 		SFMesh *smesh_out,
 		const int mi,
-		std::vector<cv::Mat> &texture_maps
+		std::vector<cv::Mat> &texture_maps,
+		const int batch_index
 	)
 	{
 		//get over-segmented mesh
@@ -408,7 +409,7 @@ namespace semantic_mesh_segmentation
 		char * mesh_orig_temp_char = (char *)mesh_orig_temp_str.data();
 		rply_input(smesh_out, mesh_orig_temp_char);
 
-		add_mesh_properties_from_input(smesh_out, mi, mesh_seg, texture_maps);
+		add_mesh_properties_from_input(smesh_out, mi, mesh_seg, texture_maps, batch_index);
 
 		std::cout << "  The total number of input triangle facets:  " << smesh_out->faces_size() << '\n' << std::endl;
 		std::cout << "  The total number of input edges:  " << smesh_out->edges_size() << '\n' << std::endl;
@@ -594,7 +595,7 @@ namespace semantic_mesh_segmentation
 		std::ostringstream batch_out;
 		batch_out
 			<< root_path
-			<< prefixs[9] 
+			<< prefixs[9]
 			<< "names_"
 			<< data_types[train_test_predict_val]
 			<< ".txt";
@@ -916,6 +917,16 @@ namespace semantic_mesh_segmentation
 								save_tex_cloud = false;
 						}
 					}
+					else if (param_name == "save_textures_in_predict")
+					{
+						if (param_value != "default")
+						{
+							if (param_value == "true" || param_value == "True" || param_value == "TRUE")
+								save_textures_in_predict = true;
+							else if (param_value == "false" || param_value == "False" || param_value == "FALSE")
+								save_textures_in_predict = false;
+						}
+					}
 					else if (param_name == "save_error_map")
 					{
 						if (param_value != "default")
@@ -1136,8 +1147,8 @@ namespace semantic_mesh_segmentation
 					}
 					else if (param_name == "adjacent_seg_angle")
 					{
-					if (param_value != "default")
-						adjacent_seg_angle = std::stof(param_value);
+						if (param_value != "default")
+							adjacent_seg_angle = std::stof(param_value);
 					}
 					else if (param_name == "mesh_distance_to_plane")
 					{
@@ -1175,7 +1186,7 @@ namespace semantic_mesh_segmentation
 						{
 							for (int i = 0; i < use_feas.size(); ++i)
 								use_feas[i] = false;
-								
+
 							std::vector<std::string> words = Split(param_value, ",", false);
 							for (auto words2 : words)
 							{
@@ -1494,18 +1505,18 @@ namespace semantic_mesh_segmentation
 			std::cerr << "failed create the new file" << std::endl;
 	}
 
-    void rply_output
-    (
-        SFMesh* smesh_out,
-        char* file
-    ) 
-    {
-        bool success = easy3d::MeshIO::save(file, smesh_out);
-        if (success)
-            std::cout << "mesh saved" << std::endl;
-        else
-            std::cerr << "failed create the new file" << std::endl;
-    }
+	void rply_output
+	(
+		SFMesh* smesh_out,
+		char* file
+	)
+	{
+		bool success = easy3d::MeshIO::save(file, smesh_out);
+		if (success)
+			std::cout << "mesh saved" << std::endl;
+		else
+			std::cerr << "failed create the new file" << std::endl;
+	}
 
 	void rply_output
 	(
@@ -1592,7 +1603,7 @@ namespace semantic_mesh_segmentation
 
 		std::string temp_str = prefixs[11];
 		pcl_out->remove_vertex_property(pcl_out->get_points_face_ele_belong_ids);
-		
+
 		std::ostringstream str_ostemp;
 		str_ostemp
 			<< root_path
@@ -1663,7 +1674,7 @@ namespace semantic_mesh_segmentation
 	)
 	{
 		const double t_total = omp_get_wtime();
-		std::cout << "	Start to writing feature "<< base_names[mi] << " for visualization in Mapple (https://3d.bk.tudelft.nl/liangliang/software/Mapple.zip) " << std::endl << std::endl;
+		std::cout << "	Start to writing feature " << base_names[mi] << " for visualization in Mapple (https://3d.bk.tudelft.nl/liangliang/software/Mapple.zip) " << std::endl << std::endl;
 		std::ostringstream str_ostemp;
 
 		if (use_batch_processing)
@@ -1789,6 +1800,16 @@ namespace semantic_mesh_segmentation
 			std::cout << "	Writing SOTA test result : " << base_names[mi] << std::endl;
 			basic_write_path = root_path + folder_names_level_0[8] + sota_folder_path + folder_names_level_0[4] + folder_names_level_1[train_test_predict_val];
 			pref_tmp = prefixs[4] + prefixs[5];
+		}
+
+		if (save_textures_in_predict)
+		{
+			basic_write_path += prefixs[9] + std::to_string(mi);
+			if (0 != access(basic_write_path.c_str(), 0))
+			{
+				mkdir(basic_write_path.c_str());
+			}
+			basic_write_path += "/";
 		}
 
 		if (use_batch_processing)
@@ -1921,7 +1942,7 @@ namespace semantic_mesh_segmentation
 		{
 			comment[ti] = ply_comment_element[0] + " " + smesh_out->texture_names[ti];
 		}
-	
+
 		if (train_test_predict_val == 2)
 		{
 			if (!smesh_out->get_face_property<int>("f:label"))
@@ -1954,7 +1975,7 @@ namespace semantic_mesh_segmentation
 		std::ostringstream batch_out;
 		batch_out
 			<< root_path
-			<< prefixs[9] 
+			<< prefixs[9]
 			<< "names_"
 			<< data_types[train_test_predict_val]
 			<< ".txt";
@@ -2006,7 +2027,7 @@ namespace semantic_mesh_segmentation
 		std::cout << "class" << "\t";
 		fout << "unclassified" << "\t";
 		std::cout << "unclassified" << "\t";
-		for (int li = 0 ; li < labels_name.size(); ++li)
+		for (int li = 0; li < labels_name.size(); ++li)
 		{
 			fout << labels_name[li];
 			std::cout << labels_name[li];
@@ -2045,7 +2066,7 @@ namespace semantic_mesh_segmentation
 		std::cout << "area_percentage" << "\t";
 		for (int li = 0; li < label_statistics.size(); ++li)
 		{
-			fout << std::fixed << std::showpoint << std::setprecision(4) << float (label_statistics[li] / sum_area);
+			fout << std::fixed << std::showpoint << std::setprecision(4) << float(label_statistics[li] / sum_area);
 			std::cout << std::fixed << std::showpoint << std::setprecision(4) << float(label_statistics[li] / sum_area);
 			if (li != labels_name.size())
 			{

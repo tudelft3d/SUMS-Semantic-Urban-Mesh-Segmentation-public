@@ -30,6 +30,7 @@
 #define semantic_mesh_segmentation__MESH_IO_HPP
 
 #include <filesystem>
+#include <direct.h>
 #include <io.h>
 #include <iostream>
 #include <string>
@@ -54,39 +55,39 @@
 namespace semantic_mesh_segmentation
 {
 	//---------------------- function for splitting string ----------------------//
-    inline std::vector<std::string> Split(const std::string &s, const std::string &delim, const bool keep_empty = true)
-    {
-        std::vector<std::string> result;
-        if (delim.empty()) {
-            result.push_back(s);
-            return result;
-        }
-        std::string::const_iterator substart = s.begin(), subend;
-        while (true) {
-            subend = search(substart, s.end(), delim.begin(), delim.end());
-            std::string temp(substart, subend);
-            if (keep_empty || !temp.empty()) {
-                result.push_back(temp);
-            }
-            if (subend == s.end()) {
-                break;
-            }
-            substart = subend + delim.size();
-        }
-        return result;
-    }
+	inline std::vector<std::string> Split(const std::string &s, const std::string &delim, const bool keep_empty = true)
+	{
+		std::vector<std::string> result;
+		if (delim.empty()) {
+			result.push_back(s);
+			return result;
+		}
+		std::string::const_iterator substart = s.begin(), subend;
+		while (true) {
+			subend = search(substart, s.end(), delim.begin(), delim.end());
+			std::string temp(substart, subend);
+			if (keep_empty || !temp.empty()) {
+				result.push_back(temp);
+			}
+			if (subend == s.end()) {
+				break;
+			}
+			substart = subend + delim.size();
+		}
+		return result;
+	}
 
 	inline std::string get_file_based_name(const std::string &str)
 	{
 		char * file = (char *)str.data();
 		char szDrive[_MAX_DRIVE], szDir[_MAX_DIR], szFname[_MAX_FNAME], szExt[_MAX_EXT];
 		_splitpath(file, szDrive, szDir, szFname, szExt);
-		
+
 		//separate char
 		char *delim = "_";
 		std::string base_name = "";
 		char *tmp = strtok(szFname, delim);
-		while (tmp != NULL) 
+		while (tmp != NULL)
 		{
 			bool is_ignore = false;
 			for (auto ig_str : ignored_str)
@@ -97,7 +98,7 @@ namespace semantic_mesh_segmentation
 					break;
 				}
 			}
-			
+
 			if (!is_ignore)
 			{
 				if (base_name != "")
@@ -110,9 +111,9 @@ namespace semantic_mesh_segmentation
 
 		return base_name;
 	}
-	
+
 	//-----------------read data-----------------//
-	void getAllFiles(const std::string& , const std::string&, std::vector<std::string> &, std::vector<std::string> &);
+	void getAllFiles(const std::string&, const std::string&, std::vector<std::string> &, std::vector<std::string> &);
 
 	void rply_input(SFMesh*, char*);
 
@@ -122,7 +123,7 @@ namespace semantic_mesh_segmentation
 
 	easy3d::PointCloud* read_semantic_pointcloud_data(const int);
 
-	void read_mesh_data(SFMesh *, const int, std::vector<cv::Mat> &texture_maps = std::vector<cv::Mat>());
+	void read_mesh_data(SFMesh *, const int, std::vector<cv::Mat> &texture_maps = std::vector<cv::Mat>(), const int batch_index = -1);
 
 	void read_test_mesh_data(SFMesh *, const int);
 
@@ -151,7 +152,7 @@ namespace semantic_mesh_segmentation
 
 	void write_feature_pointcloud_data(PTCloud*, const std::string);
 
-	void write_semantic_mesh_data(SFMesh* , const int 	);
+	void write_semantic_mesh_data(SFMesh*, const int);
 
 	void write_error_mesh_data(SFMesh*, const int);
 
@@ -159,13 +160,13 @@ namespace semantic_mesh_segmentation
 
 	void save_txt_statistics(std::vector<float> &, std::vector<float> &);
 
-	void save_txt_feature_importance(std::vector<std::string> &, std::vector<std::pair<int, int>> &,	const int);
+	void save_txt_feature_importance(std::vector<std::string> &, std::vector<std::pair<int, int>> &, const int);
 
-	void save_txt_mesh_areas(std::vector<std::pair<std::string, float>> &,	std::vector<std::pair<std::string, std::vector<float>>> &);
+	void save_txt_mesh_areas(std::vector<std::pair<std::string, float>> &, std::vector<std::pair<std::string, std::vector<float>>> &);
 
 	void save_txt_feature_divergence(std::vector<std::string> &, std::vector<float> &);
 
-	void save_txt_evaluation(CGAL::Classification::Label_set &,CGAL::Classification::Evaluation &,std::ostringstream &,const int);
+	void save_txt_evaluation(CGAL::Classification::Label_set &, CGAL::Classification::Evaluation &, std::ostringstream &, const int);
 
 	void get_mesh_labels(SFMesh *, std::vector<int> &, std::vector<int> &, std::vector< std::vector<int>> &);
 

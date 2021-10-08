@@ -811,7 +811,7 @@ namespace semantic_mesh_segmentation
 
 		SFMesh* smesh_all = new SFMesh;
 		mesh_configuration(smesh_all);
-		int ind = 0, vert_ind = 0, pre_sampled_cloud_size = 0;
+		int ind = 0, vert_ind = 0, pre_sampled_cloud_size = 0, tex_size = 0;
 		for (auto tile_i : batch_base_names)
 		{
 			SFMesh *smesh_tmp = new SFMesh;
@@ -820,8 +820,9 @@ namespace semantic_mesh_segmentation
 			read_mesh_data(smesh_tmp, tile_i.first);
 
 			//--- merge mesh ---
-			merge_mesh(smesh_tmp, smesh_all, vert_ind, pre_sampled_cloud_size);
-
+			merge_mesh(smesh_tmp, smesh_all, vert_ind, pre_sampled_cloud_size, tex_size);
+			training_mesh_area += smesh_tmp->mesh_area;
+			tex_size += smesh_tmp->texture_names.size();
 			delete smesh_tmp;
 			++ind;
 		}
@@ -939,17 +940,19 @@ namespace semantic_mesh_segmentation
 
 		SFMesh* smesh_all = new SFMesh;
 		mesh_configuration(smesh_all);
-		int ind = 0, vert_ind = 0, pre_sampled_cloud_size = 0;
+		int ind = 0, vert_ind = 0, pre_sampled_cloud_size = 0, tex_size = 0;
 		for (auto tile_i : batch_base_names)
 		{
 			SFMesh *smesh_tmp = new SFMesh;
 
 			//--- read mesh *.ply data ---
-			read_mesh_data(smesh_tmp, tile_i.first);
+			std::vector<cv::Mat> texture_maps;
+			read_mesh_data(smesh_tmp, tile_i.first, texture_maps, batch_index);
 
 			//--- merge mesh ---
-			merge_mesh(smesh_tmp, smesh_all, vert_ind, pre_sampled_cloud_size);
+			merge_mesh(smesh_tmp, smesh_all, vert_ind, pre_sampled_cloud_size, tex_size);
 			test_mesh_area += smesh_tmp->mesh_area;
+			tex_size += smesh_tmp->texture_names.size();
 			delete smesh_tmp;
 			++ind;
 		}
@@ -1123,17 +1126,19 @@ namespace semantic_mesh_segmentation
 
 		SFMesh* smesh_all = new SFMesh;
 		mesh_configuration(smesh_all);
-		int ind = 0, vert_ind = 0, pre_sampled_cloud_size = 0;
+		int ind = 0, vert_ind = 0, pre_sampled_cloud_size = 0, tex_size = 0;
 		for (auto tile_i : batch_base_names)
 		{
 			SFMesh *smesh_tmp = new SFMesh;
 
 			//--- read mesh *.ply data ---
-			read_mesh_data(smesh_tmp, tile_i.first);
+			std::vector<cv::Mat> texture_maps;
+			read_mesh_data(smesh_tmp, tile_i.first, texture_maps, batch_index);
 
 			//--- merge mesh ---
-			merge_mesh(smesh_tmp, smesh_all, vert_ind, pre_sampled_cloud_size);
+			merge_mesh(smesh_tmp, smesh_all, vert_ind, pre_sampled_cloud_size, tex_size);
 			test_mesh_area += smesh_tmp->mesh_area;
+			tex_size += smesh_tmp->texture_names.size();
 			delete smesh_tmp;
 			++ind;
 		}
@@ -1516,7 +1521,7 @@ namespace semantic_mesh_segmentation
 		bool use_float = false;
 		if (sota_folder_path == "pointnet/" || sota_folder_path == "pointnet2/")
 			use_float = true;
-		
+
 		smesh_in->add_vertex_property<bool>("v:vertex_visited", false);
 		auto get_vert_visited = smesh_in->get_vertex_property<bool>("v:vertex_visited");
 		//get predict information from SOTA point cloud
@@ -1635,7 +1640,7 @@ namespace semantic_mesh_segmentation
 	{
 		for (auto &f : smesh_original->faces())
 		{
-			if (smesh_original->get_face_truth_label[f] == smesh_original->get_face_predict_label[f] 
+			if (smesh_original->get_face_truth_label[f] == smesh_original->get_face_predict_label[f]
 				|| smesh_original->get_face_truth_label[f] == 0
 				|| smesh_original->get_face_truth_label[f] == -1)
 				smesh_original->get_face_error_color[f].x = 120.0;
@@ -1709,7 +1714,7 @@ namespace semantic_mesh_segmentation
 		mesh_configuration(smesh_all);
 		pointcloud_configuration(cloud_all_tmp);
 
-		int ind = 0, vert_ind = 0, pre_face_size = 0, pre_sampled_cloud_size = 0;
+		int ind = 0, vert_ind = 0, pre_face_size = 0, pre_sampled_cloud_size = 0, tex_size = 0;
 		for (auto tile_i : batch_base_names)
 		{
 			SFMesh *smesh_tmp = new SFMesh;
@@ -1733,7 +1738,9 @@ namespace semantic_mesh_segmentation
 			pre_face_size += smesh_tmp->faces_size();
 
 			//--- merge mesh ---
-			merge_mesh(smesh_tmp, smesh_all, vert_ind, pre_sampled_cloud_size);
+			merge_mesh(smesh_tmp, smesh_all, vert_ind, pre_sampled_cloud_size, tex_size);
+			test_mesh_area += smesh_tmp->mesh_area;
+			tex_size += smesh_tmp->texture_names.size();
 
 			delete smesh_tmp;
 			delete cloud_tmp;
