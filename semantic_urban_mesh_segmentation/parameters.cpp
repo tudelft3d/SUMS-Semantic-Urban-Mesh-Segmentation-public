@@ -76,7 +76,8 @@ namespace semantic_mesh_segmentation
 	//save intermediate data
 	bool save_sampled_pointclouds = false;
 	bool save_oversegmentation_mesh = true;
-	bool save_tex_cloud = false; 
+	bool save_tex_cloud = false;
+	bool save_textures_in_predict = false;
 
 	//settings for feature computation
 	std::vector<float> multi_scale_ele_radius = { 10.0f, 20.0f, 40.0f };//From Mohammad Rouhani's paper
@@ -137,7 +138,7 @@ namespace semantic_mesh_segmentation
 
 	//****************** Class_statistics ******************
 	int input_type_for_statistics = 0;//0: mesh; 1: sampled point cloud
-	
+
 	//****************** SOTA: Moha_Verdi_SOTA_pipeline ******************
 	//over-segmentation parameters
 	float mr_facet_neg_sphericial_radius = 1.8288f; //2 yards
@@ -516,5 +517,4 @@ namespace semantic_mesh_segmentation
 		{"val_bin_3", 37},
 		{"val_bin_4", 38}
 	};
-}		 
- 
+}

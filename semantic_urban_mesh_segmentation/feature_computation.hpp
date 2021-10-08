@@ -71,7 +71,7 @@ namespace semantic_mesh_segmentation
 		superfacets spf_2
 	)
 	{
-		if (spf_1.sum_area > spf_2.sum_area) 
+		if (spf_1.sum_area > spf_2.sum_area)
 			return true;
 		else
 			return false;
@@ -314,7 +314,7 @@ namespace semantic_mesh_segmentation
 		std::vector<vec3> &coord3d_triangle,
 		vec2 &current_uv,
 		vec3 &current_3d
-	) 
+	)
 	{
 		float T00 = uv_triangle[0].x - uv_triangle[2].x;
 		float T01 = uv_triangle[1].x - uv_triangle[2].x;
@@ -392,7 +392,7 @@ namespace semantic_mesh_segmentation
 		std::vector<std::pair<float, float>>  &multi_scales_seg_minmax_ele,
 		std::vector<float> &seg_mulsc_ele_fea,
 		float &seg_center_z
-	) 
+	)
 	{
 		for (int i = 0; i < multi_scale_ele_radius.size(); ++i)
 		{
@@ -421,6 +421,8 @@ namespace semantic_mesh_segmentation
 		smesh_all->get_face_color = smesh_all->get_face_property<vec3>("f:color");
 		smesh_all->add_face_property<std::vector<float>>("f:texcoord");
 		smesh_all->get_face_texcoord = smesh_all->get_face_property<std::vector<float>>("f:texcoord");
+		smesh_all->add_face_property<int>("f:texnumber");
+		smesh_all->get_face_texnumber = smesh_all->get_face_property<int>("f:texnumber");
 		smesh_all->add_face_property<vec3>("f:normal");
 		smesh_all->get_face_normals = smesh_all->get_face_property<vec3>("f:normal");
 		smesh_all->add_vertex_property<vec3>("v:normal");
@@ -442,33 +444,33 @@ namespace semantic_mesh_segmentation
 	//------------------------------------------------ ------------------------------- ----------------------------------------------//
 	//------------------------------------------------ Surface mesh sampling functions ----------------------------------------------//
 	//------------------------------------------------ ------------------------------- ----------------------------------------------//
-	void texture_pointcloud_generation(SFMesh*,SFMesh::Face &,std::vector<cv::Mat> &, std::vector<cv::Mat> &, PTCloud* tex_cloud = nullptr);
+	void texture_pointcloud_generation(SFMesh*, SFMesh::Face &, std::vector<cv::Mat> &, std::vector<cv::Mat> &, PTCloud* tex_cloud = nullptr);
 
 	void face_texture_processor(SFMesh *, std::vector<cv::Mat> &, const int, PTCloud* tex_cloud = nullptr);
 
-	void get_sampling_cloud_normals_from_mesh_faces(SFMesh *,PTCloud *,PTCloud *, PTCloud *, easy3d::KdTree *, easy3d::KdTree *);
+	void get_sampling_cloud_normals_from_mesh_faces(SFMesh *, PTCloud *, PTCloud *, PTCloud *, easy3d::KdTree *, easy3d::KdTree *);
 
 	void finalization_sampling_point_cloud(PTCloud*, PTCloud *, easy3d::PointCloud*, easy3d::PointCloud*);
 
 	void finalization_sampling_point_cloud(PTCloud *, easy3d::PointCloud*);
 
-	void parsing_texture_color_to_sampled_pointcloud(PTCloud *,	PTCloud *, const int, PTCloud::Vertex &);
+	void parsing_texture_color_to_sampled_pointcloud(PTCloud *, PTCloud *, const int, PTCloud::Vertex &);
 
 	void match_ele_sampling_pointcloud_with_mesh_faces(SFMesh *, PTCloud *, PTCloud *, easy3d::KdTree *);
 	//------------------------------------------------ ------------------------------- ----------------------------------------------//
 	//------------------------------------------------  Features computation functions ----------------------------------------------//
 	//------------------------------------------------ ------------------------------- ----------------------------------------------//	
-	void merge_pointcloud(PTCloud *, PTCloud *,	SFMesh *,int &, const int, std::map<int, int> &ptidx_faceid_map_all = std::map<int, int>());
+	void merge_pointcloud(PTCloud *, PTCloud *, SFMesh *, int &, const int, std::map<int, int> &ptidx_faceid_map_all = std::map<int, int>());
 
-	void merge_mesh(SFMesh *, SFMesh *,	int &, int &, SFMesh *smesh_overseg = nullptr);
+	void merge_mesh(SFMesh *, SFMesh *, int &, int &, int &, SFMesh *smesh_overseg = nullptr);
 
-	void compute_geometric_features_only_per_scale(SFMesh*, PTCloud*, superfacets &,	const int,	std::vector<float> &);
+	void compute_geometric_features_only_per_scale(SFMesh*, PTCloud*, superfacets &, const int, std::vector<float> &);
 
-	void compute_features_on_vertices_face_centers_pcl(SFMesh* , PTCloud*,	superfacets &, const int, std::vector<float> &, std::vector<float> &);
+	void compute_features_on_vertices_face_centers_pcl(SFMesh*, PTCloud*, superfacets &, const int, std::vector<float> &, std::vector<float> &);
 
-	void compute_radiometric_features_on_face_textures(SFMesh*,	superfacets &, const int, std::vector<float> &);
+	void compute_radiometric_features_on_face_textures(SFMesh*, superfacets &, const int, std::vector<float> &);
 
-	void medial_ball_features(SFMesh *,	PTCloud *);
+	void medial_ball_features(SFMesh *, PTCloud *);
 
 	void local_elevation_for_pointcloud(SFMesh *, PTCloud*, std::vector<superfacets>&);
 
@@ -486,7 +488,7 @@ namespace semantic_mesh_segmentation
 		std::vector< std::vector<float> > &,
 		std::vector< std::vector<float> > &
 	);
-	
+
 	void tiles_merge_to_batch
 	(
 		SFMesh *,
@@ -501,6 +503,7 @@ namespace semantic_mesh_segmentation
 		int &,
 		int &,
 		int &,
+		int &,
 		SFMesh *smesh_overseg = nullptr
 	);
 
@@ -508,7 +511,7 @@ namespace semantic_mesh_segmentation
 
 	void process_single_tile(const int);
 
-	void get_segment_features(SFMesh *,	PTCloud *, PTCloud*, PTCloud *, PTCloud *, std::map<int, int> &, const int);
+	void get_segment_features(SFMesh *, PTCloud *, PTCloud*, PTCloud *, PTCloud *, std::map<int, int> &, const int);
 
 	void visualization_process_batch_tiles(std::vector<std::pair<int, std::string>> &, const int);
 

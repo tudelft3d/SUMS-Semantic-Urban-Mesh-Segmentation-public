@@ -32,10 +32,10 @@
 using namespace easy3d;
 namespace semantic_mesh_segmentation
 {
-//------------------------------------------------ ------------------------------- ----------------------------------------------//
-//------------------------------------------------ Surface mesh sampling functions ----------------------------------------------//
-//------------------------------------------------ ------------------------------- ----------------------------------------------//
-	//Calculate single facet feature property<float>
+	//------------------------------------------------ ------------------------------- ----------------------------------------------//
+	//------------------------------------------------ Surface mesh sampling functions ----------------------------------------------//
+	//------------------------------------------------ ------------------------------- ----------------------------------------------//
+		//Calculate single facet feature property<float>
 	void texture_pointcloud_generation
 	(
 		SFMesh* smesh_in,
@@ -465,6 +465,7 @@ namespace semantic_mesh_segmentation
 		SFMesh *smesh_all,
 		int &vert_ind,
 		int &pre_sampled_cloud_size,
+		int &tex_size,
 		SFMesh *smesh_overseg
 	)
 	{
@@ -497,6 +498,7 @@ namespace semantic_mesh_segmentation
 				}
 			}
 			smesh_all->add_triangle(SFMesh::Vertex(vertex_indices[0]), SFMesh::Vertex(vertex_indices[1]), SFMesh::Vertex(vertex_indices[2]));
+			smesh_all->get_face_texnumber[*(--smesh_all->faces_end())] = tex_size + smesh_tmp->get_face_texnumber[f];
 			smesh_all->get_face_texcoord[*(--smesh_all->faces_end())] = smesh_tmp->get_face_texcoord[f];
 			smesh_all->get_face_truth_label[*(--smesh_all->faces_end())] = smesh_tmp->get_face_truth_label[f];
 			smesh_all->get_face_predict_label[*(--smesh_all->faces_end())] = smesh_tmp->get_face_predict_label[f];
@@ -1097,7 +1099,7 @@ namespace semantic_mesh_segmentation
 
 			vec3 avg_center;
 			std::vector<std::pair<float, float>> multi_scales__seg_minmax_ele(multi_scale_ele_radius.size(),
-				std::pair<float,float>(FLT_MAX, -FLT_MAX));
+				std::pair<float, float>(FLT_MAX, -FLT_MAX));
 			std::pair<int, float> short_range_local_segid(-1, FLT_MAX);
 			for (int j = 0; j < segment_out[i].face_vec.size(); ++j)
 			{
@@ -1244,7 +1246,7 @@ namespace semantic_mesh_segmentation
 			(
 				smesh_out,
 				cloud_pt_3d_sampled,
-				segment_out[seg_i], 
+				segment_out[seg_i],
 				seg_i,
 				eigen_feas[seg_i], color_feas[seg_i]
 			);
@@ -1293,16 +1295,18 @@ namespace semantic_mesh_segmentation
 		int &vert_ind,
 		int &pre_face_size,
 		int &pre_sampled_cloud_size,
+		int &tex_size,
 		SFMesh *smesh_overseg
 	)
 	{
-		merge_mesh(smesh_tmp, smesh_all, vert_ind, pre_sampled_cloud_size, smesh_overseg);
+		merge_mesh(smesh_tmp, smesh_all, vert_ind, pre_sampled_cloud_size, tex_size, smesh_overseg);
 		merge_pointcloud(cloud_sampled_tmp, cloud_sampled_all, smesh_all, pre_face_size, 0);
 		merge_pointcloud(cloud_ele_tmp, cloud_ele_all, smesh_all, pre_face_size, 1);
 		merge_pointcloud(face_center_cloud_tmp, face_center_cloud_all, smesh_all, pre_face_size, 2, ptidx_faceid_map_all);
 
 		pre_face_size += smesh_tmp->faces_size();
 		pre_sampled_cloud_size += cloud_sampled_tmp->vertices_size();
+		tex_size += smesh_tmp->texture_names.size();
 	}
 
 	//--- processing batch tiles ---
@@ -1323,8 +1327,8 @@ namespace semantic_mesh_segmentation
 		if (use_existing_mesh_segments)
 			read_mesh_data(smesh_overseg, batch_index);
 
-		int ind = 0, vert_ind = 0, pre_face_size = 0, pre_sampled_cloud_size = 0;
-		for (auto tile_i: batch_base_names)
+		int ind = 0, vert_ind = 0, pre_face_size = 0, pre_sampled_cloud_size = 0, tex_size = 0;
+		for (auto tile_i : batch_base_names)
 		{
 			SFMesh *smesh_tmp = new SFMesh;
 			PTCloud *cloud_sampled_tmp = new PTCloud,
@@ -1354,10 +1358,10 @@ namespace semantic_mesh_segmentation
 
 			//--- merge mesh and point cloud ---
 			if (use_existing_mesh_segments)
-				tiles_merge_to_batch(smesh_tmp, cloud_sampled_tmp, cloud_ele_tmp, face_center_cloud_tmp, smesh_all, cloud_sampled_all, cloud_ele_all, face_center_cloud_all, ptidx_faceid_map_all, vert_ind, pre_face_size, pre_sampled_cloud_size, smesh_overseg);
+				tiles_merge_to_batch(smesh_tmp, cloud_sampled_tmp, cloud_ele_tmp, face_center_cloud_tmp, smesh_all, cloud_sampled_all, cloud_ele_all, face_center_cloud_all, ptidx_faceid_map_all, vert_ind, pre_face_size, pre_sampled_cloud_size, tex_size, smesh_overseg);
 			else
-				tiles_merge_to_batch(smesh_tmp, cloud_sampled_tmp, cloud_ele_tmp, face_center_cloud_tmp, smesh_all, cloud_sampled_all, cloud_ele_all, face_center_cloud_all, ptidx_faceid_map_all, vert_ind, pre_face_size, pre_sampled_cloud_size);
-					   
+				tiles_merge_to_batch(smesh_tmp, cloud_sampled_tmp, cloud_ele_tmp, face_center_cloud_tmp, smesh_all, cloud_sampled_all, cloud_ele_all, face_center_cloud_all, ptidx_faceid_map_all, vert_ind, pre_face_size, pre_sampled_cloud_size, tex_size);
+
 			delete smesh_tmp;
 			delete cloud_sampled_tmp;
 			delete cloud_ele_tmp;
@@ -1430,7 +1434,7 @@ namespace semantic_mesh_segmentation
 		delete face_center_cloud;
 		delete fea_cloud;
 	}
-	   
+
 	//--- segment feature computation pipeline ---
 	void get_segment_features
 	(
@@ -1466,7 +1470,7 @@ namespace semantic_mesh_segmentation
 				perform_mohaverdi_oversegmentation(smesh_out, segment_tmp, current_mesh_planarity, faceid_segid_map, seg_neighbors);
 			}
 
-			std::cout << "		- Found " << segment_tmp.size() << " superfacets took " << omp_get_wtime() - t_total  <<" (s). "<< std::endl;
+			std::cout << "		- Found " << segment_tmp.size() << " superfacets took " << omp_get_wtime() - t_total << " (s). " << std::endl;
 		}
 
 		if (use_merged_segments)
@@ -1512,8 +1516,8 @@ namespace semantic_mesh_segmentation
 		compute_segment_features(smesh_out, segment_out, cloud_sampled, seg_plane_params, basic_feas, eigen_feas, color_feas);
 
 		//--- normalize all features: no-scale, multi-scales, prior, gradients ---
- 		normalization_all(basic_feas, eigen_feas, color_feas, mulsc_ele_feas);
-	
+		normalization_all(basic_feas, eigen_feas, color_feas, mulsc_ele_feas);
+
 		//--- write features as a point cloud into binary .ply files ---
 		construct_feature_pointclouds(seg_face_vec, seg_ids, seg_truth, seg_local_ground_pair, seg_plane_params, basic_feas, eigen_feas, color_feas, mulsc_ele_feas, fea_cloud);
 	}
@@ -1536,7 +1540,7 @@ namespace semantic_mesh_segmentation
 		get_all_feature_properties_from_feature_point_cloud
 		(
 			pcl_out, seg_face_vec, seg_ids, seg_truth,
-			basic_feas, eigen_feas, color_feas,	mulsc_ele_feas
+			basic_feas, eigen_feas, color_feas, mulsc_ele_feas
 		);
 
 		SFMesh* smesh_all = new SFMesh, *smesh_overseg = new SFMesh;;
@@ -1545,7 +1549,7 @@ namespace semantic_mesh_segmentation
 		if (use_existing_mesh_segments)
 			read_mesh_data(smesh_overseg, batch_index);
 
-		int ind = 0, vert_ind = 0, pre_sampled_cloud_size = 0;
+		int ind = 0, vert_ind = 0, pre_sampled_cloud_size = 0, tex_size = 0;
 		for (auto tile_i : batch_base_names)
 		{
 			SFMesh *smesh_tmp = new SFMesh;
@@ -1555,10 +1559,10 @@ namespace semantic_mesh_segmentation
 
 			//--- merge mesh ---
 			if (use_existing_mesh_segments)
-				merge_mesh(smesh_tmp, smesh_all, vert_ind, pre_sampled_cloud_size, smesh_overseg);
+				merge_mesh(smesh_tmp, smesh_all, vert_ind, pre_sampled_cloud_size, tex_size, smesh_overseg);
 			else
-				merge_mesh(smesh_tmp, smesh_all, vert_ind, pre_sampled_cloud_size);
-
+				merge_mesh(smesh_tmp, smesh_all, vert_ind, pre_sampled_cloud_size, tex_size);
+			tex_size += smesh_tmp->texture_names.size();
 			delete smesh_tmp;
 			++ind;
 		}
@@ -1567,12 +1571,12 @@ namespace semantic_mesh_segmentation
 		SFMesh *smesh_out = new SFMesh;
 		visualization_feature_on_mesh
 		(
-			smesh_all, seg_face_vec, seg_truth, 
+			smesh_all, seg_face_vec, seg_truth,
 			basic_feas, eigen_feas, color_feas,
 			mulsc_ele_feas,
 			smesh_out
 		);
-	
+
 		write_feature_mesh_data(smesh_out, batch_index);
 		delete smesh_out;
 
@@ -1597,7 +1601,7 @@ namespace semantic_mesh_segmentation
 		std::vector< std::vector<float> > eigen_feas, color_feas;
 		get_all_feature_properties_from_feature_point_cloud
 		(
-			pcl_out, seg_face_vec, seg_ids, seg_truth, 
+			pcl_out, seg_face_vec, seg_ids, seg_truth,
 			basic_feas, eigen_feas, color_feas, mulsc_ele_feas
 		);
 
@@ -1608,11 +1612,11 @@ namespace semantic_mesh_segmentation
 		SFMesh *smesh_out = new SFMesh;
 		visualization_feature_on_mesh
 		(
-			smesh_in, seg_face_vec, seg_truth, 
+			smesh_in, seg_face_vec, seg_truth,
 			basic_feas, eigen_feas, color_feas, mulsc_ele_feas,
 			smesh_out
 		);
-			
+
 		//std::string sfc_out = get_feature_name_prifix(selection_vis_fn[si]).first + base_names[pi];
 		write_feature_mesh_data(smesh_out, pi);
 		delete smesh_out;
