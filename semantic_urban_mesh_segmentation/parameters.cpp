@@ -36,6 +36,7 @@ namespace semantic_mesh_segmentation
 	std::string seg_aug_py_path = "../../Semantic-segmentation-of-large-scale-urban-meshes/";
 
 	int processing_mode = 0;//0: RF(SUM Paper); 1: SOTA (Competition methods);
+	std::string label_definition = "label";
 
 	std::map<std::string, bool> process_data_selection
 	{
