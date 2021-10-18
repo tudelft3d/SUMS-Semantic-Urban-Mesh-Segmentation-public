@@ -140,9 +140,7 @@ namespace semantic_mesh_segmentation
 			std::vector<std::vector<int>> &,
 			std::vector<int> &,
 			std::vector<int> &,
-			std::vector<std::pair<int, float>> &,
-			std::vector<std::vector<float>> &,
-			std::vector< std::vector<float>> &,
+			std::vector< std::vector<float> > &,
 			std::vector< std::vector<float> > &,
 			std::vector< std::vector<float> > &,
 			std::vector< std::vector<float> > &
@@ -202,8 +200,6 @@ namespace semantic_mesh_segmentation
 		std::vector<std::vector<int>> &seg_face_vec,
 		std::vector<int> &seg_ids,
 		std::vector<int> &seg_truth,
-		std::vector<std::pair<int, float>> &seg_local_ground_pair,
-		std::vector<std::vector<float>> &seg_plane_params,
 		std::vector< std::vector<float>> &basic_feas,
 		std::vector< std::vector<float> > &eigen_feas,
 		std::vector< std::vector<float> > &color_feas,
@@ -221,8 +217,6 @@ namespace semantic_mesh_segmentation
 		add_segment_properties(p_faces, std::string("v:mesh_faces_id"));
 
 		//properties for watershed segmentation
-		this->add_vertex_property<int>("v:local_ground_segment_id", -1);
-		auto seg_local_ground_id = this->get_vertex_property<int>("v:local_ground_segment_id");
 		this->add_vertex_property<float>("v:segment_relative_elevation", -1);
 		auto get_seg_relative_ele = this->get_vertex_property<float>("v:segment_relative_elevation");
 
@@ -250,11 +244,6 @@ namespace semantic_mesh_segmentation
 					PTCloud::Vertex ptx(pi);
 					seg_id[ptx] = seg_ids[sfi];
 
-					//for watershed segmentation properties
-					seg_local_ground_id[ptx] = seg_local_ground_pair[sfi].first;
-					get_seg_relative_ele[ptx] = seg_local_ground_pair[sfi].second;
-					seg_plane_param[ptx] = seg_plane_params[sfi];
-
 					//for features
 					this->get_points_ground_truth[ptx] = seg_truth[sfi];
 					p_faces[ptx].insert(p_faces[ptx].end(), seg_face_vec[sfi].begin(), seg_face_vec[sfi].end());
@@ -274,11 +263,6 @@ namespace semantic_mesh_segmentation
 			{
 					PTCloud::Vertex ptx(sfi);
 					seg_id[ptx] = seg_ids[sfi];
-
-					//for watershed segmentation properties
-					seg_local_ground_id[ptx] = seg_local_ground_pair[sfi].first;
-					get_seg_relative_ele[ptx] = seg_local_ground_pair[sfi].second;
-					seg_plane_param[ptx] = seg_plane_params[sfi];
 
 					//for features
 					this->get_points_ground_truth[ptx] = seg_truth[sfi];
