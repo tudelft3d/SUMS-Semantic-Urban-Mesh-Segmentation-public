@@ -35,6 +35,18 @@ If you would like to contribute to this project, please contact the author.
 ### Data organization
 For the organization of the data in the folders, please refer to the [demo data](https://3d.bk.tudelft.nl/opendata/sum/1.0/data_cmt_demo/).
 
+For the structure of `*.ply` data, we have added the following additional items.
+
+{:class="table table-bordered table-hover table-responsive table-sm" style="width: auto;"}
+|    names                 |    ply types      |    data types     |    description                                                      |
+| :----------------------: |  :--------------: | :---------------: | :-----------------------------------------------------------------: |
+| label                    | comment           | -                 | label definition, e.g., `comment label 1 ground`                  |
+| label                    | property (face)   | int               | label stored at each facet                                          | 
+| face_segment_id          | property (face)   | int               | segment id stored at each facet                                     |
+| label_probabilities      | property (face)   | float             | probabilities stored at each facet                                  |
+| segment_xxx_features_xxx | property (face)   | float             | features stored at each facet for visualization as scalar field     |
+| segment_xxx_features_xxx | property (vertex) | list uint32 float | features stored at each vertex as intermediate data for computation |
+
 ### Data requirements
 For the **format** of input meshes, the current program only support [`*.ply`](http://paulbourke.net/dataformats/ply/) 
 format triangular meshes and `*.jpg` format textures, and each mesh file must have associated textures. 
