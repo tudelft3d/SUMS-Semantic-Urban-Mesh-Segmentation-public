@@ -37,7 +37,6 @@ For the organization of the data in the folders, please refer to the [demo data]
 
 For the structure of `*.ply` data, we have added the following additional items.
 
-{:class="table table-bordered table-hover table-responsive table-sm" style="width: auto;"}
 |    names                 |    ply types      |    data types     |    description                                                      |
 | :----------------------: |  :--------------: | :---------------: | :-----------------------------------------------------------------: |
 | label                    | comment           | -                 | label definition, e.g., `comment label 1 ground`                  |
