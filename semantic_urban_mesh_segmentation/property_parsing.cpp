@@ -451,8 +451,6 @@ namespace semantic_mesh_segmentation
 		std::vector<std::vector<int>> &seg_face_vec,
 		std::vector<int> &seg_ids,
 		std::vector<int> &seg_truth,
-		std::vector<std::pair<int, float>> &seg_local_ground_pair,
-		std::vector<std::vector<float>> &seg_plane_params,
 		std::vector< std::vector<float>> &basic_feas,
 		std::vector< std::vector<float> > &eigen_feas,
 		std::vector< std::vector<float> > &color_feas,
@@ -486,8 +484,6 @@ namespace semantic_mesh_segmentation
 			seg_face_vec,
 			seg_ids,
 			seg_truth,
-			seg_local_ground_pair,
-			seg_plane_params,
 			basic_feas,
 			eigen_feas, color_feas,
 			mulsc_ele_feas

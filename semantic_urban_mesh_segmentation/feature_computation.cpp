@@ -1072,7 +1072,6 @@ namespace semantic_mesh_segmentation
 		SFMesh *smesh_out,
 		std::vector<superfacets> &segment_out,
 		std::vector<int> &seg_truth,
-		std::vector<std::pair<int, float>> &seg_local_ground_pair,
 		std::vector< std::vector<float> > &basic_feas,
 		std::vector< std::vector<float> > &mulsc_ele_feas,
 		PTCloud *cloud_sampled,  //for MAT 
@@ -1198,7 +1197,6 @@ namespace semantic_mesh_segmentation
 			segment_out[i].local_longrange_ground_ele = get<2>(segid_longrange_maxarea_ele);
 
 			relative_elevation = avg_center.z - segment_out[i].local_longrange_ground_ele;
-			seg_local_ground_pair.emplace_back(segment_out[i].local_ground_longrange_segid, relative_elevation);
 			relative_elevation = relative_elevation > relative_elevation_cut_off_max ? relative_elevation_cut_off_max : relative_elevation;
 
 			float triangle_density = float(segment_out[i].face_vec.size()) / segment_out[i].sum_area;
@@ -1503,11 +1501,10 @@ namespace semantic_mesh_segmentation
 			get_segments_color(smesh_out, segment_out);
 
 		//--- compute segment based features (include point-based multi-scale relative elevation) ---
-		std::vector<std::pair<int, float>> seg_local_ground_pair;
 		std::vector<int> seg_truth(std::vector<int>(segment_out.size(), -1));
 		std::vector< std::vector< float > > basic_feas(segment_out.size(), std::vector< float >(basic_feature_base_names.size(), default_feature_value_minmax.first));
 		std::vector< std::vector<float> > mulsc_ele_feas(segment_out.size(), std::vector<float>(multi_scale_ele_radius.size(), default_feature_value_minmax.first));
-		compute_segment_basic_features(smesh_out, segment_out, seg_truth, seg_local_ground_pair, basic_feas, mulsc_ele_feas, cloud_sampled, cloud_ele);
+		compute_segment_basic_features(smesh_out, segment_out, seg_truth, basic_feas, mulsc_ele_feas, cloud_sampled, cloud_ele);
 
 		//--- compute segment buffer area based multi-scale features ---
 		std::vector<std::vector<float>> seg_plane_params(segment_out.size(), std::vector<float>(4, 0.0f));
@@ -1519,7 +1516,7 @@ namespace semantic_mesh_segmentation
 		normalization_all(basic_feas, eigen_feas, color_feas, mulsc_ele_feas);
 
 		//--- write features as a point cloud into binary .ply files ---
-		construct_feature_pointclouds(seg_face_vec, seg_ids, seg_truth, seg_local_ground_pair, seg_plane_params, basic_feas, eigen_feas, color_feas, mulsc_ele_feas, fea_cloud);
+		construct_feature_pointclouds(seg_face_vec, seg_ids, seg_truth, basic_feas, eigen_feas, color_feas, mulsc_ele_feas, fea_cloud);
 	}
 
 	//--- processing visualization batch tiles ---
