@@ -501,12 +501,12 @@ namespace semantic_mesh_segmentation
 		smesh->get_points_coord = smesh->get_vertex_property<vec3>("v:point");
 
 		//mesh face properties
-		if (smesh->get_face_property<int>("f:label"))
-			smesh->get_face_truth_label = smesh->get_face_property<int>("f:label");
+		if (smesh->get_face_property<int>("f:" + label_definition))
+			smesh->get_face_truth_label = smesh->get_face_property<int>("f:" + label_definition);
 		else
 		{
-			smesh->add_face_property<int>("f:label", -1);
-			smesh->get_face_truth_label = smesh->get_face_property<int>("f:label");
+			smesh->add_face_property<int>("f:" + label_definition, -1);
+			smesh->get_face_truth_label = smesh->get_face_property<int>("f:" + label_definition);
 		}
 
 		if (smesh->get_face_property<int>("f:face_predict"))
