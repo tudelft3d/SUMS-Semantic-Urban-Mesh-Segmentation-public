@@ -11,7 +11,7 @@ find_package(PythonInterp)
 
 include_directories(${PROJECT_NAME} PRIVATE ${SemanticUrbanMesh_INCLUDE_DIR})
 
-find_package(Boost 1.69.0 COMPONENTS graph REQUIRED) #system filesystem thread serialization
+find_package(Boost ${Boost_MINOR_VERSION} COMPONENTS graph REQUIRED) #system filesystem thread serialization
 if (${Boost_MINOR_VERSION} LESS 67 )
     find_package(Boost 1.65.0 COMPONENTS numpy${PYTHON_VERSION_MAJOR} REQUIRED) #system filesystem thread serialization
 else()

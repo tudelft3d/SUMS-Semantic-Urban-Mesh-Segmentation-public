@@ -376,7 +376,7 @@ endif()
 set (TBB_CONFIG_DATE "${_configure_date}" CACHE STRING "First time that TBB was configured")
 set (_configure_date "${TBB_CONFIG_DATE}")
 include_directories (${CMAKE_BINARY_DIR})
-configure_file (build/version_string.ver.in version_string.ver @ONLY)
+configure_file (version_string.ver.in version_string.ver @ONLY)
 
 if (TBB_BUILD_TESTS)
   enable_language (C)
