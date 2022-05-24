@@ -62,7 +62,7 @@ typedef uint32_t t_ply_uint32;
  * ---------------------------------------------------------------------- */
 #define WORDSIZE 256
 #define LINESIZE 1024
-#define BUFFERSIZE (8*1024)
+#define BUFFERSIZE (16*1024)
 
 typedef enum e_ply_io_mode_ {
     PLY_READ,
