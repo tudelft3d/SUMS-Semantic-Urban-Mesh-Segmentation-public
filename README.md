@@ -65,7 +65,7 @@ You could run the code as follows:
 * **Pipeline**: Run the following modes in sequence: Mesh_feature_extraction, Train_and_Test_config, and Data_evaluation_for_all_tiles_config.
 * **Mesh_feature_extraction**: Perform mesh-oversegmentation and extract segment-based features.
 * **Train_config**: Use random forest to train the extracted features.
-* **Test_config**: Use the trained model and extracted features to classify the test data.
+* **Test_config**: Use the trained model(`*.gz`) and extracted features to classify the test data. Please note that the trained model is not used for direct decompression. The user can read it directly from the `data/model/*.gz` folder by setting the operation mode to 'Test_config'. 
 * **Train_and_Test_config**: Run Train_config and Test_config in sequence.
 * **Data_evaluation_for_all_tiles_config**: Evaluate all test results (based on mesh area, not on the number of triangles).
 * **Save_mesh_features_for_visualization**: Save mesh features in a [`*.ply`](http://paulbourke.net/dataformats/ply/) file, the user can visualise these features in scalar rendering mode using [Mapple](https://3d.bk.tudelft.nl/liangliang/software/Mapple.zip).
