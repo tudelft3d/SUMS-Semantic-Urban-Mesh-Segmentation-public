@@ -1580,7 +1580,7 @@ namespace semantic_mesh_segmentation
 				<< root_path
 				<< folder_names_level_0[8]
 				<< sota_folder_path
-				<< folder_names_level_0[5]
+				<< folder_names_level_0[9]
 				<< folder_names_level_1[train_test_predict_val]
 				<< base_names[mi]
 				<< prefixs[0]
