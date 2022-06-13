@@ -89,7 +89,7 @@ namespace easy3d {
 
 		bool success = false;
 		if (ext == "ply")
-			success = io::save_ply(file_name, mesh, comment, true);
+			success = io::save_ply(file_name, mesh, comment, false);
 		else
 		{
 			std::cerr << "cannot save this file in ply format: " << ext << std::endl;
@@ -100,7 +100,7 @@ namespace easy3d {
 	}
 	//-------------------------------------------------------------------------------------------------------//
 
-	bool MeshIO::save(const std::string& file_name, const SurfaceMesh* mesh)
+	bool MeshIO::save(const std::string& file_name, const SurfaceMesh* mesh, const bool use_binary)
 	{
 		if (!mesh) {
 			std::cerr << "surface mesh is null" << std::endl;
@@ -111,7 +111,7 @@ namespace easy3d {
 
 		bool success = false;
 		if (ext == "ply")
-			success = io::save_ply(file_name, mesh, true);
+			success = io::save_ply(file_name, mesh, use_binary);
 		else if (ext == "obj")
 			success = io::save_obj(file_name, mesh);
 		else if (ext == "off")

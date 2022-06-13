@@ -286,3 +286,4 @@ src/cmake-build-release
 /src/build/
 build/
 /data
+/competing_methods/my_KPConv.zip

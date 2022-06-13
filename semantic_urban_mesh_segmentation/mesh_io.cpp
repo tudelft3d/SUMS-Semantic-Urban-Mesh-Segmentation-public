@@ -781,6 +781,16 @@ namespace semantic_mesh_segmentation
 								process_data_selection["validate"] = false;
 						}
 					}
+					else if (param_name == "use_binary")
+					{
+						if (param_value != "default")
+						{
+							if (param_value == "true" || param_value == "True" || param_value == "TRUE")
+								use_binary = true;
+							else if (param_value == "false" || param_value == "False" || param_value == "FALSE")
+								use_binary = false;
+						}
+					}
 					else if (param_name == "label_definition")
 					{
 						if (param_value != "default")
@@ -1516,7 +1526,7 @@ namespace semantic_mesh_segmentation
 		char* file
 	)
 	{
-		bool success = easy3d::MeshIO::save(file, smesh_out);
+		bool success = easy3d::MeshIO::save(file, smesh_out, use_binary);
 		if (success)
 			std::cout << "mesh saved" << std::endl;
 		else
@@ -1529,7 +1539,7 @@ namespace semantic_mesh_segmentation
 		char* file
 	)
 	{
-		bool success = easy3d::PointCloudIO::save(file, pcl_out);
+		bool success = easy3d::PointCloudIO::save(file, pcl_out, use_binary);
 		if (success)
 			std::cout << "pointcloud saved" << std::endl;
 		else

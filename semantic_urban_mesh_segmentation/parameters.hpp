@@ -72,6 +72,7 @@ namespace semantic_mesh_segmentation
 	extern float ele_sampling_point_density;
 	extern int processing_mode;
 	extern std::string label_definition;
+	extern bool use_binary;
 
 	//--- Medial axis shrinking ball parameters ---
 	extern float mat_delta_convergance;

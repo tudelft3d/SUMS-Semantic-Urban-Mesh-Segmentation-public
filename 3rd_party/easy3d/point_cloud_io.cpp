@@ -69,7 +69,7 @@ namespace easy3d {
 	}
 
 
-	bool PointCloudIO::save(const std::string& file_name, const PointCloud* cloud) {
+	bool PointCloudIO::save(const std::string& file_name, const PointCloud* cloud, const bool use_binary) {
 		if (!cloud) {
 			std::cerr << "Point cloud is null" << std::endl;
 			return false;
@@ -78,7 +78,7 @@ namespace easy3d {
 		std::string ext = file::extension(file_name, true);
 		bool success = false;
 		if (ext == "ply")
-			success = io::save_ply(file_name, cloud, true);
+			success = io::save_ply(file_name, cloud, use_binary);
 		else if (ext == "bin")
 			success = io::save_bin(file_name, cloud);
 		else if (ext == "xyz")

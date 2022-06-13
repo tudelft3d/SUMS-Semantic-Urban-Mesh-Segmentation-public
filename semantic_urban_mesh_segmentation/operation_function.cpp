@@ -1103,7 +1103,7 @@ namespace semantic_mesh_segmentation
 			ply_files = testing_ply_files;
 			file_folders = testing_file_folders;
 			file_ind_map = testing_file_ind_map;
-			sampling_strategy = sampling_strategy_training;
+			sampling_strategy = sampling_strategy_testing;
 			use_batch_processing = use_batch_processing_on_testing;
 		}
 
@@ -1119,7 +1119,7 @@ namespace semantic_mesh_segmentation
 			ply_files = predicting_ply_files;
 			file_folders = predicting_file_folders;
 			file_ind_map = predicting_file_ind_map;
-			sampling_strategy = sampling_strategy_training;
+			sampling_strategy = sampling_strategy_predicting;
 			use_batch_processing = use_batch_processing_on_predicting;
 		}
 
@@ -1135,7 +1135,7 @@ namespace semantic_mesh_segmentation
 			ply_files = validation_ply_files;
 			file_folders = validation_file_folders;
 			file_ind_map = validation_file_ind_map;
-			sampling_strategy = sampling_strategy_training;
+			sampling_strategy = sampling_strategy_validation;
 			use_batch_processing = use_batch_processing_on_validation;
 		}
 	}

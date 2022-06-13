@@ -447,7 +447,7 @@ void write_data_for_augmentation
 	);
 
 	std::cout << "	Write augmented data ... " << std::endl;
-	easy3d::PointCloudIO::save(pclPath_temp_out, pcl_out);
+	easy3d::PointCloudIO::save(pclPath_temp_out, pcl_out, true);
 	delete pcl_out;
 }
 

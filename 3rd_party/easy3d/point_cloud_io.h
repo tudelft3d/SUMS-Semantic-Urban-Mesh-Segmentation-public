@@ -38,7 +38,7 @@ namespace easy3d {
 		static PointCloud* load(const std::string& file_name);
 
 		// save the cloud to a file. return false if failed.
-		static bool	save(const std::string& file_name, const PointCloud* point_set);
+		static bool	save(const std::string& file_name, const PointCloud* point_set, const bool);
 	};
 
 

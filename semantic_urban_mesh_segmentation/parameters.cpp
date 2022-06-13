@@ -37,6 +37,7 @@ namespace semantic_mesh_segmentation
 
 	int processing_mode = 0;//0: RF(SUM Paper); 1: SOTA (Competition methods);
 	std::string label_definition = "label";
+	bool use_binary = true;
 
 	std::map<std::string, bool> process_data_selection
 	{
