@@ -10,13 +10,12 @@ find_package(PythonLibs)
 find_package(PythonInterp)
 
 include_directories(${PROJECT_NAME} PRIVATE ${SemanticUrbanMesh_INCLUDE_DIR})
-
-find_package(Boost ${Boost_MINOR_VERSION} COMPONENTS graph REQUIRED) #system filesystem thread serialization
-if (${Boost_MINOR_VERSION} LESS 67 )
-    find_package(Boost 1.65.0 COMPONENTS numpy${PYTHON_VERSION_MAJOR} REQUIRED) #system filesystem thread serialization
+find_package(Boost ${Boost_VERSION})
+if (${Boost_MINOR_VERSION} LESS 69)
+    message(FATAL_ERROR "The current version of the Boost library is below 1.69")
 else()
     set(PYTHONVERSION ${PYTHON_VERSION_MAJOR}${PYTHON_VERSION_MINOR})
-    find_package(Boost 1.69.0 COMPONENTS numpy REQUIRED)
+    find_package(Boost 1.69.0 COMPONENTS numpy graph REQUIRED)
 endif()
 include(FindNumPy)
 include_directories(${SemanticUrbanMesh_EXTERNAL}/boost_numpy)
