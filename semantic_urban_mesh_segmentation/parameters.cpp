@@ -47,12 +47,12 @@ namespace semantic_mesh_segmentation
 		{"validate", true}
 	};
 
-	//in ply data: -1: unlabelled; 0: unclassified; 1: terrain, 2: .....
-	//in program: -2: unlabelled; -1: unclassifiedl; 0: terrain, 1: ..... 
+	//in ply data: -1: unlabelled; 0: unclassified; 1: ground, 2: .....
+	//in program: -2: unlabelled; -1: unclassifiedl; 0: ground, 1: ..... 
 	std::vector<std::string> labels_name
 	{
-		"terrain",             //0
-		"high_vegetation",     //1
+		"ground",             //0
+		"vegetation",         //1
 		"building",            //2
 		"water",               //3
 		"car",                 //4
@@ -70,6 +70,82 @@ namespace semantic_mesh_segmentation
 	};
 
 	std::vector<std::string> ignored_labels_name{};
+
+	//label names
+	std::vector<std::string> labels_name_pnp
+	{
+		//Level 0
+		"non_planar",
+		"planar"
+
+		//H3D
+		//"non_planar",//label 7 Tree
+		//"planar_1",  //label 0 Low Vegetation 
+		//"planar_2",  //label 8 Soil/Gravel 
+		//"planar_3"   //label 1 Impervious Surface, label 2 Vehicle, label 3 Urban Furniture, label 4 Roof, label 5 Facade, label 6 Shrub, label 9 Vertical Surface, label 10 Chimney 
+	};
+
+	//0 for non-planar, 1 for planar type 1, 2 for planar type 2, ...
+	std::map<std::string, int> L1_to_L0_label_map
+	{
+		//L1, SUM
+		{"ground", 1},       //0
+		{"vegetation", 0},   //1
+		{"building", 1},     //2
+		{"water", 1},        //3
+		{"car", 1},          //4
+		{"boat", 1}          //5
+
+		//Level 1, merged H3D
+		//{"Low_Vegetation", 0},         //0
+		//{"Impervious_Surface", 0},     //1
+		//{"Vehicle", 3},                //2
+		//{"Urban_Furniture", -1},       //3
+		//{"Roof", 2},                   //4
+		//{"Facade", 2},                 //5
+		//{"Shrub", 1},                  //6
+		//{"Tree", 1},                   //7
+		//{"Soil_Gravel", 0},            //8
+		//{"Vertical_Surface", -1},      //9
+		//{"Chimney", 2}                 //10
+
+		//Level 1, H3D, C11 planar and non planar
+		//{"Low_Vegetation", 1},         //0
+		//{"Impervious_Surface", 3},     //1
+		//{"Vehicle", 3},                //2
+		//{"Urban_Furniture", 3},        //3
+		//{"Roof", 3},                   //4
+		//{"Facade", 3},                 //5
+		//{"Shrub", 3},                  //6
+		//{"Tree", 0},                   //7
+		//{"Soil_Gravel", 2},            //8
+		//{"Vertical_Surface", 3},       //9
+		//{"Chimney", 3}                 //10
+	};
+
+	std::vector<easy3d::vec3> labels_color_pnp
+	{
+		//L0, SUM
+		easy3d::vec3(1.0, 0.4, 0.7),//0
+		easy3d::vec3(0.5, 0.5, 0.5) //1
+
+		//Merged SUM
+		//easy3d::vec3(float(170.0f / 255.0f), float(85.0f / 255.0f), 0.0f),//0
+		//easy3d::vec3(0.0f, 1.0f, 0.0f), //1
+		//easy3d::vec3(1.0f, 1.0f, 0.0f), //2
+		//easy3d::vec3(1.0f, 0.0f, 1.0f), //4
+
+		//H3D
+		//easy3d::vec3(1.0, 0.4, 0.7), //0
+		//easy3d::vec3(0.2, 0.2, 0.2), //1
+		//easy3d::vec3(0.5, 0.5, 0.5), //2
+		//easy3d::vec3(0.8, 0.8, 0.8)  //3
+
+		//S3DIS
+		//easy3d::vec3(1.0, 0.4, 0.7), //0
+		//easy3d::vec3(0.2, 0.2, 0.2), //1
+		//easy3d::vec3(0.8, 0.8, 0.8)  //2
+	};
 
 	//****************** Mesh_feature_extraction ******************
 	bool with_texture = true; // depends on the read data
@@ -376,16 +452,18 @@ namespace semantic_mesh_segmentation
 		"visualization/",//7
 		"sota/",//8
 		"sampled_pointcloud/", //9
-		"semantic_pointcloud/" //10
+		"semantic_pointcloud/", //10
+		"PSSNet/" //11
 	};
 
 	std::vector<std::string> folder_names_level_1
 	{
-		"train/",
-		"test/",
-		"predict/",
-		"validate/",
-		"train_augmented/"
+		"train/", //0
+		"test/",  //1
+		"predict/", //2
+		"validate/", //3
+		"train_augmented/",  //4
+		"pnp_labelled_data/" //5
 	};
 
 	std::vector<std::string> prefixs
@@ -404,7 +482,8 @@ namespace semantic_mesh_segmentation
 		"tex",//11
 		"_class_statistics",//12
 		"feature_bank_importance",//13
-		"_aug"//14
+		"_aug",//14
+		"_groundtruth_L0" //15
 	};
 
 	std::vector<std::string> data_types

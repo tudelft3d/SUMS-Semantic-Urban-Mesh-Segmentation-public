@@ -58,7 +58,8 @@ namespace semantic_mesh_segmentation
 		Evaluation_SOTA,
 		Process_semantic_pcl,
 		Feature_diversity_meaure,
-		Compute_mesh_area
+		Compute_mesh_area,
+		Get_labels_for_planar_non_planar_from_semantic
 	};
 
 	//--- global variables for point cloud sampling ---
@@ -210,11 +211,12 @@ namespace semantic_mesh_segmentation
 	extern int sub_batch_size;
 
 	//--- label names ---
-	extern std::vector<std::string> labels_name, ignored_labels_name;
-	extern std::vector<easy3d::vec3> labels_color;
+	extern std::vector<std::string> labels_name, ignored_labels_name, labels_name_pnp;
+	extern std::vector<easy3d::vec3> labels_color, labels_color_pnp;
 	typedef typename int label_type;//other: int; PointNet, PointNet2, ConvPoints: float
 	extern std::map<int, int> label_shiftdis, new_label_shiftback;
 	extern std::map<int, bool> label_ignore;
+	extern std::map<std::string, int> L1_to_L0_label_map;
 
 	//--- feature names in files ---//
 	extern std::vector<std::pair<std::string, int>> selected_pcl_vertex_features;

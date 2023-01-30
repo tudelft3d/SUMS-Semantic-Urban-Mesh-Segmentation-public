@@ -156,6 +156,8 @@ namespace semantic_mesh_segmentation
 
 	void write_error_mesh_data(SFMesh*, const int);
 
+	void write_pnp_mesh_data(SFMesh*, const int);
+
 	void save_txt_batches(std::vector<std::vector<std::pair<int, std::string>>> &);
 
 	void save_txt_statistics(std::vector<float> &, std::vector<float> &);

@@ -1065,6 +1065,88 @@ namespace semantic_mesh_segmentation
 			break;
 		}
 
+					//----------------------------------------------------------------------------------------------------------------------------------------------------
+
+		//--- Get labels for planar and non-planar data from semantic labels ---
+		case operating_mode::Get_labels_for_planar_non_planar_from_semantic:
+		{
+			current_mode = operating_mode::Get_labels_for_planar_non_planar_from_semantic;
+			
+			std::vector<bool> train_predict
+			{
+				process_data_selection["train"],
+				process_data_selection["test"],
+				process_data_selection["predict"],
+				process_data_selection["validate"]
+			};
+
+			for (int tr_pr_i = 0; tr_pr_i < train_predict.size(); ++tr_pr_i)
+			{
+				if (train_predict[tr_pr_i] && tr_pr_i != 2)
+				{
+					changing_to_test_or_predict(tr_pr_i);
+
+					std::cout << "Get labels for planar and non-planar data from semantic labels." << std::endl;
+
+
+					for (std::size_t mi = 0; mi < base_names.size(); ++mi)
+					{
+						if (train_predict[tr_pr_i])
+						{
+							changing_to_test_or_predict(tr_pr_i);
+
+							//process single tile
+							for (int mi = 0; mi < base_names.size(); ++mi)
+							{
+								SFMesh *smesh_original = new SFMesh;
+
+								//read original mesh
+								read_labeled_mesh_data(smesh_original, mi);
+
+								//merge semantics
+								for (auto fd : smesh_original->faces())
+								{
+									std::string current_label;
+									if (smesh_original->get_face_truth_label[fd] != 0)
+									{
+										int current_label_ind = smesh_original->get_face_truth_label[fd] - 1;
+										if (current_label_ind >= 0 && current_label_ind < labels_name.size())
+											current_label = labels_name[current_label_ind];
+	
+										bool matched = false;
+										for (auto la : L1_to_L0_label_map)
+										{
+											if (la.first.compare(current_label) == 0)
+											{
+												matched = true;
+												smesh_original->get_face_truth_label[fd] = la.second;
+												smesh_original->get_face_color[fd] = labels_color_pnp[la.second];
+												break;
+											}
+										}
+
+										if (!matched)
+										{
+											matched = true;
+											smesh_original->get_face_truth_label[fd] = -1;
+											smesh_original->get_face_color[fd] = easy3d::vec3(0.0f, 0.0f, 0.0f);
+										}
+									}
+								}
+
+								//write L0 mesh
+								write_pnp_mesh_data(smesh_original, mi);
+
+								delete smesh_original;
+							}
+						}
+					}
+				}
+			}
+			
+			break;
+		}
+
 		default:
 		{
 			std::cerr << std::endl << "No operation model has been chosen!!!" << std::endl;

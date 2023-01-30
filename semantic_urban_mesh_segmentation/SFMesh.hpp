@@ -218,6 +218,7 @@ namespace semantic_mesh_segmentation
 		void remove_non_used_properties_for_feature_mesh();
 		void remove_non_used_properties_for_segment_mesh();
 		void remove_non_used_properties_for_semantic_mesh();
+		void SFMesh::remove_non_used_properties_for_pnp_mesh();
 		void remove_non_used_properties_for_error_mesh();
 		void remove_non_used_properties_for_visualization_mesh();
 
@@ -295,6 +296,16 @@ namespace semantic_mesh_segmentation
 	{
 		this->remove_face_property(this->get_face_1ring_avg_predict_prob);
 		this->remove_face_property(this->get_face_all_predict_prob);
+	}
+
+	inline void SFMesh::remove_non_used_properties_for_pnp_mesh()
+	{
+		this->remove_face_property(this->get_face_1ring_avg_predict_prob);
+		this->remove_face_property(this->get_face_all_predict_prob);
+
+		this->remove_face_property(this->get_face_predict_label);
+		this->remove_face_property(this->get_face_segment_id);
+		this->remove_face_property(this->get_face_predict_prob);
 	}
 
 	inline void SFMesh::remove_non_used_properties_for_error_mesh()

@@ -724,6 +724,10 @@ namespace semantic_mesh_segmentation
 							{
 								current_mode = operating_mode::Evaluation_SOTA;
 							}
+							else if (param_value == "Get_labels_for_planar_non_planar_from_semantic")
+							{
+								current_mode = operating_mode::Get_labels_for_planar_non_planar_from_semantic;
+							}
 						}
 					}
 					else if (param_name == "root_path")
@@ -845,6 +849,62 @@ namespace semantic_mesh_segmentation
 										if (c > 1)
 											c /= 255.0f;
 										labels_color[i][j] = c;
+										++j;
+									}
+									++i;
+								}
+							}
+						}
+					}
+					else if (param_name == "labels_name_pnp")
+					{
+						if (param_value != "default")
+						{
+							std::vector<std::string> words = Split(param_value, ",", false);
+							if (words.size() > 0)
+							{
+								labels_name_pnp.resize(words.size());
+								for (int li = 0; li < labels_name_pnp.size(); ++li)
+								{
+									labels_name_pnp[li] = words[li];
+								}
+							}
+						}
+					}
+					else if (param_name == "L1_to_L0_label_map")
+					{
+						if (param_value != "default")
+						{
+							std::vector<std::string> words = Split(param_value, ",", false);
+							L1_to_L0_label_map.clear();
+							int i = 0;
+							for (auto words2 : words)
+							{
+								L1_to_L0_label_map[labels_name[i]] = std::stoi(words2);
+								++i;
+							}
+						}
+						assert(L1_to_L0_label_map.size() == labels_name.size());
+					}
+					else if (param_name == "labels_color_pnp")
+					{
+						if (param_value != "default")
+						{
+							std::vector<std::string> words = Split(param_value, ";", false);
+							int i = 0;
+							if (words.size() > 0)
+							{
+								labels_color_pnp.resize(words.size());
+								for (auto words2 : words)
+								{
+									std::vector<std::string> words3 = Split(words2, ",", false);
+									int j = 0;
+									for (auto w : words3)
+									{
+										float c = std::stof(w);
+										if (c > 1)
+											c /= 255.0f;
+										labels_color_pnp[i][j] = c;
 										++j;
 									}
 									++i;
@@ -1981,6 +2041,63 @@ namespace semantic_mesh_segmentation
 		std::cout << "	Done in (s): " << omp_get_wtime() - t_total << '\n' << std::endl;
 	}
 
+
+	void write_pnp_mesh_data //For L1 to L0 
+	(
+		SFMesh* smesh_out,
+		const int mi
+	)
+	{
+		std::ostringstream mesh_str_ostemp;
+		if (current_mode == operating_mode::Get_labels_for_planar_non_planar_from_semantic)
+		{
+			if (use_batch_processing)
+			{
+				mesh_str_ostemp
+					<< root_path
+					<< folder_names_level_0[11]
+					<< folder_names_level_1[5]
+					<< folder_names_level_1[train_test_predict_val]
+					<< base_names[mi] + "/"
+					<< base_names[mi]
+					<< prefixs[15]
+					<< ".ply";
+			}
+			else
+			{
+				mesh_str_ostemp
+					<< root_path
+					<< folder_names_level_0[11]
+					<< folder_names_level_1[5]
+					<< folder_names_level_1[train_test_predict_val]
+					<< base_names[mi]
+					<< prefixs[15]
+					<< ".ply";
+			}
+		}
+
+		std::cout << "Saving testing mesh: " << base_names[mi] << std::endl;
+
+		std::vector<std::string> comment(labels_name_pnp.size() + smesh_out->textures.size() + 1, std::string());
+		for (int ti = 0; ti < smesh_out->textures.size(); ++ti)
+		{
+			comment[ti] = ply_comment_element[0] + " " + smesh_out->textures[ti];
+		}
+		comment[smesh_out->textures.size()] = ply_comment_element[1] + " -1 " + ply_comment_element[2];
+
+		for (int cmi = smesh_out->textures.size() + 1; cmi < comment.size(); ++cmi)
+		{
+			comment[cmi] = ply_comment_element[1] + " " +
+				std::to_string(cmi - smesh_out->textures.size()) + " " +
+				labels_name_pnp[cmi - smesh_out->textures.size() - 1];
+		}
+
+		std::string mesh_str_temp = mesh_str_ostemp.str().data();
+		char * meshPath_temp = (char *)mesh_str_temp.data();
+		smesh_out->remove_non_used_properties_for_pnp_mesh();
+		std::cout << "start to save " << std::endl;
+		rply_output(smesh_out, meshPath_temp, comment);
+	}
 
 	//save batch names in *.txt
 	void save_txt_batches(std::vector<std::vector<std::pair<int, std::string>>> &all_batches_out)
