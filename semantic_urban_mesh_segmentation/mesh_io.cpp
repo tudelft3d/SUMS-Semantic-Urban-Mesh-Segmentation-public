@@ -189,7 +189,7 @@ namespace semantic_mesh_segmentation
 			temp_str = prefixs[10];
 
 		std::ostringstream str_ostemp;
-		if (processing_mode == 0) //RF
+		if (processing_mode == 0 || processing_mode == 2) //RF
 		{
 			str_ostemp
 				<< root_path
@@ -240,7 +240,7 @@ namespace semantic_mesh_segmentation
 			{
 				//for sampled point cloud
 				pcl_out->get_points_color[ptx] = pcl_temp->get_vertex_property<vec3>("v:color")[ptx];
-				if (processing_mode == 0) //RF
+				if (processing_mode == 0 || processing_mode == 2) //RF
 				{
 					pcl_out->get_points_rgb_x[ptx] = pcl_temp->get_vertex_property<float>("v:points_rgb_x")[ptx];
 					pcl_out->get_points_rgb_y[ptx] = pcl_temp->get_vertex_property<float>("v:points_rgb_y")[ptx];
@@ -326,7 +326,19 @@ namespace semantic_mesh_segmentation
 		if (enable_augment && train_test_predict_val == 0)
 		{
 			std::cout << "	Start to read augmented features " << s1_test << std::endl;
-			str_ostemp
+			if (processing_mode == 2)
+				str_ostemp
+				<< root_path
+				<< folder_names_level_0[11]
+				<< folder_names_level_0[1]
+				<< folder_names_level_1[4]
+				<< s1_test
+				<< prefixs[0]
+				<< prefixs[3]
+				<< prefixs[14]
+				<< ".ply";
+			else
+				str_ostemp
 				<< root_path
 				<< folder_names_level_0[1]
 				<< folder_names_level_1[4]
@@ -340,14 +352,25 @@ namespace semantic_mesh_segmentation
 		{
 			std::cout << "	Start to read features " << s1_test << std::endl;
 
-			str_ostemp
+			if (processing_mode == 2)
+				str_ostemp
 				<< root_path
+				<< folder_names_level_0[11]
 				<< folder_names_level_0[1]
 				<< folder_names_level_1[train_test_predict_val]
 				<< s1_test
 				<< prefixs[0]
 				<< prefixs[3]
 				<< ".ply";
+			else
+				str_ostemp
+					<< root_path
+					<< folder_names_level_0[1]
+					<< folder_names_level_1[train_test_predict_val]
+					<< s1_test
+					<< prefixs[0]
+					<< prefixs[3]
+					<< ".ply";
 		}
 
 		std::string str_temp = str_ostemp.str().data();
@@ -509,6 +532,12 @@ namespace semantic_mesh_segmentation
 			std::cout << "loading SOTA test result : " << base_names[mi] << std::endl;
 			basic_write_path = root_path + folder_names_level_0[8] + sota_folder_path + folder_names_level_0[4] + folder_names_level_1[train_test_predict_val];
 
+			pref_tmp = prefixs[4] + prefixs[5];
+		}
+		else if (processing_mode == 2) //PSSNet
+		{
+			std::cout << "loading PSSNet test result : " << base_names[mi] << std::endl;
+			basic_write_path = root_path + folder_names_level_0[11] + folder_names_level_0[4] + folder_names_level_1[train_test_predict_val];
 			pref_tmp = prefixs[4] + prefixs[5];
 		}
 
@@ -1633,7 +1662,7 @@ namespace semantic_mesh_segmentation
 		}
 
 		std::ostringstream str_ostemp;
-		if (processing_mode == 0)
+		if (processing_mode == 0 || processing_mode == 2)
 		{
 			str_ostemp
 				<< root_path
@@ -1720,12 +1749,24 @@ namespace semantic_mesh_segmentation
 				<< prefixs[3]
 				<< ".ply";
 		}
-		else
+		else if (processing_mode == 1)
 		{
 			str_ostemp
 				<< root_path
 				<< folder_names_level_0[8]
 				<< sota_folder_path
+				<< folder_names_level_0[1]
+				<< folder_names_level_1[train_test_predict_val]
+				<< s1_test
+				<< prefixs[0]
+				<< prefixs[3]
+				<< ".ply";
+		}
+		else if (processing_mode == 2)
+		{
+			str_ostemp
+				<< root_path
+				<< folder_names_level_0[11]
 				<< folder_names_level_0[1]
 				<< folder_names_level_1[train_test_predict_val]
 				<< s1_test
@@ -1776,7 +1817,7 @@ namespace semantic_mesh_segmentation
 					<< prefixs[3]
 					<< ".ply";
 			}
-			else
+			else if (processing_mode == 1)
 			{
 				str_ostemp
 					<< root_path
@@ -1789,6 +1830,19 @@ namespace semantic_mesh_segmentation
 					<< prefixs[3]
 					<< ".ply";
 			}
+			else if (processing_mode == 2)
+			{
+				str_ostemp
+					<< root_path
+					<< folder_names_level_0[11]
+					<< folder_names_level_0[7]
+					<< folder_names_level_1[train_test_predict_val]
+					<< base_names[mi]
+					<< prefixs[4]
+					<< prefixs[3]
+					<< ".ply";
+			}
+
 		}
 
 		std::string str_temp = str_ostemp.str().data();
@@ -1831,7 +1885,7 @@ namespace semantic_mesh_segmentation
 					<< prefixs[7]
 					<< ".ply";
 			}
-			else
+			else if (processing_mode == 1)
 			{
 				mesh_str_ostemp
 					<< root_path
@@ -1844,6 +1898,19 @@ namespace semantic_mesh_segmentation
 					<< prefixs[7]
 					<< ".ply";
 			}
+			else if (processing_mode == 2)
+			{
+				mesh_str_ostemp
+					<< root_path
+					<< folder_names_level_0[11]
+					<< folder_names_level_0[6]
+					<< folder_names_level_1[train_test_predict_val]
+					<< base_names[mi]
+					<< prefixs[4]
+					<< prefixs[7]
+					<< ".ply";
+			}
+
 			std::cout << "	Saving segment mesh: " << base_names[mi] << std::endl;
 		}
 
@@ -1874,6 +1941,12 @@ namespace semantic_mesh_segmentation
 		{
 			std::cout << "	Writing SOTA test result : " << base_names[mi] << std::endl;
 			basic_write_path = root_path + folder_names_level_0[8] + sota_folder_path + folder_names_level_0[4] + folder_names_level_1[train_test_predict_val];
+			pref_tmp = prefixs[4] + prefixs[5];
+		}
+		else if (processing_mode == 2)
+		{
+			std::cout << "	Writing PSSNet test result : " << base_names[mi] << std::endl;
+			basic_write_path = root_path + folder_names_level_0[11] + folder_names_level_0[4] + folder_names_level_1[train_test_predict_val];
 			pref_tmp = prefixs[4] + prefixs[5];
 		}
 
@@ -1989,6 +2062,12 @@ namespace semantic_mesh_segmentation
 			basic_write_path = root_path + folder_names_level_0[8] + sota_folder_path + folder_names_level_0[4] + folder_names_level_1[train_test_predict_val];
 			pref_tmp = prefixs[4] + prefixs[5];
 		}
+		else if (processing_mode == 2) //RF
+		{
+			std::cout << "	Writing PSSNet test result : " << base_names[mi] << std::endl;
+			basic_write_path = root_path + folder_names_level_0[11] + folder_names_level_0[4] + folder_names_level_1[train_test_predict_val];
+			pref_tmp = prefixs[4] + prefixs[5];
+		}
 
 		pref_tmp += prefixs[1];
 
@@ -2056,7 +2135,7 @@ namespace semantic_mesh_segmentation
 				mesh_str_ostemp
 					<< root_path
 					<< folder_names_level_0[11]
-					<< folder_names_level_1[5]
+					<< folder_names_level_0[2]
 					<< folder_names_level_1[train_test_predict_val]
 					<< base_names[mi] + "/"
 					<< base_names[mi]
@@ -2068,7 +2147,7 @@ namespace semantic_mesh_segmentation
 				mesh_str_ostemp
 					<< root_path
 					<< folder_names_level_0[11]
-					<< folder_names_level_1[5]
+					<< folder_names_level_0[2]
 					<< folder_names_level_1[train_test_predict_val]
 					<< base_names[mi]
 					<< prefixs[15]
@@ -2094,6 +2173,7 @@ namespace semantic_mesh_segmentation
 
 		std::string mesh_str_temp = mesh_str_ostemp.str().data();
 		char * meshPath_temp = (char *)mesh_str_temp.data();
+		smesh_out->remove_common_non_used_properties();
 		smesh_out->remove_non_used_properties_for_pnp_mesh();
 		std::cout << "start to save " << std::endl;
 		rply_output(smesh_out, meshPath_temp, comment);

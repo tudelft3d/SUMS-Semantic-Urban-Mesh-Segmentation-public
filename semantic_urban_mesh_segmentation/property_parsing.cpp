@@ -595,10 +595,30 @@ namespace semantic_mesh_segmentation
 					std::ostringstream texture_str_ostemp;
 
 					std::string path_tmp;
+					std::vector<std::string> temp_file_folders;
+					if (processing_mode == 2)
+					{
+						std::ostringstream temp_path;
+						temp_path << root_path << folder_names_level_0[2] << folder_names_level_1[train_test_predict_val];
+						std::string temp_data_path = temp_path.str().data();
+						std::vector<std::string> temp_ply_files;
+						getAllFiles(temp_data_path, file_formats[0], temp_ply_files, temp_file_folders);//get .ply filenames
+					}
+
 					if (file_folders.size() > 1)
-						path_tmp = file_folders[mi] + tex_i;
+					{
+						if (processing_mode == 2)
+							path_tmp = temp_file_folders[mi] + tex_i;
+						else
+							path_tmp = file_folders[mi] + tex_i;
+					}
 					else
-						path_tmp = file_folders[0] + tex_i;
+					{
+						if (processing_mode == 2)
+							path_tmp = temp_file_folders[0] + tex_i;
+						else
+							path_tmp = file_folders[0] + tex_i;
+					}
 
 					texture_str_ostemp << path_tmp;
 					std::string texture_str_temp = texture_str_ostemp.str().data();

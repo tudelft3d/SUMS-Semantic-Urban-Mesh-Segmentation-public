@@ -304,11 +304,19 @@ namespace semantic_mesh_segmentation
 				+ "trained_model.gz"
 				, std::ios_base::out | std::ios_base::binary);
 		}
-		else
+		else if (processing_mode == 1)
 		{
 			fconfig = std::ofstream(root_path
 				+ folder_names_level_0[8]
 				+ sota_folder_path
+				+ folder_names_level_0[3]
+				+ "trained_model.gz"
+				, std::ios_base::out | std::ios_base::binary);
+		}
+		else if (processing_mode == 2)
+		{
+			fconfig = std::ofstream(root_path
+				+ folder_names_level_0[11]
 				+ folder_names_level_0[3]
 				+ "trained_model.gz"
 				, std::ios_base::out | std::ios_base::binary);
@@ -640,12 +648,23 @@ namespace semantic_mesh_segmentation
 						<< prefixs[6]
 						<< ".txt";
 				}
-				else
+				else if (processing_mode == 1)
 				{
 					evaluation_out
 						<< root_path
 						<< folder_names_level_0[8]
 						<< sota_folder_path
+						<< folder_names_level_0[0]
+						<< folder_names_level_1[train_test_predict_val]
+						<< base_names[m]
+						<< prefixs[6]
+						<< ".txt";
+				}
+				else if (processing_mode == 2)
+				{
+					evaluation_out
+						<< root_path
+						<< folder_names_level_0[11]
 						<< folder_names_level_0[0]
 						<< folder_names_level_1[train_test_predict_val]
 						<< base_names[m]
@@ -698,6 +717,12 @@ namespace semantic_mesh_segmentation
 		{
 			std::cout << "writing SOTA test evaluation " << std::endl;
 			basic_write_path = root_path + folder_names_level_0[8] + sota_folder_path + folder_names_level_0[0] + folder_names_level_1[train_test_predict_val];
+			pref_tmp = "evaluation";
+		}
+		else if (processing_mode == 2) //PSSNet
+		{
+			std::cout << "writing PSSNet test evaluation " << std::endl;
+			basic_write_path = root_path + folder_names_level_0[11] + folder_names_level_0[0] + folder_names_level_1[train_test_predict_val];
 			pref_tmp = "evaluation";
 		}
 

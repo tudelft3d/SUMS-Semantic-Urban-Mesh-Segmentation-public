@@ -41,7 +41,11 @@ namespace semantic_mesh_segmentation
 		training_file_ind_map.clear();
 
 		std::ostringstream temp_path;
-		temp_path << root_path << folder_names_level_0[2] << folder_names_level_1[0];
+		if (processing_mode == 2)
+			temp_path << root_path << folder_names_level_0[11] << folder_names_level_0[2] << folder_names_level_1[0];
+		else
+			temp_path << root_path << folder_names_level_0[2] << folder_names_level_1[0];
+
 		training_data_path = temp_path.str().data();
 		getAllFiles(training_data_path, file_formats[0], training_ply_files, training_file_folders);//get .ply filenames
 
@@ -68,7 +72,10 @@ namespace semantic_mesh_segmentation
 		testing_file_ind_map.clear();
 
 		std::ostringstream temp_path;
-		temp_path << root_path << folder_names_level_0[2] << folder_names_level_1[1];
+		if (processing_mode == 2)
+			temp_path << root_path << folder_names_level_0[11] << folder_names_level_0[2] << folder_names_level_1[1];
+		else
+			temp_path << root_path << folder_names_level_0[2] << folder_names_level_1[1];
 		testing_data_path = temp_path.str().data();
 		getAllFiles(testing_data_path, file_formats[0], testing_ply_files, testing_file_folders);//get .ply filenames
 
@@ -122,7 +129,10 @@ namespace semantic_mesh_segmentation
 		validation_file_ind_map.clear();
 
 		std::ostringstream temp_path;
-		temp_path << root_path << folder_names_level_0[2] << folder_names_level_1[3];
+		if (processing_mode == 2)
+			temp_path << root_path << folder_names_level_0[11] << folder_names_level_0[2] << folder_names_level_1[3];
+		else
+			temp_path << root_path << folder_names_level_0[2] << folder_names_level_1[3];
 		validation_data_path = temp_path.str().data();
 		getAllFiles(validation_data_path, file_formats[0], validation_ply_files, validation_file_folders);//get .ply filenames
 
@@ -467,6 +477,12 @@ namespace semantic_mesh_segmentation
 		std::string py_file = "seg_aug";
 		std::string in_folder_path = root_path + folder_names_level_0[1] + folder_names_level_1[0];
 		std::string out_folder_path = root_path + folder_names_level_0[1] + folder_names_level_1[4];
+		if (processing_mode == 2)
+		{
+			in_folder_path = root_path + folder_names_level_0[11] + folder_names_level_0[1] + folder_names_level_1[0];
+			out_folder_path = root_path + folder_names_level_0[11] + folder_names_level_0[1] + folder_names_level_1[4];
+		}
+			
 		std::string label_name_str = std::to_string(label_size);
 		std::string used_k_neighbors_str = std::to_string(used_k_neighbors);
 		std::wstring py_file_wcmd(py_file.begin(), py_file.end());

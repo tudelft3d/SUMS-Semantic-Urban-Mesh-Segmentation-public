@@ -134,6 +134,12 @@ namespace semantic_mesh_segmentation
 		case operating_mode::Feature_extraction_backbone:
 		{
 			current_mode = operating_mode::Feature_extraction_backbone;
+			if (processing_mode == 2)
+			{
+				labels_name = labels_name_pnp;
+				labels_color = labels_color_pnp;
+			}
+
 			if (use_batch_processing)
 			{
 				//Batch separation
@@ -246,7 +252,11 @@ namespace semantic_mesh_segmentation
 		case operating_mode::Train_Backbone:
 		{
 			current_mode = operating_mode::Train_Backbone;
-			//labels_name = labels_name_L0;
+			if (processing_mode == 2)
+			{
+				labels_name = labels_name_pnp;
+				labels_color = labels_color_pnp;
+			}
 			//process single tile
 			std::vector<int> seg_truth_train;
 			std::vector< std::vector<float>> basic_feas_train, mulsc_ele_feas_train;
@@ -317,7 +327,11 @@ namespace semantic_mesh_segmentation
 		case operating_mode::Test_Backbone:
 		{
 			current_mode = operating_mode::Test_Backbone;
-
+			if (processing_mode == 2)
+			{
+				labels_name = labels_name_pnp;
+				labels_color = labels_color_pnp;
+			}
 			//read training models
 			Label_set labels_test;
 			Feature_set node_features;
@@ -375,6 +389,11 @@ namespace semantic_mesh_segmentation
 		case operating_mode::Train_and_Test_Backbone:
 		{
 			current_mode = operating_mode::Train_and_Test_Backbone;
+			if (processing_mode == 2)
+			{
+				labels_name = labels_name_pnp;
+				labels_color = labels_color_pnp;
+			}
 			std::cout << "--------------------- Training Mode ---------------------" << std::endl;
 			//--- For training data ---//
 			std::vector<int> seg_truth_train;
@@ -486,7 +505,11 @@ namespace semantic_mesh_segmentation
 		case operating_mode::Data_evaluation_for_all_tiles_config:
 		{
 			current_mode = operating_mode::Data_evaluation_for_all_tiles_config;
-
+			if (processing_mode == 2)
+			{
+				labels_name = labels_name_pnp;
+				labels_color = labels_color_pnp;
+			}
 			if (process_data_selection["test"])
 			{
 				if (processing_mode == 0)
@@ -1071,7 +1094,9 @@ namespace semantic_mesh_segmentation
 		case operating_mode::Get_labels_for_planar_non_planar_from_semantic:
 		{
 			current_mode = operating_mode::Get_labels_for_planar_non_planar_from_semantic;
-			
+			int pre_processing_mode = processing_mode;
+			processing_mode = 0;
+
 			std::vector<bool> train_predict
 			{
 				process_data_selection["train"],
@@ -1087,7 +1112,6 @@ namespace semantic_mesh_segmentation
 					changing_to_test_or_predict(tr_pr_i);
 
 					std::cout << "Get labels for planar and non-planar data from semantic labels." << std::endl;
-
 
 					for (std::size_t mi = 0; mi < base_names.size(); ++mi)
 					{
@@ -1119,7 +1143,7 @@ namespace semantic_mesh_segmentation
 											if (la.first.compare(current_label) == 0)
 											{
 												matched = true;
-												smesh_original->get_face_truth_label[fd] = la.second;
+												smesh_original->get_face_truth_label[fd] = la.second + 1;
 												smesh_original->get_face_color[fd] = labels_color_pnp[la.second];
 												break;
 											}
@@ -1144,6 +1168,7 @@ namespace semantic_mesh_segmentation
 				}
 			}
 			
+			processing_mode = pre_processing_mode;
 			break;
 		}
 

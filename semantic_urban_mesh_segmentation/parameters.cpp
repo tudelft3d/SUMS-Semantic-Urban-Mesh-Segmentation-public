@@ -35,7 +35,7 @@ namespace semantic_mesh_segmentation
 	std::string root_path = "C:/data/git_sum/data/";
 	std::string seg_aug_py_path = "../../Semantic-segmentation-of-large-scale-urban-meshes/";
 
-	int processing_mode = 0;//0: RF(SUM Paper); 1: SOTA (Competition methods);
+	int processing_mode = 0;//0: RF(SUM Paper); 1: SOTA (Competition methods); 2: PSSNet
 	std::string label_definition = "label";
 	bool use_binary = true;
 
@@ -462,8 +462,7 @@ namespace semantic_mesh_segmentation
 		"test/",  //1
 		"predict/", //2
 		"validate/", //3
-		"train_augmented/",  //4
-		"pnp_labelled_data/" //5
+		"train_augmented/"  //4
 	};
 
 	std::vector<std::string> prefixs
