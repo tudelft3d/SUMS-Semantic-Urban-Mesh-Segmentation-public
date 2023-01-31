@@ -39,6 +39,7 @@
 #include "mesh_io.hpp"
 #include "super_segment.hpp"
 #include "feature_computation.hpp"
+#include "mesh_classifier.hpp"
 
 namespace semantic_mesh_segmentation
 {
@@ -60,6 +61,44 @@ namespace semantic_mesh_segmentation
 		}
 	}
 
+	inline bool smaller_segments_area
+	(
+		superfacets spf_1,
+		superfacets spf_2
+	)
+	{
+		if (spf_1.sum_area < spf_2.sum_area)
+		{
+			return true;
+		}
+		else
+		{
+			return false;
+		}
+	}
+
+	inline std::vector<std::string> get_input_names_with_delim
+	(
+		const std::string delim_in,
+		std::string &str_in
+	)
+	{
+		char *delim = new char[delim_in.length() + 1];
+		strcpy(delim, delim_in.c_str());
+		char *char_in = new char[str_in.length() + 1];
+		strcpy(char_in, str_in.c_str());
+		char *tmp = strtok(char_in, delim);
+		std::vector<std::string> str_out;
+
+		str_out.push_back(tmp);
+		while (tmp != NULL)
+		{
+			tmp = strtok(NULL, delim);
+			if (tmp != NULL)
+				str_out.push_back(tmp);
+		}
+		return str_out;
+	}
 	//-------------------------------------------------------------------------------------------------------------------------------
 	//functions declare
 	void finding_segments_neighbor
@@ -161,6 +200,100 @@ namespace semantic_mesh_segmentation
 	(
 		SFMesh*,
 		std::vector<superfacets> &
+	);
+
+	void plane_fitting_unary_term
+	(
+		SFMesh* ,
+		SFMesh::Vertex &,
+		SFMesh::Face &,
+		vec4 &,
+		std::pair<int, float> &,
+		float &
+	);
+
+	void rearrange_segments
+	(
+		SFMesh *,
+		std::vector<superfacets> &,
+		std::vector<superfacets> &
+	);
+
+	void assign_initial_segments_on_mesh
+	(
+		SFMesh *,
+		std::vector<superfacets> &,
+		std::vector<superfacets> &
+	);
+
+	void parsing_with_planar_region
+	(
+		SFMesh *,
+		std::vector<superfacets> &,
+		const int 
+	);
+
+	void planar_segment_merge_preprocessing
+	(
+		SFMesh *,
+		std::vector<superfacets> &,
+		std::map<int, std::vector<int>> &
+	);
+
+	void finding_adjacent_segments_based_on_connectivity
+	(
+		SFMesh *,
+		std::vector<superfacets> &,
+		std::map<int, std::vector<int>> &
+	);
+
+	void segment_region_growing_pssnet
+	(
+		SFMesh *,
+		std::vector<superfacets> &,
+		std::vector<superfacets> &
+	);
+
+	void get_one_ring_neighbor
+	(
+		SFMesh *,
+		SFMesh::Vertex &,
+		SFMesh::Face &
+	);
+
+	void face_global_smooth_on_mesh(SFMesh *);
+
+	void merge_single_segments
+	(
+		SFMesh *,
+		std::vector<superfacets> &,
+		std::vector<superfacets> &
+	);
+
+	void merge_single_triangles
+	(
+		SFMesh *,
+		std::vector<superfacets> &
+	);
+
+	void rearrange_connected_segments
+	(
+		SFMesh *,
+		std::vector<superfacets> &
+	);
+
+	void merge_planar_segments
+	(
+		SFMesh *,
+		std::vector<superfacets> &,
+		std::vector<superfacets> &
+	);
+
+	void perform_pnpmrf_oversegmentation_on_mesh
+	(
+		SFMesh *,
+		std::vector<superfacets>& ,
+		std::vector<vertex_planarity> &
 	);
 }
 

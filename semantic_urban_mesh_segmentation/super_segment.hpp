@@ -47,7 +47,7 @@ namespace semantic_mesh_segmentation
 	class superfacets
 	{
 	public:
-		int id, ground_truth, predict, local_ground_longrange_segid;
+		int id, index, ground_truth, predict, local_ground_longrange_segid, label;
 		float sum_area, avg_ele, relative_ele, local_longrange_ground_ele;
 		bool contain_mesh_border_facets, seg_visited;
 		std::vector<int> neighbor_ids, ExactVec, face_id_vec;
@@ -60,12 +60,14 @@ namespace semantic_mesh_segmentation
 		easy3d::vec3 avg_center;
 		easy3d::vec4 plane_parameter;
 		std::vector<int> sampled_points;
+		Plane plane_cgal;
 
 		superfacets
 		()
 		{
 			ground_truth = -1;
 			predict = -1;
+			label = -1;
 			local_ground_longrange_segid = -1;
 			sampled_points = std::vector<int>();
 			local_elevation_minmax = std::pair<float, float>(FLT_MAX, -FLT_MAX);
@@ -89,6 +91,7 @@ namespace semantic_mesh_segmentation
 		{
 			ground_truth = -1;
 			predict = -1;
+			label = -1;
 			local_ground_longrange_segid = -1;
 			sampled_points = std::vector<int>();
 			local_elevation_minmax = std::pair<float, float>(FLT_MAX, -FLT_MAX);
@@ -114,6 +117,7 @@ namespace semantic_mesh_segmentation
 		{
 			ground_truth = 0;
 			local_ground_longrange_segid = -1;
+			label = -1;
 			sampled_points = std::vector<int>();
 			local_elevation_minmax = std::pair<float, float>(FLT_MAX, -FLT_MAX);
 			sum_area = 0.0f;
@@ -134,6 +138,7 @@ namespace semantic_mesh_segmentation
 		{
 			ground_truth = 0;
 			local_ground_longrange_segid = -1;
+			label = -1;
 			sampled_points = std::vector<int>();
 			local_elevation_minmax = std::pair<float, float>(FLT_MAX, -FLT_MAX);
 			sum_area = 0.0f;

@@ -1172,6 +1172,132 @@ namespace semantic_mesh_segmentation
 			break;
 		}
 
+
+		//--- Mesh feature extraction ---
+		case operating_mode::PSSNet_oversegmentation:
+		{
+			current_mode = operating_mode::PSSNet_oversegmentation;
+
+			if (process_data_selection["train"])
+			{
+				std::cout << "--------------------- PSSNet oversegmented train mesh ---------------------" << std::endl;
+				train_test_predict_val = 0;
+				get_training_data();
+
+				data_path = training_data_path;
+				base_names = training_base_names;
+				ply_files = training_ply_files;
+				file_folders = training_file_folders;
+				file_ind_map = training_file_ind_map;
+				use_batch_processing = use_batch_processing_on_training;
+				use_existing_mesh_segments = use_existing_mesh_segments_on_training;
+				use_pointcloud_region_growing = use_pointcloud_region_growing_on_training;
+				use_face_pixels_color_aggregation = use_face_pixels_color_aggregation_on_training;
+				use_merged_segments = use_merged_segments_on_training;
+				sampling_strategy = sampling_strategy_training;
+				run(operating_mode::PSSNet_oversegmentation_backbone);
+			}
+
+			if (process_data_selection["test"])
+			{
+				std::cout << "--------------------- PSSNet oversegmented test mesh  ---------------------" << std::endl;
+				train_test_predict_val = 1;
+				get_testing_data();
+
+				data_path = testing_data_path;
+				base_names = testing_base_names;
+				ply_files = testing_ply_files;
+				file_folders = testing_file_folders;
+				file_ind_map = testing_file_ind_map;
+				use_batch_processing = use_batch_processing_on_testing;
+				use_existing_mesh_segments = use_existing_mesh_segments_on_testing;
+				use_pointcloud_region_growing = use_pointcloud_region_growing_on_testing;
+				use_face_pixels_color_aggregation = use_face_pixels_color_aggregation_on_testing;
+				use_merged_segments = use_merged_segments_on_testing;
+				sampling_strategy = sampling_strategy_testing;
+				run(operating_mode::PSSNet_oversegmentation_backbone);
+			}
+
+			if (process_data_selection["predict"])
+			{
+				std::cout << "--------------------- PSSNet oversegmented predict mesh  ---------------------" << std::endl;
+				train_test_predict_val = 2;
+				get_predicting_data();
+
+				data_path = predicting_data_path;
+				base_names = predicting_base_names;
+				ply_files = predicting_ply_files;
+				file_folders = predicting_file_folders;
+				file_ind_map = predicting_file_ind_map;
+				use_batch_processing = use_batch_processing_on_predicting;
+				use_existing_mesh_segments = use_existing_mesh_segments_on_predicting;
+				use_pointcloud_region_growing = use_pointcloud_region_growing_on_predicting;
+				use_face_pixels_color_aggregation = use_face_pixels_color_aggregation_on_predicting;
+				use_merged_segments = use_merged_segments_on_predicting;
+				sampling_strategy = sampling_strategy_predicting;
+				run(operating_mode::PSSNet_oversegmentation_backbone);
+			}
+
+			if (process_data_selection["validate"])
+			{
+				std::cout << "--------------------- PSSNet oversegmented validate mesh  ---------------------" << std::endl;
+				train_test_predict_val = 3;
+				get_validation_data();
+
+				data_path = validation_data_path;
+				base_names = validation_base_names;
+				ply_files = validation_ply_files;
+				file_folders = validation_file_folders;
+				file_ind_map = validation_file_ind_map;
+				use_batch_processing = use_batch_processing_on_validation;
+				use_existing_mesh_segments = use_existing_mesh_segments_on_validation;
+				use_pointcloud_region_growing = use_pointcloud_region_growing_on_validation;
+				use_face_pixels_color_aggregation = use_face_pixels_color_aggregation_on_validation;
+				use_merged_segments = use_merged_segments_on_validation;
+				sampling_strategy = sampling_strategy_validation;
+				run(operating_mode::PSSNet_oversegmentation_backbone);
+			}
+
+			break;
+		}
+
+		//--- Get labels for planar and non-planar data from semantic labels ---
+		case operating_mode::PSSNet_oversegmentation_backbone:
+		{
+			current_mode = operating_mode::PSSNet_oversegmentation_backbone;
+			std::cout << "	- Planar and non-planar based region growing." << std::endl;
+
+			//--- read mesh with planar and non-planar label ---// 
+			if (use_batch_processing)
+			{
+				std::cout << "Batch mode is not currently supported in PSSNet over-segmentation." << std::endl;
+				break;
+
+				//Batch separation
+				//std::vector<std::vector<std::pair<int, std::string>>> all_batches;
+				//if (use_existing_splited_batch)
+				//	read_txt_batches(all_batches);
+				//else
+				//	square_batch_separation(all_batches);
+
+				////Batch processing
+				//for (std::size_t bi = 0; bi < all_batches.size(); ++bi)
+				//{
+				//	std::cout << " ********* Processing batch: " << bi << " *********" << std::endl;
+				//	PNP_MRF_batch_tiles(all_batches[bi], bi);
+				//}
+			}
+			else
+			{
+				for (std::size_t pi = 0; pi < base_names.size(); ++pi)
+				{
+					PNP_MRF_single_tiles(pi);
+				}
+			}
+
+			break;
+		}
+
 		default:
 		{
 			std::cerr << std::endl << "No operation model has been chosen!!!" << std::endl;

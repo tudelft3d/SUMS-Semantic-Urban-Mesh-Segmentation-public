@@ -60,6 +60,12 @@ namespace semantic_mesh_segmentation
 			add_face_component_id = add_face_property<int>("f:face_component_id", -1);
 			get_face_component_id = get_face_property<int>("f:face_component_id");
 
+			add_face_smoothed_seg_id = add_face_property<int>("f:face_smoothed_seg_id", -1);
+			get_face_smoothed_seg_id = get_face_property<int>("f:face_smoothed_seg_id");
+
+			add_face_spid_update = add_face_property<int>("f:face_spid_update", -1);
+			get_face_spid_update = get_face_property<int>("f:face_spid_update");
+
 			add_face_area = add_face_property<float>("f:face_area", 0.0f);
 			get_face_area = get_face_property<float>("f:face_area");
 
@@ -71,6 +77,9 @@ namespace semantic_mesh_segmentation
 
 			add_face_center = add_face_property<vec3>("f:face_center", vec3(0, 0, 0));
 			get_face_center = get_face_property<vec3>("f:face_center");
+
+			add_face_planar_segment_plane_normal = add_face_property<vec3>("f:face_planar_segment_plane_normal", vec3(0, 0, 0));
+			get_face_planar_segment_plane_normal = get_face_property<vec3>("f:face_planar_segment_plane_normal");
 
 			add_face_1_ring_neighbor = add_face_property<std::set<int>>("f:face_1_ring_neighbor", std::set<int>());
 			get_face_1_ring_neighbor = get_face_property<std::set<int>>("f:face_1_ring_neighbor");
@@ -137,6 +146,9 @@ namespace semantic_mesh_segmentation
 
 			add_face_error_color = add_face_property<vec3>("f:face_error_color", vec3());
 			get_face_error_color = get_face_property<vec3>("f:face_error_color");
+
+			add_face_1ring_neighbor = add_face_property<std::vector<std::tuple<int, int, bool>>>("f:face_1ring_neighbor");
+			get_face_1ring_neighbor = get_face_property<std::vector<std::tuple<int, int, bool>>>("f:face_1ring_neighbor");
 		}
 
 
@@ -165,7 +177,9 @@ namespace semantic_mesh_segmentation
 			get_face_truth_label,
 			get_face_predict_label,
 			add_face_segment_id, get_face_segment_id,
+			add_face_smoothed_seg_id, get_face_smoothed_seg_id,
 			add_face_tile_index, get_face_tile_index,
+			add_face_spid_update, get_face_spid_update,
 			add_face_component_id, get_face_component_id;
 
 		SurfaceMesh::FaceProperty<float>
@@ -177,6 +191,7 @@ namespace semantic_mesh_segmentation
 			get_face_normals,
 			get_face_color,
 			add_face_error_color, get_face_error_color,
+			add_face_planar_segment_plane_normal, get_face_planar_segment_plane_normal,
 			add_face_center, get_face_center;
 
 		SurfaceMesh::FaceProperty<std::vector<vec3>>
@@ -212,6 +227,9 @@ namespace semantic_mesh_segmentation
 		SurfaceMesh::FaceProperty<std::set<int>>
 			add_face_1_ring_neighbor, get_face_1_ring_neighbor;
 
+		SurfaceMesh::FaceProperty<std::vector<std::tuple<int, int, bool>>> //neighbor face id, index in the neighbor face' neighbor, check visited
+			add_face_1ring_neighbor, get_face_1ring_neighbor;
+
 		std::vector<std::string> texture_names;
 
 		void remove_common_non_used_properties();
@@ -236,6 +254,7 @@ namespace semantic_mesh_segmentation
 
 		float mesh_area = 0.0f;
 		std::vector<float> class_area = std::vector<float>(0, 0.0f);
+		float SFMesh::FaceArea(SFMesh::Face&);
 
 		~SFMesh()
 		{
@@ -246,6 +265,29 @@ namespace semantic_mesh_segmentation
 			this->clear();
 		};
 	};
+
+	inline float SFMesh::FaceArea(SFMesh::Face& f)
+	{
+		vec3 v0, v1, v2;
+		int ind = 0;
+		for (auto v : this->vertices(f))
+		{
+			if (ind == 0)
+				v0 = this->get_points_coord[v];
+			else if (ind == 1)
+				v1 = this->get_points_coord[v];
+			else if (ind == 2)
+				v2 = this->get_points_coord[v];
+			++ind;
+		}
+
+		float a = (v1 - v0).norm();
+		float b = (v2 - v1).norm();
+		float c = (v2 - v0).norm();
+		float s = (a + b + c)*0.5;
+
+		return  sqrt(s*(s - a)*(s - b)*(s - c));
+	}
 
 	inline void SFMesh::remove_common_non_used_properties()
 	{
@@ -272,6 +314,10 @@ namespace semantic_mesh_segmentation
 		this->remove_face_property(this->get_face_1_ring_neighbor);
 		this->remove_face_property(this->get_face_component_id);
 		this->remove_face_property(this->get_face_error_color);
+		this->remove_face_property(this->get_face_smoothed_seg_id);
+		this->remove_face_property(this->get_face_planar_segment_plane_normal);
+		this->remove_face_property(this->get_face_1ring_neighbor);
+		this->remove_face_property(this->get_face_spid_update);
 
 		this->remove_face_property(get_face_rgb_x);
 		this->remove_face_property(get_face_rgb_y);

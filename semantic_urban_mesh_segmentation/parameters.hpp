@@ -59,7 +59,11 @@ namespace semantic_mesh_segmentation
 		Process_semantic_pcl,
 		Feature_diversity_meaure,
 		Compute_mesh_area,
-		Get_labels_for_planar_non_planar_from_semantic
+		PSSNet_pipeline_for_GCN,
+		Get_labels_for_planar_non_planar_from_semantic,
+		PSSNet_oversegmentation,
+		PSSNet_oversegmentation_backbone,
+		PSSNet_graph_construction
 	};
 
 	//--- global variables for point cloud sampling ---
@@ -196,7 +200,7 @@ namespace semantic_mesh_segmentation
 	extern bool equal_cloud;
 
 	//--- input file names ---
-	extern std::vector<std::string> folder_names_level_0, folder_names_level_1;
+	extern std::vector<std::string> folder_names_level_0, folder_names_level_1, folder_names_pssnet;
 	extern std::vector<std::string>
 		base_names, ply_files, file_folders, txt_files, file_formats, prefixs, ply_comment_element,
 		training_base_names, testing_base_names, predicting_base_names, validation_base_names,
@@ -244,6 +248,25 @@ namespace semantic_mesh_segmentation
 
 	extern bool enable_MohaVer_region_growing;
 	extern bool enable_joint_labeling;
+
+	//****************** PSSNet parameters ****************
+	extern bool generate_groundtruth_segments;
+	extern bool only_evaluation;
+
+	//over-segmentation
+	extern float radius_default, mrf_lambda_d, mrf_lambda_m, mrf_lambda_g, mrf_lambda_p;
+
+	//graph
+	extern bool with_node_graphs, use_edges_between_boder_points, parallelism_relations;
+
+	extern float tolerance_angle;
+
+	extern bool local_ground_relations;
+
+	extern bool exterior_mat_relations;
+
+	extern bool delaunay_relations_on_sampled_points;
+	extern double remove_close_vertices_for_delaunay;
 }
 
 #endif // 

@@ -427,6 +427,12 @@ namespace semantic_mesh_segmentation
 		smesh_all->get_face_normals = smesh_all->get_face_property<vec3>("f:normal");
 		smesh_all->add_vertex_property<vec3>("v:normal");
 		smesh_all->get_points_normals = smesh_all->get_vertex_property<vec3>("v:normal");
+
+		if (processing_mode == 2)
+		{
+			smesh_all->add_face_property<float>("f:label_probabilities");
+			smesh_all->get_face_predict_prob = smesh_all->get_face_property<float>("f:label_probabilities");
+		}
 	}
 
 	inline void pointcloud_configuration
@@ -524,6 +530,8 @@ namespace semantic_mesh_segmentation
 		std::vector< std::vector< std::vector<float> > > &,
 		std::vector< std::vector<float> > &
 	);
+
+	void PNP_MRF_single_tiles(const int);
 }
 
 #endif//MESH_SEGMENTATION__SEGMENT_FILE_HPP

@@ -235,5 +235,23 @@ namespace semantic_mesh_segmentation
 		std::vector<float> &,
 		std::vector<std::vector<float>> &
 	);
+
+	//--- PSSNet graph-cut module ---
+	void MRF_oversegmentation
+	(
+		std::vector<float> &,
+		std::vector<std::pair<int, int>> &,
+		std::vector<float> &,
+		std::vector<int> &
+	);
+
+	void MRF_oversegmentation
+	(
+		SFMesh *,
+		SFMesh::Face &,
+		std::vector<int> &,
+		const int ,
+		int &
+	);
 }
 #endif//semantic_mesh_segmentation__MESH_CLASSIFIER_HPP

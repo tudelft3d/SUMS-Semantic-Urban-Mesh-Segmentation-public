@@ -142,7 +142,7 @@ namespace semantic_mesh_segmentation
 
 	void rply_output(PTCloud*, char*);
 
-	void write_mesh_segments(SFMesh*, const int);
+	void write_mesh_segments(SFMesh*, const int, bool write_pnp = false);
 
 	void write_pointcloud_data(PTCloud*, const int, const int);
 

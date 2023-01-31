@@ -254,6 +254,31 @@ namespace semantic_mesh_segmentation
 	//****************** Evaluation ******************
 	bool use_area_weight = true;
 
+	//****************** PSSNet parameters ****************
+	bool generate_groundtruth_segments = false;
+	bool only_evaluation = false; //for test and validation data only
+
+	//over-segmentation
+	float radius_default = 3.0f;//initial vertex planarity, 0.5f
+	float mrf_lambda_d = 1.2f,//default:1.2f. >1.0: increase weight of distance to plane; <1.0: decrease weight of distance to plane
+		mrf_lambda_m = 0.05,//default: 0.05f, planar region growing angle weight, 
+		mrf_lambda_g = 0.9f,//default:0.9f 
+		mrf_lambda_p = 0.6f;//default:0.6f, post global smoothness
+
+	//graph
+	bool with_node_graphs = false;// true
+	bool use_edges_between_boder_points = true;
+
+	bool parallelism_relations = true;//true
+	float tolerance_angle = 5.0f;//default: 5.0
+
+	bool local_ground_relations = true;//true
+
+	bool exterior_mat_relations = true;//true
+
+	bool delaunay_relations_on_sampled_points = true;
+	double remove_close_vertices_for_delaunay = 10E-3 * 2.0f;
+
 	//****************** Default parameters ******************
 	//initialized values
 	std::pair<float, float> default_feature_value_minmax(0.000001f, 0.999999f);
@@ -463,6 +488,14 @@ namespace semantic_mesh_segmentation
 		"predict/", //2
 		"validate/", //3
 		"train_augmented/"  //4
+	};
+
+	std::vector<std::string> folder_names_pssnet
+	{
+		"spg_intput/",  //0
+		"segments_pnp/",//1
+		"graphs/",      //2
+		"pcl/"          //3
 	};
 
 	std::vector<std::string> prefixs

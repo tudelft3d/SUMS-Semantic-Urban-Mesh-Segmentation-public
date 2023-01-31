@@ -964,4 +964,193 @@ namespace semantic_mesh_segmentation
 		std::cout << "	- Use " << feanum_var.first << " features." << std::endl;
 		return feanum_var.second / float(feanum_var.first);
 	}
+
+	//----------------------------------------------- PSSNet graph-cut Module -----------------------------------------------//
+	void MRF_oversegmentation
+	(
+		std::vector<float> &unary_terms,
+		std::vector<std::pair<int, int>> &pairwise_neighbors,
+		std::vector<float> &pairwise_terms,
+		std::vector<int> &label_out
+	)
+	{
+		bool results = false;
+		int num_segments = unary_terms.size();
+		int num_labels = 2;//0: same; 1: different
+		try
+		{
+			gco::GCoptimizationGeneralGraph *gc = new gco::GCoptimizationGeneralGraph(num_segments, num_labels);
+			for (int i = 0; i < unary_terms.size(); ++i)
+			{
+				gc->setDataCost(i, 0, unary_terms[i] * 10E1); //check neighbor segment belong to 0 or not, unary = prob;
+				gc->setDataCost(i, 1, (1.0f - unary_terms[i]) * 10E1);
+			}
+
+			//set smooth cost
+			int *smooth = new int[num_labels*num_labels];
+			for (auto l1 = 0; l1 < num_labels; ++l1)
+			{
+				for (auto l2 = 0; l2 < num_labels; ++l2)
+				{
+					if (l1 != l2)
+					{
+						smooth[l1 + l2 * num_labels] = 1;
+					}
+					else
+					{
+						smooth[l1 + l2 * num_labels] = 0;
+					}
+				}
+			}
+			gc->setSmoothCost(smooth);
+
+			//set up neighbors
+			for (int i = 0; i < pairwise_neighbors.size(); ++i)
+			{
+				gc->setNeighbors(pairwise_neighbors[i].first, pairwise_neighbors[i].second, mrf_lambda_m * pairwise_terms[i] * 10E1);
+			}
+
+			//printf("\nBefore optimization energy is %d", gc->compute_energy());  //TODO(wgao) bad type: int vs. long long (check your warnings)!
+			gc->expansion(99);// run expansion for 2 iterations. For swap use gc->swap(num_iterations);
+			//printf("\nAfter optimization energy is %d", gc->compute_energy());
+
+			label_out.resize(unary_terms.size());
+			for (int i = 0; i < label_out.size(); ++i)
+			{
+				label_out[i] = gc->whatLabel(i);
+			}
+
+			delete[]smooth;
+			delete gc;
+		}
+		catch (gco::GCException e)
+		{
+			e.Report();
+		}
+	}
+
+	//For global smooth for faces after planar and non-planar decomposition
+	//For global smooth for faces after watershed segmentation
+	void MRF_oversegmentation
+	(
+		SFMesh *smesh_in,
+		SFMesh::Face &fi,
+		std::vector<int> &labels_temp,
+		const int num_segments,
+		int &change_count
+	)
+	{
+		try
+		{
+			GCoptimizationGeneralGraph *gc = new GCoptimizationGeneralGraph(num_segments, labels_temp.size());
+			int seg_i = 0;
+			for (int li = 0; li < labels_temp.size(); ++li)
+			{
+				if (labels_temp[li] == smesh_in->get_face_smoothed_seg_id[fi])
+				{
+					gc->setDataCost(seg_i, li, 0.0f * mrf_energy_amplify);
+				}
+				else
+				{
+					gc->setDataCost(seg_i, li, 1.0f * mrf_energy_amplify);
+				}
+			}
+			++seg_i;
+			for (auto f_neg_tup : smesh_in->get_face_1ring_neighbor[fi])
+			{
+				for (int li = 0; li < labels_temp.size(); ++li)
+				{
+					SFMesh::Face fdx(get<0>(f_neg_tup));
+					if (labels_temp[li] == smesh_in->get_face_smoothed_seg_id[fdx])
+					{
+						gc->setDataCost(seg_i, li, 0.0f * mrf_energy_amplify);
+					}
+					else
+					{
+						gc->setDataCost(seg_i, li, 1.0f * mrf_energy_amplify);
+					}
+				}
+				++seg_i;
+			}
+
+			//set smooth cost
+			int *smooth = new int[labels_temp.size()*labels_temp.size()];
+			for (auto l1 = 0; l1 < labels_temp.size(); ++l1)
+			{
+				for (auto l2 = 0; l2 < labels_temp.size(); ++l2)
+				{
+					if (l1 != l2)
+					{
+						smooth[l1 + l2 * labels_temp.size()] = 1;
+					}
+					else
+					{
+						smooth[l1 + l2 * labels_temp.size()] = 0;
+					}
+				}
+			}
+			gc->setSmoothCost(smooth);
+
+			seg_i = 1;
+			float pairwise = 1.0f, angle_current;
+			SFMesh::Face fd;
+			for (auto f_neg_tup : smesh_in->get_face_1ring_neighbor[fi])
+			{
+				fd = SFMesh::Face(get<0>(f_neg_tup));
+				if (smesh_in->is_boundary(fd) || smesh_in->is_boundary(fi))
+				{
+					pairwise = mrf_lambda_p * mrf_energy_amplify;
+				}
+				else
+				{
+					int current_label_fd = -1;
+					if (train_test_predict_val != 0)
+					{
+						current_label_fd = smesh_in->get_face_predict_label[fi] - 1;
+					}
+					else
+					{
+						current_label_fd = smesh_in->get_face_truth_label[fi] - 1;
+					}
+
+					if (labels_name_pnp[current_label_fd] == "non_planar")
+					{
+						pairwise = mrf_lambda_p * mrf_energy_amplify;
+					}
+					else
+					{
+						angle_current = vector3D_angle(smesh_in->get_face_planar_segment_plane_normal[fd], smesh_in->get_face_planar_segment_plane_normal[fi]);// ,  smesh_out->get_points_normals[non_vert]
+						if (angle_current >= 180.0f)
+							angle_current = angle_current - 180.0f;
+						if (angle_current > 90.0f)
+							angle_current = 180.0f - angle_current;
+						angle_current = 1.0f - angle_current / 90.0f;
+
+						pairwise = mrf_lambda_p * angle_current * mrf_energy_amplify;
+					}
+				}
+
+				gc->setNeighbors(0, seg_i, pairwise);
+				++seg_i;
+			}
+
+			//printf("\nBefore optimization energy is %d", gc->compute_energy());  //TODO(wgao) bad type: int vs. long long (check your warnings)!
+			gc->expansion(99);// run expansion for 2 iterations. For swap use gc->swap(num_iterations);
+			//printf("\nAfter optimization energy is %d", gc->compute_energy());
+
+
+			if (smesh_in->get_face_smoothed_seg_id[fi] != labels_temp[gc->whatLabel(0)])
+			{
+				smesh_in->get_face_smoothed_seg_id[fi] = labels_temp[gc->whatLabel(0)];
+				++change_count;
+			}
+
+			delete[]smooth;
+			delete gc;
+		}
+		catch (GCException e)
+		{
+			e.Report();
+		}
+	}
 }

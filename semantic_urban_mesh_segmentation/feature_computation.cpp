@@ -1621,4 +1621,34 @@ namespace semantic_mesh_segmentation
 		delete pcl_out;
 		delete smesh_in;
 	}
+
+	//--- PSSNet over-segmentation ---
+	//--- processing pnp mrf single tiles ---
+	void PNP_MRF_single_tiles
+	(
+		const int pi
+	)
+	{
+		SFMesh *tmp_mesh = new SFMesh;
+		mesh_configuration(tmp_mesh);
+		read_labeled_mesh_data(tmp_mesh, pi);
+
+		PTCloud *cloud_in = new PTCloud;
+		pointcloud_configuration(cloud_in);
+		read_pointcloud_data(tmp_mesh, cloud_in, 0, pi);
+
+		std::vector<superfacets> spf_current;
+		PTCloud* face_center_cloud = new PTCloud;
+
+		std::vector<vertex_planarity> current_mesh_planarity;
+		initial_vertex_planarity(tmp_mesh, cloud_in, current_mesh_planarity);
+		perform_pnpmrf_oversegmentation_on_mesh(tmp_mesh, spf_current, current_mesh_planarity);
+
+		get_segments_color(tmp_mesh, spf_current);
+
+		write_mesh_segments(tmp_mesh, pi, true);
+
+		delete tmp_mesh;
+		delete cloud_in;
+	}
 }

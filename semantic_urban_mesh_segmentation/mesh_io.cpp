@@ -224,11 +224,13 @@ namespace semantic_mesh_segmentation
 		}
 
 		pcl_out->get_points_coord = pcl_out->get_vertex_property<vec3>("v:point");
-		pcl_out->add_vertex_property<vec3>("v:normal");
+		if (!pcl_out->get_vertex_property<vec3>("v:normal"))
+			pcl_out->add_vertex_property<vec3>("v:normal", vec3());
 		pcl_out->get_points_normals = pcl_out->get_vertex_property<vec3>("v:normal");
 		if (sampled_or_ele != 1)
 		{
-			pcl_out->add_vertex_property<vec3>("v:color");
+			if (!pcl_out->get_vertex_property<vec3>("v:color"))
+				pcl_out->add_vertex_property<vec3>("v:color", vec3());
 			pcl_out->get_points_color = pcl_out->get_vertex_property<vec3>("v:color");
 		}
 
@@ -253,6 +255,7 @@ namespace semantic_mesh_segmentation
 				pcl_out->get_points_face_belong_id[ptx] = pcl_temp->get_vertex_property<int>("v:points_face_belong_id")[ptx];
 				int fi = pcl_out->get_points_face_belong_id[ptx];
 				SFMesh::Face fdx(fi);
+
 				pcl_out->get_points_normals[ptx] = smesh_in->get_face_normals[fdx];
 				pcl_out->get_points_ground_truth[ptx] = smesh_in->get_face_truth_label[fdx];
 				pcl_out->get_points_tile_index[ptx] = smesh_in->get_face_tile_index[fdx];
@@ -451,8 +454,45 @@ namespace semantic_mesh_segmentation
 		std::ostringstream mesh_str_ostemp;
 
 		//read .ply mesh
-		mesh_str_ostemp
-			<< ply_files[mi];
+		if (processing_mode != 2)
+		{
+			mesh_str_ostemp << ply_files[mi];
+		}
+		else
+		{
+			std::string basic_write_path, pref_tmp;
+			if (train_test_predict_val == 0)
+			{
+				basic_write_path = root_path + folder_names_level_0[11] + folder_names_level_0[2] + folder_names_level_1[train_test_predict_val];
+				pref_tmp = prefixs[15];
+
+			}
+			else
+			{
+				basic_write_path = root_path + folder_names_level_0[11] + folder_names_level_0[4] + folder_names_level_1[train_test_predict_val];
+				pref_tmp = prefixs[4] + prefixs[5];
+			}
+
+			if (use_batch_processing)
+			{
+				mesh_str_ostemp
+					<< basic_write_path
+					<< prefixs[9] + std::to_string(mi)
+					<< pref_tmp
+					<< ".ply";
+				std::cout << "	Loading semantic mesh: " << prefixs[9] + std::to_string(mi) << std::endl;
+			}
+			else
+			{
+				mesh_str_ostemp
+					<< basic_write_path
+					<< base_names[mi]
+					<< pref_tmp
+					<< ".ply";
+
+				std::cout << "	Loading semantic mesh: " << base_names[mi] << std::endl;
+			}
+		}
 
 		std::string mesh_str_temp = mesh_str_ostemp.str().data();
 		char * meshPath_temp = (char *)mesh_str_temp.data();
@@ -463,7 +503,8 @@ namespace semantic_mesh_segmentation
 
 		//mesh face properties
 		smesh_out->get_face_truth_label = smesh_out->get_face_property<int>("f:" + label_definition);
-		smesh_out->add_face_property<vec3>("f:normal");
+		if (!smesh_out->get_face_property<vec3>("f:normal"))
+			smesh_out->add_face_property<vec3>("f:normal");
 		smesh_out->get_face_normals = smesh_out->get_face_property<vec3>("f:normal");
 
 		//get texture information
@@ -481,6 +522,41 @@ namespace semantic_mesh_segmentation
 			if (!smesh_out->get_face_property<std::vector<float>>("f:texcoord"))
 				smesh_out->add_face_property<std::vector<float>>("f:texcoord", std::vector<float>({ 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f }));
 			smesh_out->get_face_texcoord = smesh_out->get_face_property<std::vector<float>>("f:texcoord");
+		}
+
+		//mesh face properties
+		if (train_test_predict_val == 0)
+		{
+			if (smesh_out->get_face_property<int>("f:label"))
+				smesh_out->get_face_truth_label = smesh_out->get_face_property<int>("f:label");
+			else
+			{
+				smesh_out->add_face_property<int>("f:label", -1);
+				smesh_out->get_face_truth_label = smesh_out->get_face_property<int>("f:label");
+			}
+		}
+		else
+		{
+			smesh_out->get_face_predict_label = smesh_out->get_face_property<int>("f:face_predict");
+
+			if (smesh_out->get_face_property<float>("f:label_probabilities"))
+				smesh_out->get_face_predict_prob = smesh_out->get_face_property<float>("f:label_probabilities");
+			else
+			{
+				smesh_out->add_face_property<float>("f:label_probabilities", 0.0f);
+				smesh_out->get_face_predict_prob = smesh_out->get_face_property<float>("f:label_probabilities");
+			}
+		}
+
+		for (auto f : smesh_out->faces())
+		{
+			smesh_out->get_face_normals[f] = smesh_out->compute_face_normal(f);
+			smesh_out->get_face_area[f] = smesh_out->FaceArea(f);
+			for (auto vd : smesh_out->vertices(f))
+			{
+				smesh_out->get_face_center[f] += smesh_out->get_points_coord[vd];
+			}
+			smesh_out->get_face_center[f] /= 3.0f;
 		}
 
 		std::cout << "  The total number of input triangle facets:  " << smesh_out->faces_size() << '\n' << std::endl;
@@ -757,6 +833,19 @@ namespace semantic_mesh_segmentation
 							{
 								current_mode = operating_mode::Get_labels_for_planar_non_planar_from_semantic;
 							}
+
+							else if (param_value == "PSSNet_oversegmentation")
+							{
+								current_mode = operating_mode::PSSNet_oversegmentation;
+							}
+							else if (param_value == "PSSNet_graph_construction")
+							{
+								current_mode = operating_mode::PSSNet_graph_construction;
+							}
+							else if (param_value == "PSSNet_pipeline_for_GCN")
+							{
+								current_mode = operating_mode::PSSNet_pipeline_for_GCN;
+							}
 						}
 					}
 					else if (param_name == "root_path")
@@ -940,6 +1029,121 @@ namespace semantic_mesh_segmentation
 								}
 							}
 						}
+					}
+					else if (param_name == "generate_groundtruth_segments")
+					{
+						if (param_value != "default")
+						{
+							if (param_value == "true" || param_value == "True" || param_value == "TRUE")
+								generate_groundtruth_segments = true;
+							else if (param_value == "false" || param_value == "False" || param_value == "FALSE")
+								generate_groundtruth_segments = false;
+						}
+					}
+					else if (param_name == "only_evaluation")
+					{
+						if (param_value != "default")
+						{
+							if (param_value == "true" || param_value == "True" || param_value == "TRUE")
+								only_evaluation = true;
+							else if (param_value == "false" || param_value == "False" || param_value == "FALSE")
+								only_evaluation = false;
+						}
+					}
+					else if (param_name == "radius_default")
+					{
+						if (param_value != "default")
+							radius_default = std::stof(param_value);
+					}
+					else if (param_name == "mrf_lambda_d")
+					{
+						if (param_value != "default")
+							mrf_lambda_d = std::stof(param_value);
+					}
+					else if (param_name == "mrf_lambda_m")
+					{
+						if (param_value != "default")
+							mrf_lambda_m = std::stof(param_value);
+					}
+					else if (param_name == "mrf_lambda_g")
+					{
+						if (param_value != "default")
+							mrf_lambda_g = std::stof(param_value);
+					}
+					else if (param_name == "mrf_lambda_p")
+					{
+						if (param_value != "default")
+							mrf_lambda_p = std::stof(param_value);
+					}
+					else if (param_name == "with_node_graphs")
+					{
+						if (param_value != "default")
+						{
+							if (param_value == "true" || param_value == "True" || param_value == "TRUE")
+								with_node_graphs = true;
+							else if (param_value == "false" || param_value == "False" || param_value == "FALSE")
+								with_node_graphs = false;
+						}
+					}
+					else if (param_name == "use_edges_between_boder_points")
+					{
+						if (param_value != "default")
+						{
+							if (param_value == "true" || param_value == "True" || param_value == "TRUE")
+								use_edges_between_boder_points = true;
+							else if (param_value == "false" || param_value == "False" || param_value == "FALSE")
+								use_edges_between_boder_points = false;
+						}
+					}
+					else if (param_name == "parallelism_relations")
+					{
+						if (param_value != "default")
+						{
+							if (param_value == "true" || param_value == "True" || param_value == "TRUE")
+								parallelism_relations = true;
+							else if (param_value == "false" || param_value == "False" || param_value == "FALSE")
+								parallelism_relations = false;
+						}
+					}
+					else if (param_name == "tolerance_angle")
+					{
+						if (param_value != "default")
+							tolerance_angle = std::stof(param_value);
+					}
+					else if (param_name == "local_ground_relations")
+					{
+						if (param_value != "default")
+						{
+							if (param_value == "true" || param_value == "True" || param_value == "TRUE")
+								local_ground_relations = true;
+							else if (param_value == "false" || param_value == "False" || param_value == "FALSE")
+								local_ground_relations = false;
+						}
+					}
+					else if (param_name == "exterior_mat_relations")
+					{
+						if (param_value != "default")
+						{
+							if (param_value == "true" || param_value == "True" || param_value == "TRUE")
+								exterior_mat_relations = true;
+							else if (param_value == "false" || param_value == "False" || param_value == "FALSE")
+								exterior_mat_relations = false;
+						}
+					}
+					else if (param_name == "delaunay_relations_on_sampled_points")
+					{
+						if (param_value != "default")
+						{
+							if (param_value == "true" || param_value == "True" || param_value == "TRUE")
+								delaunay_relations_on_sampled_points = true;
+							else if (param_value == "false" || param_value == "False" || param_value == "FALSE")
+								delaunay_relations_on_sampled_points = false;
+						}
+					}
+					else if (param_name == "remove_close_vertices_for_delaunay")
+					{
+						if (param_value != "default")
+							remove_close_vertices_for_delaunay = std::stof(param_value);
 					}
 					else if (param_name == "with_texture")
 					{
@@ -1855,21 +2059,52 @@ namespace semantic_mesh_segmentation
 	void write_mesh_segments
 	(
 		SFMesh* smesh_out,
-		const int mi
+		const int mi,
+		bool write_pnp
 	)
 	{
 		const double t_total = omp_get_wtime();
 		std::ostringstream mesh_str_ostemp;
 		if (use_batch_processing)
 		{
-			mesh_str_ostemp
-				<< root_path
-				<< folder_names_level_0[6]
-				<< folder_names_level_1[train_test_predict_val]
-				<< prefixs[9] + std::to_string(mi)
-				<< prefixs[4]
-				<< prefixs[7]
-				<< ".ply";
+			if (processing_mode == 0)
+			{
+				mesh_str_ostemp
+					<< root_path
+					<< folder_names_level_0[6]
+					<< folder_names_level_1[train_test_predict_val]
+					<< prefixs[9] + std::to_string(mi)
+					<< prefixs[4]
+					<< prefixs[7]
+					<< ".ply";
+			}
+			else if (processing_mode == 2)
+			{
+				if (write_pnp)
+				{
+					mesh_str_ostemp
+						<< root_path
+						<< folder_names_level_0[11]
+						<< folder_names_pssnet[1]
+						<< folder_names_level_1[train_test_predict_val]
+						<< prefixs[9] + std::to_string(mi)
+						<< prefixs[4]
+						<< prefixs[7]
+						<< ".ply";
+				}
+				else
+				{
+					mesh_str_ostemp
+						<< root_path
+						<< folder_names_level_0[11]
+						<< folder_names_level_0[6]
+						<< folder_names_level_1[train_test_predict_val]
+						<< prefixs[9] + std::to_string(mi)
+						<< prefixs[4]
+						<< prefixs[7]
+						<< ".ply";
+				}
+			}
 			std::cout << "	Saving segment mesh: " << prefixs[9] + std::to_string(mi) << std::endl;
 		}
 		else
@@ -1900,15 +2135,30 @@ namespace semantic_mesh_segmentation
 			}
 			else if (processing_mode == 2)
 			{
-				mesh_str_ostemp
-					<< root_path
-					<< folder_names_level_0[11]
-					<< folder_names_level_0[6]
-					<< folder_names_level_1[train_test_predict_val]
-					<< base_names[mi]
-					<< prefixs[4]
-					<< prefixs[7]
-					<< ".ply";
+				if (write_pnp)
+				{
+					mesh_str_ostemp
+						<< root_path
+						<< folder_names_level_0[11]
+						<< folder_names_pssnet[1]
+						<< folder_names_level_1[train_test_predict_val]
+						<< base_names[mi]
+						<< prefixs[4]
+						<< prefixs[7]
+						<< ".ply";
+				}
+				else
+				{
+					mesh_str_ostemp
+						<< root_path
+						<< folder_names_level_0[11]
+						<< folder_names_level_0[6]
+						<< folder_names_level_1[train_test_predict_val]
+						<< base_names[mi]
+						<< prefixs[4]
+						<< prefixs[7]
+						<< ".ply";
+				}
 			}
 
 			std::cout << "	Saving segment mesh: " << base_names[mi] << std::endl;
