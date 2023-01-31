@@ -53,6 +53,14 @@ namespace semantic_mesh_segmentation
 			add_vert_check = add_vertex_property<bool>("v:vert_check", false);
 			get_vert_check = get_vertex_property<bool>("v:vert_check");
 
+			//-------------------Add, Get edge properties--------------------
+
+			add_edge_boundary_truth = add_edge_property<int>("e:edge_boundary_truth", 0);
+			get_edge_boundary_truth = get_edge_property<int>("e:edge_boundary_truth");
+
+			add_edge_boundary_predict = add_edge_property<int>("e:edge_boundary_predict", 0);
+			get_edge_boundary_predict = get_edge_property<int>("e:edge_boundary_predict");
+
 			//-------------------Add, Get face properties--------------------
 			add_face_segment_id = add_face_property<int>("f:face_segment_id", -1);
 			get_face_segment_id = get_face_property<int>("f:face_segment_id");
@@ -169,6 +177,9 @@ namespace semantic_mesh_segmentation
 		SurfaceMesh::VertexProperty<bool>
 			add_vert_check, get_vert_check;
 		//------------------Edge Attributes-----------------------//
+		SurfaceMesh::EdgeProperty<int>
+			add_edge_boundary_truth, get_edge_boundary_truth,
+			add_edge_boundary_predict, get_edge_boundary_predict;
 
 		// ------------------Face Attributes-----------------------//
 		SurfaceMesh::FaceProperty<bool>
@@ -302,6 +313,10 @@ namespace semantic_mesh_segmentation
 		this->remove_vertex_property(this->get_vert_check);
 		this->remove_vertex_property(this->get_vert_planarity);
 		this->remove_vertex_property(this->get_vert_component_id);
+
+		//--------------Remove edges properties------------------
+		this->remove_edge_property(this->get_edge_boundary_truth);
+		this->remove_edge_property(this->get_edge_boundary_predict);
 
 		//--------------Remove faces properties------------------
 		this->remove_face_property(this->get_face_check);

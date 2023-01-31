@@ -496,7 +496,8 @@ namespace semantic_mesh_segmentation
 		"segments_pnp/",//1
 		"graph_edges/", //2
 		"graph_nodes/", //3
-		"pcl/"          //4
+		"pcl/",         //4
+		"segments_truth/" //5
 	};
 
 	std::vector<std::string> prefixs

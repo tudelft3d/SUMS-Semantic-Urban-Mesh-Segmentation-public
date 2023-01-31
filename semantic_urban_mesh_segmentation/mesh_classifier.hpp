@@ -44,6 +44,157 @@
 
 namespace semantic_mesh_segmentation
 {
+	struct all_eval
+	{
+		std::vector<float> label_asa = std::vector<float>(labels_name_pnp.size(), 0.0f);
+		std::vector<float> label_ue = std::vector<float>(labels_name_pnp.size(), 0.0f);
+		std::vector<float> label_sumarea = std::vector<float>(labels_name_pnp.size(), 0.0f);
+		std::vector<float> asa_out = std::vector<float>(labels_name_pnp.size() + 1, 0.0f);
+		std::vector<float> segment_count_gctc = std::vector<float>(3, 0.0f);
+		std::vector<float> boundary_evaluation = std::vector<float>(5, 0.0f);
+		all_eval() {};
+	};
+
+	inline void compute_asa
+	(
+		all_eval *all_seg_evaluation = nullptr,
+		std::vector<float> &asa_out = std::vector<float>(),
+		std::map<int, float> &label_asa = std::map<int, float>(),
+		std::map<int, float> &label_ue = std::map<int, float>(),
+		std::map<int, float> &label_sumarea = std::map<int, float>()
+	)
+	{
+		float avg_asa = 0.0f, avg_ue = 0.0f;
+		for (int li = 0; li < labels_name_pnp.size(); ++li)
+		{
+			if (!asa_out.empty())
+			{
+				//accumulate all
+				if (all_seg_evaluation != nullptr)
+				{
+					all_seg_evaluation->label_asa[li] += label_asa[li];
+					all_seg_evaluation->label_ue[li] += label_ue[li];
+					all_seg_evaluation->label_sumarea[li] += label_sumarea[li];
+				}
+
+				//compute individual
+				if (label_sumarea[li] != 0)
+				{
+					label_asa[li] /= label_sumarea[li];
+					label_ue[li] /= label_sumarea[li];
+				}
+				else
+				{
+					label_asa[li] = 0.0f;
+					label_ue[li] = 0.0f;
+				}
+				avg_asa += label_asa[li];
+				avg_ue += label_ue[li];
+				std::cout << "asa(" << labels_name_pnp[li] << ") = " << label_asa[li]
+					//<< ";\tue(" << labels_name_pnp[li] << ") = " << label_ue[li]
+					/*<< ";\ttruth area(" << labels_name_pnp[li] << ") = " << label_sumarea[li]*/ << std::endl;
+				asa_out[li] = label_asa[li];
+			}
+			else
+			{
+				if (all_seg_evaluation->label_sumarea[li] != 0)
+				{
+					all_seg_evaluation->label_asa[li] /= all_seg_evaluation->label_sumarea[li];
+					all_seg_evaluation->label_ue[li] /= all_seg_evaluation->label_sumarea[li];
+				}
+				else
+				{
+					all_seg_evaluation->label_asa[li] = 0.0f;
+					all_seg_evaluation->label_ue[li] = 0.0f;
+				}
+				avg_asa += all_seg_evaluation->label_asa[li];
+				avg_ue += all_seg_evaluation->label_ue[li];
+				std::cout << "asa(" << labels_name_pnp[li] << ") = " << all_seg_evaluation->label_asa[li]
+					//<< ";\tue(" << labels_name_pnp[li] << ") = " << label_ue[li]
+					/*<< ";\ttruth area(" << labels_name_pnp[li] << ") = " << label_sumarea[li]*/ << std::endl;
+				all_seg_evaluation->asa_out[li] = all_seg_evaluation->label_asa[li];
+
+			}
+		}
+		if (!asa_out.empty())
+		{
+			asa_out[labels_name_pnp.size()] = avg_asa / labels_name_pnp.size();
+			std::cout << "avg_ASA = " << avg_asa / labels_name_pnp.size() << std::endl;
+			//std::cout << "avg_ue = " << avg_ue / labels_name_pnp.size() << std::endl;
+		}
+		else
+		{
+			all_seg_evaluation->asa_out[labels_name_pnp.size()] = avg_asa / labels_name_pnp.size();
+			std::cout << "avg_ASA = " << avg_asa / labels_name_pnp.size() << std::endl;
+			//std::cout << "avg_ue = " << avg_ue / labels_name_pnp.size() << std::endl;
+		}
+	}
+
+	inline void compute_gc_tc
+	(
+		int &test_count,
+		int &ground_count,
+		std::vector<float> &gc_tc_out = std::vector<float>(),
+		all_eval *all_seg_evaluation = nullptr
+	)
+	{
+		if (!gc_tc_out.empty())
+		{
+			gc_tc_out[0] = test_count;
+			gc_tc_out[1] = ground_count;
+			gc_tc_out[2] = float(ground_count) / float(test_count);
+		}
+
+		//accumulate all
+		if (all_seg_evaluation != nullptr)
+		{
+			all_seg_evaluation->segment_count_gctc[0] += test_count;
+			all_seg_evaluation->segment_count_gctc[1] += ground_count;
+			all_seg_evaluation->segment_count_gctc[2] = float(all_seg_evaluation->segment_count_gctc[0]) / float(all_seg_evaluation->segment_count_gctc[1]);
+		}
+
+		std::cout << "number of segments(test) = " << test_count << std::endl <<
+			"number of segments(ground truth) = " << ground_count << std::endl <<
+			std::fixed << std::showpoint << std::setprecision(6) <<
+			"g_c / t_c = " << float(ground_count) / float(test_count) << std::endl << std::endl;
+	}
+
+
+	inline void compute_br
+	(
+		float &boundary_num_g,
+		float &boundary_num_t,
+		float &intersect_edges,
+		std::vector<float> &br_out = std::vector<float>(),
+		all_eval *all_seg_evaluation = nullptr
+	)
+	{
+		if (!br_out.empty())
+		{
+			br_out[0] = boundary_num_g;
+			br_out[1] = boundary_num_t;
+			br_out[2] = intersect_edges;
+			br_out[3] = float(intersect_edges) / float(boundary_num_g);
+			br_out[4] = float(intersect_edges) / float(boundary_num_t);
+		}
+
+		//accumulate all
+		if (all_seg_evaluation != nullptr)
+		{
+			all_seg_evaluation->boundary_evaluation[0] += boundary_num_g;
+			all_seg_evaluation->boundary_evaluation[1] += boundary_num_t;
+			all_seg_evaluation->boundary_evaluation[2] += intersect_edges;
+			all_seg_evaluation->boundary_evaluation[3] = float(all_seg_evaluation->boundary_evaluation[2]) / float(all_seg_evaluation->boundary_evaluation[0]);
+			all_seg_evaluation->boundary_evaluation[4] = float(all_seg_evaluation->boundary_evaluation[2]) / float(all_seg_evaluation->boundary_evaluation[1]);
+
+			std::cout << "Ground truth edges = " << boundary_num_g << std::endl <<
+				";Predicted edges = " << boundary_num_t << std::endl <<
+				";Intersected edges = " << intersect_edges << std::endl <<
+				"BR = " << float(intersect_edges) / float(boundary_num_g) <<
+				";\tBP = " << float(intersect_edges) / float(boundary_num_t) << std::endl;
+		}
+	}
+
 	//--- bool comparision ---
 	inline bool feature_importance_descending
 	(
@@ -253,5 +404,11 @@ namespace semantic_mesh_segmentation
 		const int ,
 		int &
 	);
+
+	void segment_purity_evaluation(SFMesh *, SFMesh *, std::map<int, float> &, std::map<int, float> &, std::map<int, float> &, std::vector<int> &, std::vector<int> &);
+
+	void boundary_evaluation(SFMesh *, SFMesh *, float &, float &, float &, int &);
+
+	void oversegmentation_evaluation(SFMesh *, SFMesh *, const int, all_eval *);
 }
 #endif//semantic_mesh_segmentation__MESH_CLASSIFIER_HPP

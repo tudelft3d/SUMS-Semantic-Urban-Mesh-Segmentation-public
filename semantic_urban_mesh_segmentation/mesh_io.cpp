@@ -823,6 +823,173 @@ namespace semantic_mesh_segmentation
 		}
 	}
 
+	void read_and_write_oversegmentation_ground_truth()
+	{
+		std::ostringstream temp_path;
+		temp_path 
+			<< root_path 
+			<< folder_names_level_0[2] 
+			<< folder_names_level_1[train_test_predict_val];
+
+		std::string temp_data_path = temp_path.str().data();
+		std::vector<std::string> temp_ply_files;
+		std::vector<std::string> temp_folder_names;
+		getAllFiles(temp_data_path, file_formats[0], temp_ply_files, temp_folder_names);//get .ply filenames
+
+		int R = rand() % 256;
+		int G = rand() % 256;
+		int B = rand() % 256;
+		std::srand(std::time(0));
+		for (int i = 0; i < base_names.size(); ++i)
+		{
+			std::cout << "Start to extract from mesh " << base_names[i] << std::endl;
+			SFMesh* smesh_in = new SFMesh;
+			std::ostringstream mesh_str_ostemp;
+			//read .ply mesh
+			mesh_str_ostemp
+				<< temp_ply_files[i];
+
+			std::string mesh_str_temp = mesh_str_ostemp.str().data();
+			char * meshPath_temp = (char *)mesh_str_temp.data();
+			rply_input(smesh_in, meshPath_temp);
+
+			smesh_in->get_face_truth_label = smesh_in->get_face_property<int>("f:label");
+			smesh_in->add_face_property<bool>("f:visited_check", false);
+			auto get_face_visited_check = smesh_in->get_face_property<bool>("f:visited_check");
+			smesh_in->get_face_color = smesh_in->get_face_property<vec3>("f:color");
+
+			int seg_ind = 0;
+			std::vector<std::vector<SFMesh::Face>> final_regions;
+
+			for (auto f : smesh_in->faces())
+			{
+				std::vector<SFMesh::Face> current_region;
+				if (!get_face_visited_check[f])
+					get_face_visited_check[f] = true;
+				else
+					continue;
+
+				int seed_label = smesh_in->get_face_truth_label[f];
+				current_region.emplace_back(f);
+				for (int ci = 0; ci < current_region.size(); ++ci)
+				{
+					SFMesh::HalfedgeAroundFaceCirculator h_fit = smesh_in->halfedges(current_region[ci]);
+					SFMesh::HalfedgeAroundFaceCirculator h_end = h_fit;
+					do
+					{
+						SFMesh::Halfedge ho = smesh_in->opposite_halfedge(*h_fit);
+						if (smesh_in->is_boundary(ho) == false)
+						{
+							SFMesh::Face l = smesh_in->face(ho);
+							if (smesh_in->get_face_truth_label[l] == seed_label
+								&& !get_face_visited_check[l])
+							{
+								get_face_visited_check[l] = true;
+								current_region.emplace_back(l);
+							}
+						}
+						++h_fit;
+					} while (h_fit != h_end);
+				}
+
+				R = rand() % 256;
+				G = rand() % 256;
+				B = rand() % 256;
+
+				for (int fi = 0; fi < current_region.size(); ++fi)
+				{
+					smesh_in->get_face_segment_id[current_region[fi]] = seg_ind;
+					smesh_in->get_face_color[current_region[fi]] = vec3(R / 255.0f, G / 255.0f, B / 255.0f);
+				}
+				final_regions.push_back(current_region);
+				++seg_ind;
+			}
+
+			std::cout << "final region = " << final_regions.size() << std::endl;
+
+			std::ostringstream mesh_out;
+			mesh_out
+				<< root_path
+				<< folder_names_level_0[11]
+				<< folder_names_pssnet[5]
+				<< folder_names_level_1[train_test_predict_val]
+				<< base_names[i]
+				<< prefixs[4]
+				<< prefixs[7]
+				<< prefixs[8]
+				<< ".ply";
+
+			std::string temp_out = mesh_out.str().data();
+			char * meshPath_temp_out = (char *)temp_out.data();
+			smesh_in->remove_common_non_used_properties();
+			smesh_in->remove_non_used_properties_for_semantic_mesh();
+			rply_output(smesh_in, meshPath_temp_out);
+
+			delete smesh_in;
+		}
+	}
+
+	void read_oversegmentation_testdata
+	(
+		SFMesh* test_mesh,
+		const int mi
+	)
+	{
+		std::cout << "Start to get test mesh  " << base_names[mi] << std::endl;
+		std::ostringstream mesh_str_ostemp;
+		//read .ply mesh
+		mesh_str_ostemp
+			<< root_path
+			<< folder_names_level_0[11]
+			<< folder_names_pssnet[1]
+			<< folder_names_level_1[train_test_predict_val]
+			<< base_names[mi]
+			<< prefixs[4]
+			<< prefixs[7]
+			<< ".ply";
+
+		std::string mesh_str_temp = mesh_str_ostemp.str().data();
+		char * meshPath_temp = (char *)mesh_str_temp.data();
+		rply_input(test_mesh, meshPath_temp);
+
+		test_mesh->get_points_coord = test_mesh->get_vertex_property<vec3>("v:point");
+		test_mesh->get_face_segment_id = test_mesh->get_face_property<int>("f:face_segment_id");
+		for (auto fi : test_mesh->faces())
+			test_mesh->get_face_area[fi] = test_mesh->FaceArea(fi);
+	}
+
+	void read_oversegmentation_truthdata
+	(
+		SFMesh* smesh_in,
+		const int mi
+	)
+	{
+		std::cout << "Start to get truth mesh " << base_names[mi] << std::endl;
+		std::ostringstream mesh_str_ostemp;
+		//read .ply mesh
+
+		mesh_str_ostemp
+			<< root_path
+			<< folder_names_level_0[11]
+			<< folder_names_pssnet[5]
+			<< folder_names_level_1[train_test_predict_val]
+			<< base_names[mi]
+			<< prefixs[4]
+			<< prefixs[7]
+			<< prefixs[8]
+			<< ".ply";
+
+		std::string mesh_str_temp = mesh_str_ostemp.str().data();
+		char * meshPath_temp = (char *)mesh_str_temp.data();
+		rply_input(smesh_in, meshPath_temp);
+
+		smesh_in->get_points_coord = smesh_in->get_vertex_property<vec3>("v:point");
+		smesh_in->get_face_truth_label = smesh_in->get_face_property<int>("f:label");
+		smesh_in->get_face_segment_id = smesh_in->get_face_property<int>("f:face_segment_id");
+		for (auto fi : smesh_in->faces())
+			smesh_in->get_face_area[fi] = smesh_in->FaceArea(fi);
+	}
+
 	//read batch names in *.txt
 	void read_txt_batches(std::vector<std::vector<std::pair<int, std::string>>> &all_batches_out)
 	{
@@ -976,6 +1143,14 @@ namespace semantic_mesh_segmentation
 							else if (param_value == "PSSNet_pipeline_for_GCN")
 							{
 								current_mode = operating_mode::PSSNet_pipeline_for_GCN;
+							}
+							else if (param_value == "PSSNet_oversegmentation_evaluation")
+							{
+								current_mode = operating_mode::PSSNet_oversegmentation_evaluation;
+							}
+							else if (param_value == "PSSNet_pcl_generation_for_GCN")
+							{
+								current_mode = operating_mode::PSSNet_pcl_generation_for_GCN;
 							}
 						}
 					}
@@ -3067,4 +3242,47 @@ namespace semantic_mesh_segmentation
 		}
 	}
 
+	void save_txt_evaluation
+	(
+		std::vector<float> &op_out,
+		std::vector<float> &gc_tc_out,
+		std::vector<float> &br_out,
+		std::ostringstream &evaluation_out,
+		const int m
+	)
+	{
+		if (m != -1)
+			std::cout << "Saving evaluation: " << base_names[m] << std::endl;
+		else
+			std::cout << "Saving all evaluation !!!" << std::endl;
+		std::string str_temp = evaluation_out.str().data();
+
+		std::ofstream fout;
+		fout.open(str_temp.c_str());
+		//OP
+		fout << "OP\n";
+		for (std::size_t i = 0; i < op_out.size() - 1; ++i)
+		{
+			fout << labels_name_pnp[i] << ": \t";
+			fout << std::fixed << std::showpoint << std::setprecision(6) << op_out[i] << "\n";
+		}
+		fout << "mOP: \t";
+		fout << std::fixed << std::showpoint << std::setprecision(6) << op_out[labels_name_pnp.size()] << "\n\n";
+
+		//num ratio
+		fout << "Number Ratio\n";
+		fout << "Num test : \t" << int(gc_tc_out[0]) << "\n";
+		fout << "Num train : \t" << int(gc_tc_out[1]) << "\n";
+		fout << "Num_ratio (g_c / t_c)  : \t" << std::fixed << std::showpoint << std::setprecision(6) << gc_tc_out[2] << "\n\n";
+
+		//Border
+		fout << "Border\n";
+		fout << "Num edges truth : \t" << int(br_out[0]) << "\n";
+		fout << "Num edges pred : \t" << int(br_out[1]) << "\n";
+		fout << "Num edges Intersec : \t" << int(br_out[2]) << "\n";
+		fout << "BR : \t" << std::fixed << std::showpoint << std::setprecision(6) << br_out[3] << "\n";
+		fout << "BP : \t" << std::fixed << std::showpoint << std::setprecision(6) << br_out[4] << "\n";
+
+		fout.close();
+	}
 }

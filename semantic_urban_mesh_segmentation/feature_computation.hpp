@@ -446,6 +446,51 @@ namespace semantic_mesh_segmentation
 		cloud_all->add_vertex_property<vec3>("v:color");
 		cloud_all->get_points_color = cloud_all->get_vertex_property<vec3>("v:color");
 	}
+
+	//find n ring edges
+	inline void find_n_rings_neighbor_of_vertex
+	(
+		SFMesh* smesh_out,
+		SFMesh::Edge &edx,
+		const int n,
+		std::vector<int> &edge_n_rings_neg,
+		std::map<int, bool> &checked_neighbor
+	)
+	{
+		SFMesh::Vertex vs = smesh_out->vertex(edx, 0);
+		SFMesh::Vertex vt = smesh_out->vertex(edx, 1);
+		for (auto hc : smesh_out->halfedges(vs))
+		{
+			SFMesh::Edge eo = smesh_out->edge(hc);
+			if (n > 1)
+			{
+				find_n_rings_neighbor_of_vertex(smesh_out, eo, n - 1, edge_n_rings_neg, checked_neighbor);
+			}
+
+			auto it_e = checked_neighbor.find(eo.idx());
+			if (it_e == checked_neighbor.end())
+			{
+				checked_neighbor[eo.idx()] = true;
+				edge_n_rings_neg.push_back(eo.idx());
+			}
+		}
+
+		for (auto hc : smesh_out->halfedges(vt))
+		{
+			SFMesh::Edge eo = smesh_out->edge(hc);
+			if (n > 1)
+			{
+				find_n_rings_neighbor_of_vertex(smesh_out, eo, n - 1, edge_n_rings_neg, checked_neighbor);
+			}
+
+			auto it_e = checked_neighbor.find(eo.idx());
+			if (it_e == checked_neighbor.end())
+			{
+				checked_neighbor[eo.idx()] = true;
+				edge_n_rings_neg.push_back(eo.idx());
+			}
+		}
+	}
 	//functions declare
 	//------------------------------------------------ ------------------------------- ----------------------------------------------//
 	//------------------------------------------------ Surface mesh sampling functions ----------------------------------------------//

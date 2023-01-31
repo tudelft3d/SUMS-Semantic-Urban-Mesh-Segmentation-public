@@ -145,6 +145,12 @@ namespace semantic_mesh_segmentation
 
 	void read_labeled_mesh_data(SFMesh *, const int);
 
+	void read_and_write_oversegmentation_ground_truth();
+
+	void read_oversegmentation_testdata(SFMesh*, const int);
+
+	void read_oversegmentation_truthdata(SFMesh*, const int);
+
 	void read_txt_batches(std::vector<std::vector<std::pair<int, std::string>>> &);
 
 	easy3d::PointCloud* read_feature_pointcloud_data(const std::string);
@@ -194,6 +200,15 @@ namespace semantic_mesh_segmentation
 		std::vector<std::pair<int, int>> &,
 		const int,
 		std::vector<superfacets> spf_current = std::vector<superfacets>()
+	);
+
+	void save_txt_evaluation
+	(
+		std::vector<float> &,
+		std::vector<float> &,
+		std::vector<float> &,
+		std::ostringstream &,
+		const int 
 	);
 
 	void get_mesh_labels(SFMesh *, std::vector<int> &, std::vector<int> &, std::vector< std::vector<int>> &);

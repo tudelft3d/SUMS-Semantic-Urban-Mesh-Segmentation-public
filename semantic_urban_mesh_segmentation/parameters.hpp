@@ -63,8 +63,10 @@ namespace semantic_mesh_segmentation
 		Get_labels_for_planar_non_planar_from_semantic,
 		PSSNet_oversegmentation,
 		PSSNet_oversegmentation_backbone,
+		PSSNet_oversegmentation_evaluation,
 		PSSNet_graph_construction,
-		PSSNet_graph_construction_backbone
+		PSSNet_graph_construction_backbone,
+		PSSNet_pcl_generation_for_GCN
 	};
 
 	//--- global variables for point cloud sampling ---

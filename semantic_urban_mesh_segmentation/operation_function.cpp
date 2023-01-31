@@ -1415,6 +1415,56 @@ namespace semantic_mesh_segmentation
 			break;
 		}
 
+
+		case operating_mode::PSSNet_oversegmentation_evaluation:
+		{
+			current_mode = operating_mode::PSSNet_oversegmentation_evaluation;
+			std::cout << "Evaluation Operating mode: PSSNet_oversegmentation_evaluation. " << std::endl;
+			std::cout << "	Processing test data and ground truth data." << std::endl;
+			std::vector<bool> train_predict
+			{
+				process_data_selection["train"],
+				process_data_selection["test"],
+				process_data_selection["predict"],
+				process_data_selection["validate"]
+			};
+
+			for (int tr_pr_i = 0; tr_pr_i < train_predict.size(); ++tr_pr_i)
+			{
+				if (train_predict[tr_pr_i] && tr_pr_i != 2)
+				{
+					changing_to_test_or_predict(tr_pr_i);
+
+					int all_face_num = 0;
+					all_eval *all_seg_evaluation = new all_eval();
+
+					if (generate_groundtruth_segments)
+						read_and_write_oversegmentation_ground_truth();
+
+					for (int ti = 0; ti < base_names.size(); ++ti)
+					{
+						SFMesh* test_mesh = new SFMesh;
+						read_oversegmentation_testdata(test_mesh, ti);
+
+						SFMesh* truth_mesh = new SFMesh;
+						read_oversegmentation_truthdata(truth_mesh, ti);
+
+						oversegmentation_evaluation(truth_mesh, test_mesh, ti, all_seg_evaluation);
+						all_face_num += test_mesh->faces_size();
+
+						delete truth_mesh;
+						delete test_mesh;
+					}
+
+					delete all_seg_evaluation;
+					std::cout << "all_face_num = " << all_face_num << std::endl;
+				}
+			}
+
+			break;
+		}
+
+
 		default:
 		{
 			std::cerr << std::endl << "No operation model has been chosen!!!" << std::endl;

@@ -1153,4 +1153,321 @@ namespace semantic_mesh_segmentation
 			e.Report();
 		}
 	}
+
+	//purity evaluation
+	void segment_purity_evaluation
+	(
+		SFMesh *smesh_g,//ground truth
+		SFMesh *smesh_t, //test data
+		std::map<int, float> &label_asa,
+		std::map<int, float> &label_ue,
+		std::map<int, float> &label_sumarea,
+		std::vector<int> &t_ind_vec,
+		std::vector<int> &g_ind_vec
+	)
+	{
+		std::map<int, int> component_g_label;
+		std::map<int, float> component_area_t;//test component area
+		std::map<int, float> component_area_g;//ground component area
+		std::map<int, float> componentid_ue_g;//ground component Under-segmentation error
+		std::map<int, float> componentid_asa_t;//test component Achievable segmentation accuracy(ASA)
+		std::map<int, std::vector<int>> t_included_g_ind;//test id, intersected ground truth id
+		std::map<int, std::vector<int>> g_included_t_ind;//ground truth id, intersected test id
+		std::map<int, std::map<int, float>> t_included_g_area;//test segment id, intersected ground truth component id and area	map
+		std::map<int, std::map<int, float>> g_included_t_area;//ground truth segment id, intersected ground truth component id and area	ma
+		for (auto fg : smesh_g->faces())
+		{
+			//get ground truth area and test component ids
+			//label_intersected_area equal to ground truth area of each class
+			//because all the ground truth area is covered by test region
+			int label_g = smesh_g->get_face_truth_label[fg];
+			if (label_g == -1)
+				continue;
+			else
+				--label_g;
+
+			label_sumarea[label_g] += smesh_g->get_face_area[fg];
+
+			int t_ind = smesh_t->get_face_segment_id[fg];
+			int g_ind = smesh_g->get_face_segment_id[fg];
+			t_ind_vec.push_back(t_ind);
+			g_ind_vec.push_back(g_ind);
+
+			//get initial label miou
+			auto it_l = label_asa.find(label_g);
+			if (it_l == label_asa.end())
+			{
+				label_asa[label_g] = 0.0f;
+				label_ue[label_g] = 0.0f;
+			}
+
+			//get ground truth component semantic label
+			auto it_g = component_g_label.find(g_ind);
+			if (it_g == component_g_label.end())
+			{
+				component_area_g[g_ind] = smesh_t->get_face_area[fg];
+				component_g_label[g_ind] = label_g;
+				std::vector<int> t_ind_vec_temp;
+				t_ind_vec_temp.push_back(t_ind);
+				g_included_t_ind[g_ind] = t_ind_vec_temp;
+				std::map<int, float> t_area;
+				t_area[t_ind] = smesh_t->get_face_area[fg];
+				g_included_t_area[t_ind] = t_area;
+				componentid_ue_g[g_ind] = 0.0f;
+			}
+			else
+			{
+				component_area_g[g_ind] += smesh_t->get_face_area[fg];
+				g_included_t_ind[g_ind].push_back(t_ind);
+				g_included_t_area[g_ind][t_ind] += smesh_t->get_face_area[fg];
+			}
+
+			//compute test component area and get intersected truth count
+			auto it_t = component_area_t.find(t_ind);
+			if (it_t == component_area_t.end())
+			{
+				component_area_t[t_ind] = smesh_t->get_face_area[fg];
+				std::vector<int> g_ind_vec_temp;
+				g_ind_vec_temp.push_back(g_ind);
+				t_included_g_ind[t_ind] = g_ind_vec_temp;
+				std::map<int, float> g_area;
+				g_area[g_ind] = smesh_t->get_face_area[fg];
+				t_included_g_area[t_ind] = g_area;
+				componentid_asa_t[t_ind] = -1.0f;
+			}
+			else
+			{
+				component_area_t[t_ind] += smesh_t->get_face_area[fg];
+				t_included_g_ind[t_ind].push_back(g_ind);
+				t_included_g_area[t_ind][g_ind] += smesh_t->get_face_area[fg];
+			}
+		}
+		sort(t_ind_vec.begin(), t_ind_vec.end());
+		t_ind_vec.erase(unique(t_ind_vec.begin(), t_ind_vec.end()), t_ind_vec.end());
+		sort(g_ind_vec.begin(), g_ind_vec.end());
+		g_ind_vec.erase(unique(g_ind_vec.begin(), g_ind_vec.end()), g_ind_vec.end());
+
+		//compute on ground truth segments
+		for (int g_ci = 0; g_ci < g_ind_vec.size(); ++g_ci)
+		{
+			int g_ind = g_ind_vec[g_ci];
+			float area_intersected_max = -FLT_MAX;
+			for (int t_ci = 0; t_ci < g_included_t_ind[g_ind].size(); ++t_ci)
+			{
+				int t_id = g_included_t_ind[g_ind][t_ci];
+				if (t_included_g_ind[t_id].size() > 1)
+				{
+					float common_area = t_included_g_area[t_id][g_ind];
+					componentid_ue_g[g_ind] += component_area_t[t_id] - common_area;
+				}
+			}
+			label_ue[component_g_label[g_ind]] += componentid_ue_g[g_ind];
+		}
+
+		//compute on test segments
+		for (int t_ci = 0; t_ci < t_ind_vec.size(); ++t_ci)
+		{
+			int t_ind = t_ind_vec[t_ci];
+			int label_dominant = -1;
+			float area_intersected_max = -FLT_MAX;
+			for (int g_ci = 0; g_ci < t_included_g_ind[t_ind].size(); ++g_ci)
+			{
+				int g_id = t_included_g_ind[t_ind][g_ci];
+				if (area_intersected_max < t_included_g_area[t_ind][g_id])
+				{
+					area_intersected_max = t_included_g_area[t_ind][g_id];
+					label_dominant = component_g_label[g_id];
+				}
+			}
+
+			componentid_asa_t[t_ind] = area_intersected_max;
+			label_asa[label_dominant] += componentid_asa_t[t_ind];
+			//label_ue[label_dominant] += componentid_ue_t[t_ind];
+		}
+	}
+
+	//boundary evalution
+	void boundary_evaluation
+	(
+		SFMesh *smesh_g,//ground truth
+		SFMesh *smesh_t, //test data
+		float &boundary_num_t,
+		float &boundary_num_g,
+		float &intersect_edges,
+		int &n_ring
+	)
+	{
+		std::map<int, std::vector<int>> edge_g_neg;
+		std::vector<int> edge_vec_g;
+		for (auto edx : smesh_g->edges())
+		{
+			SFMesh::Halfedge h0 = smesh_g->halfedge(edx, 0);
+			SFMesh::Halfedge h1 = smesh_g->halfedge(edx, 1);
+
+			SFMesh::Face f0(0), f1(0);
+			int f0_id_truth = -1, f1_id_truth = -1, f0_id_test = -2, f1_id_test = -2;
+			if (!smesh_g->is_boundary(h0))
+			{
+				f0 = smesh_g->face(h0);
+				f0_id_truth = smesh_g->get_face_segment_id[f0];
+				f0_id_test = smesh_t->get_face_segment_id[f0];
+			}
+			if (!smesh_g->is_boundary(h1))
+			{
+				f1 = smesh_g->face(h1);
+				f1_id_truth = smesh_g->get_face_segment_id[f1];
+				f1_id_test = smesh_t->get_face_segment_id[f1];
+			}
+
+			SFMesh::Vertex vs = smesh_t->vertex(edx, 0);
+			SFMesh::Vertex vt = smesh_t->vertex(edx, 1);
+			float tmp_length = (smesh_t->get_points_coord[vt] - smesh_t->get_points_coord[vs]).length();
+			if (f0_id_test != f1_id_test)
+			{
+				smesh_t->get_edge_boundary_predict[edx] = 1;
+				SFMesh::Vertex vs = smesh_t->vertex(edx, 0);
+				SFMesh::Vertex vt = smesh_t->vertex(edx, 1);
+				boundary_num_t += tmp_length;
+			}
+
+			if (f0_id_truth != f1_id_truth)
+			{
+				smesh_g->get_edge_boundary_truth[edx] = 1;
+				edge_vec_g.push_back(edx.idx());
+				boundary_num_g += tmp_length;
+			}
+			else
+				continue;
+
+			//find n rings neighbor of ground truth edges
+			std::map<int, bool> checked_neighbor;
+			edge_g_neg[edx.idx()] = std::vector<int>();
+			if (n_ring != 0)
+				find_n_rings_neighbor_of_vertex(smesh_g, edx, n_ring, edge_g_neg[edx.idx()], checked_neighbor);
+		}
+
+		//evaluation of boundary
+		for (int ei_g = 0; ei_g < edge_vec_g.size(); ++ei_g)
+		{
+			//check exactly overlap intersection
+			int g_eid = edge_vec_g[ei_g];
+			SFMesh::Edge edx_g(g_eid);
+			SFMesh::Vertex vs_g = smesh_t->vertex(edx_g, 0);
+			SFMesh::Vertex vt_g = smesh_t->vertex(edx_g, 1);
+			float tmp_length = (smesh_t->get_points_coord[vt_g] - smesh_t->get_points_coord[vs_g]).length();
+			if (smesh_t->get_edge_boundary_predict[edx_g] == 1)
+			{
+				intersect_edges += tmp_length;
+				continue;
+			}
+
+			//check intersection over n-ring neighbors
+			for (int ei_t = 0; ei_t < edge_g_neg[g_eid].size(); ++ei_t)
+			{
+				int t_eid = edge_g_neg[g_eid][ei_t];
+				SFMesh::Edge edx_t(t_eid);
+				SFMesh::Vertex vs_n = smesh_t->vertex(edx_t, 0);
+				SFMesh::Vertex vt_n = smesh_t->vertex(edx_t, 1);
+				if (smesh_t->get_edge_boundary_predict[edx_t] == 1 && t_eid != g_eid)
+				{
+					intersect_edges += tmp_length;
+					break;
+				}
+			}
+		}
+
+	}
+
+	//
+	void oversegmentation_evaluation
+	(
+		SFMesh *smesh_g,//ground truth
+		SFMesh *smesh_t, //test data
+		const int mi,
+		all_eval *all_seg_evaluation
+	)
+	{
+		//-------------Segment purity evaluation-------------//
+		//ground truth dominant segment id, intersected area, truth segment total area  
+		std::map<int, float> label_asa, label_ue, label_sumarea;
+		std::vector<int> t_ind_vec, g_ind_vec;//valid test and ground truth data, not include unknown area
+		segment_purity_evaluation
+		(
+			smesh_g,
+			smesh_t,
+			label_asa,
+			label_ue,
+			label_sumarea,
+			t_ind_vec,
+			g_ind_vec
+		);
+		std::vector<float> asa_out(labels_name_pnp.size() + 1, 0.0f);
+		compute_asa(all_seg_evaluation, asa_out, label_asa, label_ue, label_sumarea);
+
+		std::vector<float> gc_tc_out(3, 0.0f);
+		int test_count = t_ind_vec.size(), ground_count = g_ind_vec.size();
+		compute_gc_tc(test_count, ground_count, gc_tc_out, all_seg_evaluation);
+
+		//-------------Boundary evaluation-------------//
+		float boundary_num_t = 0.0f, boundary_num_g = 0.0f, intersect_edges = 0.0f;
+		int n_rings = 2;
+		boundary_evaluation
+		(
+			smesh_g,//ground truth
+			smesh_t, //test data
+			boundary_num_t,
+			boundary_num_g,
+			intersect_edges,
+			n_rings
+		);
+
+		std::vector<float> br_out(5, 0.0f);
+		compute_br(boundary_num_g, boundary_num_t, intersect_edges, br_out, all_seg_evaluation);
+
+		std::ostringstream evaluation_out;
+		evaluation_out
+			<< root_path
+			<< folder_names_level_0[11]
+			<< folder_names_level_0[0]
+			<< folder_names_level_1[train_test_predict_val]
+			<< base_names[mi] + "_overseg"
+			<< prefixs[6]
+			<< ".txt";
+
+		save_txt_evaluation(asa_out, gc_tc_out, br_out, evaluation_out, mi);
+
+		int last_tile = base_names.size() - 1;
+		if (mi == last_tile)
+		{
+			compute_asa(all_seg_evaluation);
+			test_count = all_seg_evaluation->segment_count_gctc[0];
+			ground_count = all_seg_evaluation->segment_count_gctc[1];
+			compute_gc_tc(test_count, ground_count, gc_tc_out);
+			//compute_br(boundary_num_g, boundary_num_t, intersect_edges, br_out);
+
+			std::cout << "Ground truth edges = " << boundary_num_g << std::endl <<
+				";Predicted edges = " << boundary_num_t << std::endl <<
+				";Intersected edges = " << intersect_edges << std::endl <<
+				"BR = " << all_seg_evaluation->boundary_evaluation[3] <<
+				";\tBP = " << all_seg_evaluation->boundary_evaluation[4] << std::endl;
+
+			std::ostringstream evaluation_all;
+			evaluation_all
+				<< root_path
+				<< folder_names_level_0[11]
+				<< folder_names_level_0[0]
+				<< partition_folder_path
+				<< "all_seg"
+				<< prefixs[6]
+				<< ".txt";
+
+			save_txt_evaluation
+			(
+				all_seg_evaluation->asa_out,
+				all_seg_evaluation->segment_count_gctc,
+				all_seg_evaluation->boundary_evaluation,
+				evaluation_all, mi
+			);
+		}
+	}
 }
