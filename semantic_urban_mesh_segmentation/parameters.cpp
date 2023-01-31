@@ -277,7 +277,7 @@ namespace semantic_mesh_segmentation
 	bool exterior_mat_relations = true;//true
 
 	bool delaunay_relations_on_sampled_points = true;
-	double remove_close_vertices_for_delaunay = 10E-3 * 2.0f;
+	double remove_close_vertices_for_delaunay_dis = 10E-3 * 2.0f;
 
 	//****************** Default parameters ******************
 	//initialized values
@@ -494,8 +494,9 @@ namespace semantic_mesh_segmentation
 	{
 		"spg_intput/",  //0
 		"segments_pnp/",//1
-		"graphs/",      //2
-		"pcl/"          //3
+		"graph_edges/", //2
+		"graph_nodes/", //3
+		"pcl/"          //4
 	};
 
 	std::vector<std::string> prefixs
@@ -515,7 +516,8 @@ namespace semantic_mesh_segmentation
 		"_class_statistics",//12
 		"feature_bank_importance",//13
 		"_aug",//14
-		"_groundtruth_L0" //15
+		"_groundtruth_L0", //15
+		"_graph",//16
 	};
 
 	std::vector<std::string> data_types

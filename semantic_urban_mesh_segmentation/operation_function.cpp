@@ -1261,7 +1261,7 @@ namespace semantic_mesh_segmentation
 			break;
 		}
 
-		//--- Get labels for planar and non-planar data from semantic labels ---
+		//--- Planar and non-planar based region growing ---
 		case operating_mode::PSSNet_oversegmentation_backbone:
 		{
 			current_mode = operating_mode::PSSNet_oversegmentation_backbone;
@@ -1272,26 +1272,143 @@ namespace semantic_mesh_segmentation
 			{
 				std::cout << "Batch mode is not currently supported in PSSNet over-segmentation." << std::endl;
 				break;
-
-				//Batch separation
-				//std::vector<std::vector<std::pair<int, std::string>>> all_batches;
-				//if (use_existing_splited_batch)
-				//	read_txt_batches(all_batches);
-				//else
-				//	square_batch_separation(all_batches);
-
-				////Batch processing
-				//for (std::size_t bi = 0; bi < all_batches.size(); ++bi)
-				//{
-				//	std::cout << " ********* Processing batch: " << bi << " *********" << std::endl;
-				//	PNP_MRF_batch_tiles(all_batches[bi], bi);
-				//}
 			}
 			else
 			{
 				for (std::size_t pi = 0; pi < base_names.size(); ++pi)
 				{
 					PNP_MRF_single_tiles(pi);
+				}
+			}
+
+			break;
+		}
+
+		case operating_mode::PSSNet_graph_construction:
+		{
+			current_mode = operating_mode::PSSNet_graph_construction;
+
+			if (process_data_selection["train"])
+			{
+				std::cout << "--------------------- Training data graph construction ---------------------" << std::endl;
+				train_test_predict_val = 0;
+				get_training_data();
+				data_path = training_data_path;
+				base_names = training_base_names;
+				ply_files = training_ply_files;
+				file_folders = training_file_folders;
+				use_batch_processing = use_batch_processing_on_training;
+				file_ind_map = training_file_ind_map;
+				sampling_strategy = sampling_strategy_training;
+				run(operating_mode::PSSNet_graph_construction_backbone);
+				process_data_selection["train"] = false;
+			}
+
+			if (process_data_selection["test"])
+			{
+				std::cout << "--------------------- Testing data graph construction ---------------------" << std::endl;
+				train_test_predict_val = 1;
+				get_testing_data();
+				data_path = testing_data_path;
+				base_names = testing_base_names;
+				ply_files = testing_ply_files;
+				file_folders = testing_file_folders;
+				use_batch_processing = use_batch_processing_on_testing;
+				file_ind_map = testing_file_ind_map;
+				sampling_strategy = sampling_strategy_testing;
+				run(operating_mode::PSSNet_graph_construction_backbone);
+				process_data_selection["test"] = false;
+			}
+
+			if (process_data_selection["predict"])
+			{
+				std::cout << "--------------------- Predicting data graph construction ---------------------" << std::endl;
+				train_test_predict_val = 2;
+				get_predicting_data();
+				data_path = predicting_data_path;
+				base_names = predicting_base_names;
+				ply_files = predicting_ply_files;
+				file_folders = predicting_file_folders;
+				use_batch_processing = use_batch_processing_on_predicting;
+				file_ind_map = predicting_file_ind_map;
+				sampling_strategy = sampling_strategy_predicting;
+				run(operating_mode::PSSNet_graph_construction_backbone);
+				process_data_selection["predict"] = false;
+			}
+
+			if (process_data_selection["validate"])
+			{
+				std::cout << "--------------------- Validation data graph construction ---------------------" << std::endl;
+				train_test_predict_val = 3;
+				get_validation_data();
+				data_path = validation_data_path;
+				base_names = validation_base_names;
+				ply_files = validation_ply_files;
+				file_folders = validation_file_folders;
+				use_batch_processing = use_batch_processing_on_validation;
+				file_ind_map = validation_file_ind_map;
+				sampling_strategy = sampling_strategy_validation;
+				run(operating_mode::PSSNet_graph_construction_backbone);
+				process_data_selection["validate"] = false;
+			}
+			break;
+		}
+
+		case operating_mode::PSSNet_graph_construction_backbone:
+		{
+			current_mode = operating_mode::PSSNet_graph_construction_backbone;
+
+			std::cout << "Operating mode: Graph Construction. " << std::endl;
+
+			if (use_batch_processing)
+			{
+				std::cout << "Batch mode is not currently supported in PSSNet over-segmentation." << std::endl;
+				break;
+			}
+			else
+			{
+				for (int mi = 0; mi < base_names.size(); ++mi)
+				{
+					SFMesh* smesh_seg = new SFMesh;
+					PTCloud *cloud_in = new PTCloud, *cloud_ele = new PTCloud;
+					std::vector<superfacets> spf_final;
+					if (with_node_graphs)
+						read_graph_nodes_ply(spf_final, mi);
+					else
+					{
+						read_seg_mesh_with_pnp_info(smesh_seg, mi);
+
+						read_pointcloud_data(smesh_seg, cloud_in, 0, mi);
+						read_pointcloud_data(smesh_seg, cloud_ele, 1, mi);
+
+						//get superfacets
+						get_superfacets(smesh_seg, cloud_in, cloud_ele, spf_final);
+
+						//saving graph nodes
+						if (!with_node_graphs)
+							save_graph_nodes_ply(spf_final, cloud_in, mi);
+					}
+
+					std::cout << "cloud_in.size() = " << cloud_in->vertices_size() << std::endl;
+
+					//construct spf graph
+					std::vector<std::pair<int, int>> spf_edges, spf_sampts_edges;
+					std::map<std::pair<int, int>, bool> check_segneg_visited, check_combined_segpt_visited;
+					segment_geometric_relationships(smesh_seg, cloud_in, spf_final, spf_edges, spf_sampts_edges, check_segneg_visited, check_combined_segpt_visited);
+
+					if (use_edges_between_boder_points)
+					{
+						construct_segment_sampled_point_edges(spf_final, spf_edges, spf_sampts_edges, check_combined_segpt_visited);
+						save_graph_edges_ply(cloud_in, spf_sampts_edges, mi);
+					}
+					else
+					{
+						save_graph_edges_ply(cloud_in, spf_edges, mi, spf_final);
+					}
+
+					delete smesh_seg;
+					delete cloud_in;
+					delete cloud_ele;
 				}
 			}
 

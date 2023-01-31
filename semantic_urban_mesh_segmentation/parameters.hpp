@@ -63,7 +63,8 @@ namespace semantic_mesh_segmentation
 		Get_labels_for_planar_non_planar_from_semantic,
 		PSSNet_oversegmentation,
 		PSSNet_oversegmentation_backbone,
-		PSSNet_graph_construction
+		PSSNet_graph_construction,
+		PSSNet_graph_construction_backbone
 	};
 
 	//--- global variables for point cloud sampling ---
@@ -266,7 +267,7 @@ namespace semantic_mesh_segmentation
 	extern bool exterior_mat_relations;
 
 	extern bool delaunay_relations_on_sampled_points;
-	extern double remove_close_vertices_for_delaunay;
+	extern double remove_close_vertices_for_delaunay_dis;
 }
 
 #endif // 

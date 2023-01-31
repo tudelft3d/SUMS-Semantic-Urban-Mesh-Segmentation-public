@@ -149,6 +149,9 @@ namespace semantic_mesh_segmentation
 
 			add_face_1ring_neighbor = add_face_property<std::vector<std::tuple<int, int, bool>>>("f:face_1ring_neighbor");
 			get_face_1ring_neighbor = get_face_property<std::vector<std::tuple<int, int, bool>>>("f:face_1ring_neighbor");
+
+			add_face_segid_local_elevation_vec = add_face_property<std::vector<std::pair<int, float>>>("f:face_segid_local_elevation_vec", std::vector<std::pair<int, float>>(local_ground_segs, std::pair<int, float>(-1, FLT_MAX)));
+			get_face_segid_local_elevation_vec = get_face_property<std::vector<std::pair<int, float>>>("f:face_segid_local_elevation_vec");
 		}
 
 
@@ -229,6 +232,9 @@ namespace semantic_mesh_segmentation
 
 		SurfaceMesh::FaceProperty<std::vector<std::tuple<int, int, bool>>> //neighbor face id, index in the neighbor face' neighbor, check visited
 			add_face_1ring_neighbor, get_face_1ring_neighbor;
+
+		SurfaceMesh::FaceProperty<std::vector<std::pair<int, float>>>
+			add_face_segid_local_elevation_vec, get_face_segid_local_elevation_vec;
 
 		std::vector<std::string> texture_names;
 
@@ -318,6 +324,7 @@ namespace semantic_mesh_segmentation
 		this->remove_face_property(this->get_face_planar_segment_plane_normal);
 		this->remove_face_property(this->get_face_1ring_neighbor);
 		this->remove_face_property(this->get_face_spid_update);
+		this->remove_face_property(this->get_face_segid_local_elevation_vec);
 
 		this->remove_face_property(get_face_rgb_x);
 		this->remove_face_property(get_face_rgb_y);

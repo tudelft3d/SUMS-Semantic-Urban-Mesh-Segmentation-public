@@ -40,6 +40,8 @@
 #include <CGAL/Shape_detection/Region_growing/Region_growing.h>
 #include <CGAL/Shape_detection/Region_growing/Region_growing_on_polygon_mesh.h>
 #include <CGAL/Shape_detection/Region_growing/Region_growing_on_point_set.h>
+#include <CGAL/Surface_mesh_approximation/approximate_triangle_mesh.h>
+#include <CGAL/Delaunay_triangulation_3.h>
 
 #include <boost/property_map/property_map.hpp>
 #include <boost/filesystem.hpp>
@@ -95,6 +97,10 @@ namespace semantic_mesh_segmentation
 	typedef CGAL::Shape_detection::Point_set::K_neighbor_query<Kernel, Point_range, Point_3_map>                                       Neighbor_query_pcl;
 	typedef CGAL::Shape_detection::Point_set::Least_squares_plane_fit_region<Kernel, Point_range, Point_3_map, Normal_3_map>           region_type_pcl;
 	typedef CGAL::Shape_detection::Region_growing<Point_range, Neighbor_query_pcl, region_type_pcl>                                    Region_growing_pcl;
+
+	//For CGAL delaunay triangulation
+	typedef CGAL::Delaunay_triangulation_3<Kernel> DT3;
+	typedef DT3::Finite_vertices_iterator Finite_vertices_iterator;
 
 	//define CGAL feature types
 	class segment_features : public CGAL::Classification::Feature_base

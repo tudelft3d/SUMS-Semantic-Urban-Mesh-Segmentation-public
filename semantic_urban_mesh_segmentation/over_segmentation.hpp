@@ -99,6 +99,26 @@ namespace semantic_mesh_segmentation
 		}
 		return str_out;
 	}
+
+	//checking segment pair
+	inline void segment_pair_checking
+	(
+		std::pair<int, int> &temp_pair1,
+		std::pair<int, int> &temp_pair2,
+		std::vector<std::pair<int, int>> &spf_edges,
+		std::map<std::pair<int, int>, bool> &check_segneg_visited
+	)
+	{
+		auto it_1 = check_segneg_visited.find(temp_pair1);
+		auto it_2 = check_segneg_visited.find(temp_pair2);
+		if (it_1 == check_segneg_visited.end() && it_2 == check_segneg_visited.end())
+		{
+			check_segneg_visited[temp_pair1] = true;
+			check_segneg_visited[temp_pair2] = true;
+			spf_edges.emplace_back(temp_pair1);
+		}
+	}
+
 	//-------------------------------------------------------------------------------------------------------------------------------
 	//functions declare
 	void finding_segments_neighbor
@@ -294,6 +314,55 @@ namespace semantic_mesh_segmentation
 		SFMesh *,
 		std::vector<superfacets>& ,
 		std::vector<vertex_planarity> &
+	);
+
+	void get_superfacets
+	(
+		SFMesh *,
+		PTCloud *,
+		PTCloud *,
+		std::vector<superfacets>& 
+	);
+
+	void construct_exterior_mat_relations
+	(
+		SFMesh *,
+		PTCloud *,
+		std::vector<superfacets>& 
+	);
+
+	void local_elevation_for_pssnet_pointcloud
+	(
+		SFMesh *,
+		PTCloud*,
+		std::vector<superfacets>& 
+	);
+
+	void segment_geometric_relationships
+	(
+		SFMesh *,
+		PTCloud *,
+		std::vector<superfacets> &,
+		std::vector<std::pair<int, int>> &,
+		std::vector<std::pair<int, int>> &,
+		std::map<std::pair<int, int>, bool> &,
+		std::map<std::pair<int, int>, bool> &
+	);
+
+	void remove_close_vertices_for_delaunay
+	(
+		std::vector<superfacets> &,
+		std::vector<Point_3> &,
+		std::map<Point_3, int> &,
+		std::map<Point_3, int> &
+	);
+
+	void construct_segment_sampled_point_edges
+	(
+		std::vector<superfacets> &,
+		std::vector<std::pair<int, int>> &,
+		std::vector<std::pair<int, int>> &,
+		std::map<std::pair<int, int>, bool> &
 	);
 }
 

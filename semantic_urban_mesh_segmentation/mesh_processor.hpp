@@ -35,6 +35,7 @@
 #include <CGAL/linear_least_squares_fitting_3.h>
 #include <Python.h>
 #include "mesh_io.hpp"
+#include "over_segmentation.hpp"
 #include "feature_computation.hpp"
 #include "property_parsing.hpp"
 #include "parameters.hpp"

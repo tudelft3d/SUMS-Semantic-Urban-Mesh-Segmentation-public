@@ -257,7 +257,9 @@ namespace semantic_mesh_segmentation
 				SFMesh::Face fdx(fi);
 
 				pcl_out->get_points_normals[ptx] = smesh_in->get_face_normals[fdx];
-				pcl_out->get_points_ground_truth[ptx] = smesh_in->get_face_truth_label[fdx];
+				if (smesh_in->get_face_truth_label)
+					pcl_out->get_points_ground_truth[ptx] = smesh_in->get_face_truth_label[fdx];
+
 				pcl_out->get_points_tile_index[ptx] = smesh_in->get_face_tile_index[fdx];
 
 				if (smesh_in->is_boundary(fdx))
@@ -690,6 +692,135 @@ namespace semantic_mesh_segmentation
 		std::cout << "  The total number of input edges:  " << smesh_out->edges_size() << '\n' << std::endl;
 		std::cout << "  The total number of input vertices:  " << smesh_out->vertices_size() << '\n' << std::endl;
 		//std::cout << "  The total number of input texture image:  " << texture_maps_temp.size() << '\n' << std::endl;
+	}
+
+
+	//For nodes attributes that are constructed
+	void read_graph_nodes_ply
+	(
+		std::vector<superfacets> &spf_current,
+		const int mi
+	)
+	{
+		std::cout << " Reading graph nodes ";
+		std::ostringstream temp;
+		temp
+			<< root_path
+			<< folder_names_level_0[11]
+			<< folder_names_pssnet[3]
+			<< folder_names_level_1[train_test_predict_val]
+			<< base_names[mi]
+			<< prefixs[16] << "_nodes"
+			<< ".ply";
+
+		std::string str_temp = temp.str().data();
+		char * Path_temp = (char *)str_temp.data();
+		easy3d::PointCloud* spf_pcl = easy3d::PointCloudIO::load(Path_temp);
+
+		int spf_ind = 0;
+		for (auto ptx : spf_pcl->vertices())
+		{
+			superfacets spf_i;
+			spf_i.id = spf_pcl->get_vertex_property<int>("v:segment_id")[ptx];
+			spf_i.avg_center = spf_pcl->get_vertex_property<vec3>("v:point")[ptx];
+			spf_i.plane_parameter =
+				vec4(spf_pcl->get_vertex_property<std::vector<float>>("v:segment_plane_parameters")[ptx][0],
+					spf_pcl->get_vertex_property<std::vector<float>>("v:segment_plane_parameters")[ptx][1],
+					spf_pcl->get_vertex_property<std::vector<float>>("v:segment_plane_parameters")[ptx][2],
+					spf_pcl->get_vertex_property<std::vector<float>>("v:segment_plane_parameters")[ptx][3]);
+			spf_i.neighbor_ids = spf_pcl->get_vertex_property<std::vector<int>>("v:segment_neighbor_ids")[ptx];
+			spf_i.label = spf_pcl->get_vertex_property<int>("v:segment_non_planar_label")[ptx];
+			if (spf_i.label == 1)
+				spf_i.is_non_planar = true;
+			spf_i.local_ground_id = spf_pcl->get_vertex_property<int>("v:segment_local_ground_id")[ptx];
+			spf_i.exterior_mat_ids = spf_pcl->get_vertex_property<std::vector<int>>("v:segment_exterior_ids")[ptx];
+
+			spf_i.sampled_points_ids = spf_pcl->get_vertex_property<std::vector<int>>("v:segment_sampled_pts_ids")[ptx];
+			for (int pi = 0; pi < spf_i.sampled_points_ids.size(); ++pi)
+			{
+				vec3 temp_p;
+				temp_p.x = spf_pcl->get_vertex_property<std::vector<float>>("v:segment_sampled_pts_x")[ptx][pi];
+				temp_p.y = spf_pcl->get_vertex_property<std::vector<float>>("v:segment_sampled_pts_y")[ptx][pi];
+				temp_p.z = spf_pcl->get_vertex_property<std::vector<float>>("v:segment_sampled_pts_z")[ptx][pi];
+				spf_i.sampled_pts_coords.push_back(temp_p);
+			}
+
+			spf_i.index = spf_ind;
+			superfacet_id_index_map[spf_i.id] = spf_ind;
+			spf_current.push_back(spf_i);
+			++spf_ind;
+		}
+		std::cout << "= " << spf_current.size() << std::endl;
+		delete spf_pcl;
+	}
+
+	//read two mesh: 1. segment mesh; 2. planar non-planar; 
+	void read_seg_mesh_with_pnp_info
+	(
+		SFMesh* smesh_seg,
+		const int mi
+	)
+	{
+		//read over-segmentation result
+		std::ostringstream mesh_str_ostemp;
+		std::cout << "Start to get mesh  " << base_names[mi] << std::endl;
+		//read .ply mesh
+		mesh_str_ostemp
+			<< root_path
+			<< folder_names_level_0[11]
+			<< folder_names_pssnet[1]
+			<< folder_names_level_1[train_test_predict_val]
+			<< base_names[mi]
+			<< prefixs[4]
+			<< prefixs[7]
+			<< ".ply";
+
+		std::string mesh_str_temp = mesh_str_ostemp.str().data();
+		char * meshPath_temp = (char *)mesh_str_temp.data();
+		rply_input(smesh_seg, meshPath_temp);
+
+		smesh_seg->get_points_coord = smesh_seg->get_vertex_property<vec3>("v:point");
+		smesh_seg->get_face_segment_id = smesh_seg->get_face_property<int>("f:face_segment_id");
+		if (!smesh_seg->get_face_property<vec3>("f:normal"))
+			smesh_seg->add_face_property<vec3>("f:normal");
+		smesh_seg->get_face_normals = smesh_seg->get_face_property<vec3>("f:normal");
+		for (auto fi : smesh_seg->faces())
+		{
+			smesh_seg->get_face_normals[fi] = smesh_seg->compute_face_normal(fi);
+			smesh_seg->get_face_area[fi] = smesh_seg->FaceArea(fi);
+		}
+
+		if (!use_batch_processing)
+		{
+			SFMesh *tmp_mesh = new SFMesh;
+			read_labeled_mesh_data(tmp_mesh, mi);
+			if (train_test_predict_val == 0)
+			{
+				if (!smesh_seg->get_face_property<int>("f:label"))
+					smesh_seg->add_face_property<int>("f:label", -1);
+				smesh_seg->get_face_truth_label = smesh_seg->get_face_property<int>("f:label");
+
+#pragma omp parallel for schedule(dynamic)
+				for (int fi = 0; fi < tmp_mesh->faces_size(); ++fi)
+				{
+					SFMesh::Face fdx(fi);
+					smesh_seg->get_face_truth_label[fdx] = tmp_mesh->get_face_truth_label[fdx];
+				}
+			}
+			else if (train_test_predict_val != 0)
+			{
+				if (!smesh_seg->get_face_property<int>("f:face_predict"))
+					smesh_seg->add_face_property<int>("f:face_predict", -1);
+				smesh_seg->get_face_predict_label = smesh_seg->get_face_property<int>("f:face_predict");
+#pragma omp parallel for schedule(dynamic)
+				for (int fi = 0; fi < tmp_mesh->faces_size(); ++fi)
+				{
+					SFMesh::Face fdx(fi);
+					smesh_seg->get_face_predict_label[fdx] = tmp_mesh->get_face_predict_label[fdx];
+				}
+			}
+			delete tmp_mesh;
+		}
 	}
 
 	//read batch names in *.txt
@@ -1140,10 +1271,10 @@ namespace semantic_mesh_segmentation
 								delaunay_relations_on_sampled_points = false;
 						}
 					}
-					else if (param_name == "remove_close_vertices_for_delaunay")
+					else if (param_name == "remove_close_vertices_for_delaunay_dis")
 					{
 						if (param_value != "default")
-							remove_close_vertices_for_delaunay = std::stof(param_value);
+							remove_close_vertices_for_delaunay_dis = std::stof(param_value);
 					}
 					else if (param_name == "with_texture")
 					{
@@ -2727,6 +2858,151 @@ namespace semantic_mesh_segmentation
 		fout << std::fixed << std::showpoint << std::setprecision(6) << evaluation.mean_f1_score() << "\n";
 		fout << "Mean_IoU" << "\t";
 		fout << std::fixed << std::showpoint << std::setprecision(6) << evaluation.mean_intersection_over_union() << "\n";
+		fout.close();
+	}
+
+
+	//For nodes attributes that are constructed
+	void save_graph_nodes_ply
+	(
+		std::vector<superfacets> &spf_current,
+		PTCloud *cloud_sparse,
+		const int mi
+	)
+	{
+		std::cout << " Saving graph: nodes = " << spf_current.size() << std::endl;
+		std::ostringstream temp;
+		temp
+			<< root_path
+			<< folder_names_level_0[11]
+			<< folder_names_pssnet[3]
+			<< folder_names_level_1[train_test_predict_val]
+			<< base_names[mi]
+			<< prefixs[16] << "_nodes"
+			<< ".ply";
+
+		std::string str_temp = temp.str().data();
+		char * Path_temp = (char *)str_temp.data();
+		PTCloud* spf_pcl = new PTCloud;
+
+		spf_pcl->add_vertex_property<int>("v:segment_id");
+		auto get_segment_id = spf_pcl->get_vertex_property<int>("v:segment_id");
+		spf_pcl->add_vertex_property<std::vector<float>>("v:segment_plane_parameters");
+		auto get_segment_plane_params = spf_pcl->get_vertex_property<std::vector<float>>("v:segment_plane_parameters");
+		spf_pcl->add_vertex_property<std::vector<int>>("v:segment_neighbor_ids");
+		auto get_segment_neighbor_ids = spf_pcl->get_vertex_property<std::vector<int>>("v:segment_neighbor_ids");
+		spf_pcl->add_vertex_property<int>("v:segment_non_planar_label");
+		auto get_segment_non_planar = spf_pcl->get_vertex_property<int>("v:segment_non_planar_label");
+		spf_pcl->add_vertex_property<int>("v:segment_local_ground_id");
+		auto get_segment_local_ground_id = spf_pcl->get_vertex_property<int>("v:segment_local_ground_id");
+		spf_pcl->add_vertex_property<std::vector<int>>("v:segment_exterior_ids");//spf-id of exterior mat toching
+		auto get_segment_exterior_ids = spf_pcl->get_vertex_property<std::vector<int>>("v:segment_exterior_ids");
+		//boundary point 
+		spf_pcl->add_vertex_property<std::vector<int>>("v:segment_sampled_pts_ids");
+		auto get_segment_sampled_pts_ids = spf_pcl->get_vertex_property<std::vector<int>>("v:segment_sampled_pts_ids");
+		spf_pcl->add_vertex_property<std::vector<float>>("v:segment_sampled_pts_x");
+		auto get_segment_sampled_pts_x = spf_pcl->get_vertex_property<std::vector<float>>("v:segment_sampled_pts_x");
+		spf_pcl->add_vertex_property<std::vector<float>>("v:segment_sampled_pts_y");
+		auto get_segment_sampled_pts_y = spf_pcl->get_vertex_property<std::vector<float>>("v:segment_sampled_pts_y");
+		spf_pcl->add_vertex_property<std::vector<float>>("v:segment_sampled_pts_z");
+		auto get_segment_sampled_pts_z = spf_pcl->get_vertex_property<std::vector<float>>("v:segment_sampled_pts_z");
+
+		for (auto &spf_i : spf_current)
+		{
+			spf_pcl->add_vertex(spf_i.avg_center);
+			get_segment_id[*(--spf_pcl->vertices_end())] = spf_i.id;
+			get_segment_plane_params[*(--spf_pcl->vertices_end())] = { spf_i.plane_parameter.x, spf_i.plane_parameter.y, spf_i.plane_parameter.z, spf_i.plane_parameter.w };
+			get_segment_neighbor_ids[*(--spf_pcl->vertices_end())] = spf_i.neighbor_ids;
+			get_segment_non_planar[*(--spf_pcl->vertices_end())] = spf_i.label;
+			get_segment_local_ground_id[*(--spf_pcl->vertices_end())] = spf_i.local_ground_id;
+			for (int mat_i = 0; mat_i < spf_i.exterior_mat_ids.size(); ++mat_i)
+			{
+				if (spf_i.exterior_mat_ids[mat_i] != -1)
+				{
+					get_segment_exterior_ids[*(--spf_pcl->vertices_end())].push_back(spf_i.exterior_mat_ids[mat_i]);
+				}
+			}
+			for (int spts_i = 0; spts_i < spf_i.sampled_points_ids.size(); ++spts_i)
+			{
+				int pi = spf_i.sampled_points_ids[spts_i];
+				if (pi != -1)
+				{
+					PTCloud::Vertex ptx(pi);
+					get_segment_sampled_pts_ids[*(--spf_pcl->vertices_end())].push_back(pi);
+					get_segment_sampled_pts_x[*(--spf_pcl->vertices_end())].push_back(cloud_sparse->get_points_coord[ptx].x);
+					get_segment_sampled_pts_y[*(--spf_pcl->vertices_end())].push_back(cloud_sparse->get_points_coord[ptx].y);
+					get_segment_sampled_pts_z[*(--spf_pcl->vertices_end())].push_back(cloud_sparse->get_points_coord[ptx].z);
+					spf_i.sampled_pts_coords.push_back(cloud_sparse->get_points_coord[ptx]);
+				}
+			}
+		}
+		spf_pcl->remove_vertex_property(spf_pcl->get_points_ground_truth);
+		spf_pcl->remove_vertex_property(spf_pcl->get_points_face_belong_id);
+		rply_output(spf_pcl, Path_temp);
+		delete spf_pcl;
+	}
+
+	//For edges that are constructed
+	void save_graph_edges_ply
+	(
+		PTCloud* pcl_temp,
+		std::vector<std::pair<int, int>> &spf_edges,
+		const int mi,
+		std::vector<superfacets> spf_current
+	)
+	{
+		if (spf_current.empty())
+			std::cout << " Saving graph: nodes = " << pcl_temp->vertices_size() << "; edges = " << spf_edges.size() << std::endl;
+		else
+			std::cout << " Saving graph: nodes = " << spf_current.size() << "; edges = " << spf_edges.size() << std::endl;//<<"; expanded edges = ";
+		std::ostringstream temp;
+		temp
+			<< root_path
+			<< folder_names_level_0[11]
+			<< folder_names_pssnet[0] << folder_names_pssnet[2]
+			<< folder_names_level_1[train_test_predict_val]
+			<< base_names[mi]
+			<< prefixs[16]
+			<< ".ply";
+
+		std::string str_temp = temp.str().data();
+		std::ofstream fout;
+		fout.open(str_temp.c_str());
+		//triangle stored as segment
+		fout << "ply" << "\n";
+		fout << "format ascii 1.0" << "\n";
+		if (spf_current.empty())
+			fout << "element vertex " << pcl_temp->vertices_size() << "\n";
+		else
+			fout << "element vertex " << spf_current.size() << "\n";
+		fout << "property float x" << "\n";
+		fout << "property float y" << "\n";
+		fout << "property float z" << "\n";
+		fout << "element edge " << spf_edges.size() << "\n";
+		fout << "property int vertex1" << "\n";
+		fout << "property int vertex2" << "\n";
+		fout << "end_header" << "\n";
+
+		if (spf_current.empty())
+		{
+			for (auto ptx : pcl_temp->vertices())
+				fout << std::fixed << std::showpoint << std::setprecision(6) << pcl_temp->get_vertex_property<vec3>("v:point")[ptx].x << "\t" << pcl_temp->get_vertex_property<vec3>("v:point")[ptx].y << "\t" << pcl_temp->get_vertex_property<vec3>("v:point")[ptx].z << "\n";
+		}
+		else
+		{
+			sort(spf_current.begin(), spf_current.end(), smallest_segment_id);
+			int total_num_edges_expand = 0;
+			for (int seg_i = 0; seg_i < spf_current.size(); ++seg_i)
+			{
+				vec3 vtemp = spf_current[seg_i].avg_center;
+				fout << std::fixed << std::showpoint << std::setprecision(6) << vtemp.x << "\t" << vtemp.y << "\t" << vtemp.z << "\n";
+			}
+		}
+
+		for (auto ei : spf_edges)
+		{
+			fout << ei.first << "\t" << ei.second << "\n";
+		}
 		fout.close();
 	}
 

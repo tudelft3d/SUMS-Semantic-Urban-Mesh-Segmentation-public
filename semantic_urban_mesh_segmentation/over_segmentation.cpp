@@ -1972,4 +1972,840 @@ namespace semantic_mesh_segmentation
 		assign_initial_segments_on_mesh(smesh_out, spf_temp, spf_result);
 		std::cout << "The number of segments are " << spf_result.size() << std::endl;
 	}
+
+	//--- PSSNet graph construction ----
+
+	//mat radius, here use exterior only
+	//include interior and exterior balls
+	void construct_exterior_mat_relations
+	(
+		SFMesh *smesh_out,
+		PTCloud *cloud_3d_pt,
+		std::vector<superfacets>& spf_final
+	)
+	{
+		std::cout << "		- Compute exterior mat for point cloud" << std::endl;
+		easy3d::KdTree *tree3d = new easy3d::KdTree;
+		Build_kdtree(cloud_3d_pt, tree3d);
+		cloud_3d_pt->get_points_coord = cloud_3d_pt->get_vertex_property<vec3>("v:point");
+		cloud_3d_pt->get_points_normals = cloud_3d_pt->get_vertex_property<vec3>("v:normal");
+
+		cloud_3d_pt->add_vertex_property<bool>("v:exterior_medialball_check", false);
+		auto get_vert_exterior_medialball_check = cloud_3d_pt->get_vertex_property<bool>("v:exterior_medialball_check");
+
+		//int prev_percent = -1;
+		//for (auto v1 : cloud_3d_pt->vertices())
+//#pragma omp parallel for schedule(runtime)
+		for (int vi = 0; vi < cloud_3d_pt->vertices_size(); ++vi)
+		{
+			PTCloud::Vertex v1(vi);
+			if (get_vert_exterior_medialball_check[v1])
+				continue;
+
+			unsigned int count_iteration = 0;
+			int qidx = -1, qidx_next;
+			vec3 ball_center, ball_center_next;
+			float radius = mat_initialized_radius, radius_next;
+			get_vert_exterior_medialball_check[v1] = true;
+
+			vec3 p_current = cloud_3d_pt->get_points_coord[v1];
+			vec3 n_current = float(-1) * cloud_3d_pt->get_points_normals[v1];// 1 interior, -1 exterior
+			ball_center = p_current - n_current * radius;//ball center initialize
+
+			float dist = -2 * radius, separation_angle = 0.0f;
+
+			while (true)
+			{
+				qidx_next = tree3d->find_closest_point(ball_center, dist);//squared distance
+				PTCloud::Vertex vtx(qidx_next);
+				const easy3d::vec3& q_nearest = cloud_3d_pt->get_points_coord[vtx];
+
+				// This should handle all (special) cases where we want to break the loop
+				// - normal case when ball no longer shrinks
+				// - the case where q==p
+				// - any duplicate point cases
+
+				if ((dist >= (radius - mat_delta_convergance)*(radius - mat_delta_convergance))
+					|| (p_current == q_nearest))
+					break;
+
+				// Compute next ball center
+				radius_next = compute_radius(p_current, n_current, q_nearest);
+				ball_center_next = p_current - n_current * radius_next;
+
+				if (!std::isnormal(ball_center_next.x) && !std::isnormal(ball_center_next.y) && !std::isnormal(ball_center_next.z))
+					break;
+
+				// De noising
+				float angle_temp = cos_angle(p_current - ball_center_next, q_nearest - ball_center_next);
+				separation_angle = std::acos(angle_temp);
+
+				if (count_iteration == 0 && separation_angle < 32 * (M_PI / 180))
+				{//mat_denoising_seperation_angle
+					break;
+				}
+
+				if (count_iteration > 0 && (separation_angle <  45 * (M_PI / 180) && radius_next >(q_nearest - p_current).norm()))
+				{
+					break;
+				}
+
+				// Stop iteration if this looks like an infinite loop:
+				if (count_iteration > mat_iteration_limit_number)
+					break;
+
+				ball_center = ball_center_next;
+				qidx = qidx_next;
+				radius = radius_next;
+				++count_iteration;
+			}
+
+			if (qidx == -1)
+			{
+				qidx = qidx_next;
+			}
+
+			PTCloud::Vertex vtx_now(qidx);
+			//parsing to mesh
+			int f_1 = cloud_3d_pt->get_points_face_belong_id[v1];
+			int f_2 = cloud_3d_pt->get_points_face_belong_id[vtx_now];
+			SFMesh::Face temp_face_1(f_1);
+			SFMesh::Face temp_face_2(f_2);
+			int seg_id_1 = smesh_out->get_face_segment_id[temp_face_1];
+			int seg_id_2 = smesh_out->get_face_segment_id[temp_face_2];
+			int seg_ind_1 = superfacet_id_index_map[seg_id_1];
+			int seg_ind_2 = superfacet_id_index_map[seg_id_2];
+			spf_final[seg_ind_1].exterior_mat_ids[seg_ind_2] = seg_id_2;
+			spf_final[seg_ind_2].exterior_mat_ids[seg_ind_1] = seg_id_1;
+
+			get_vert_exterior_medialball_check[vtx_now] = true;
+		}
+
+		cloud_3d_pt->remove_vertex_property(cloud_3d_pt->get_vertex_property<bool>("v:exterior_medialball_check"));
+
+		delete tree3d;
+	}
+
+	void local_elevation_for_pssnet_pointcloud
+	(
+		SFMesh *smesh_in,
+		PTCloud* cloud_pt_3d_in,
+		std::vector<superfacets>& spf_final
+	)
+	{
+		std::cout << "		- Compute local elevation for point cloud" << std::endl;
+		cloud_pt_3d_in->add_vertex_property<bool>("v:ignored_ptx", false);
+		auto ignored_pts_in = cloud_pt_3d_in->get_vertex_property<bool>("v:ignored_ptx");
+		PTCloud* cloud_pt_3d = new PTCloud;
+		auto cloud_point_in_coord = cloud_pt_3d_in->get_vertex_property<vec3>("v:point");
+		std::map<int, int> old_new_ptsmap;
+		for (auto &ptx : cloud_pt_3d_in->vertices())
+		{
+			//get segment index
+			std::map<int, int> seg_count_majority;//id, count
+			std::pair<int, int> seg_maxcount(-1, 0);//id, max count
+			for (int i = 0; i < cloud_pt_3d_in->get_points_face_ele_belong_ids[ptx].size(); ++i)
+			{
+				int fi = cloud_pt_3d_in->get_points_face_ele_belong_ids[ptx][i];
+				SFMesh::Face fdx(fi);
+				int seg_id = smesh_in->get_face_segment_id[fdx];
+				auto it_s = seg_count_majority.find(seg_id);
+				if (it_s == seg_count_majority.end())
+					seg_count_majority[seg_id] = 1;
+				else
+					++seg_count_majority[seg_id];
+
+				if (seg_count_majority[seg_id] > seg_maxcount.second)
+				{
+					seg_maxcount.first = seg_id;
+					seg_maxcount.second = seg_count_majority[seg_id];
+				}
+			}
+
+			int seg_ind = superfacet_id_index_map[seg_maxcount.first];
+			if (spf_final[seg_ind].label != -1)
+			{
+				cloud_pt_3d->add_vertex(cloud_point_in_coord[ptx]);
+				cloud_pt_3d->get_points_face_ele_belong_ids[*(--cloud_pt_3d->vertices_end())] = cloud_pt_3d_in->get_points_face_ele_belong_ids[ptx];
+				old_new_ptsmap[ptx.idx()] = cloud_pt_3d->vertices_size() - 1;
+			}
+			else
+			{
+				ignored_pts_in[ptx] = true;
+			}
+		}
+
+		std::cout << "cloud_pt_3d.size() = " << cloud_pt_3d->vertices_size() << std::endl;
+
+		//update copy point cloud with segment average elevation in majority facet favor. 
+		PointCloud *cloud_copy = new PointCloud, *cloud2Dproj = new PointCloud;
+		cloud_copy->assign(*cloud_pt_3d);
+		cloud2Dproj->assign(*cloud_pt_3d);
+		auto cloud_point_coord = cloud_pt_3d->get_vertex_property<vec3>("v:point");
+		cloud_pt_3d->add_vertex_property<int>("v:segment_majority_id", -1);
+		auto get_segment_majority_id = cloud_pt_3d->get_vertex_property<int>("v:segment_majority_id");
+#pragma omp parallel for schedule(dynamic)
+		for (int vi = 0; vi < cloud_pt_3d->vertices_size(); ++vi)
+		{
+			PTCloud::Vertex ptx(vi);
+			//get segment index
+			std::map<int, int> seg_count_majority;//id, count
+			std::pair<int, int> seg_maxcount(-1, 0);//id, max count
+			for (int i = 0; i < cloud_pt_3d->get_points_face_ele_belong_ids[ptx].size(); ++i)
+			{
+				int fi = cloud_pt_3d->get_points_face_ele_belong_ids[ptx][i];
+				SFMesh::Face fdx(fi);
+				int seg_id = smesh_in->get_face_segment_id[fdx];
+				auto it_s = seg_count_majority.find(seg_id);
+				if (it_s == seg_count_majority.end())
+					seg_count_majority[seg_id] = 1;
+				else
+					++seg_count_majority[seg_id];
+
+				if (seg_count_majority[seg_id] > seg_maxcount.second)
+				{
+					seg_maxcount.first = seg_id;
+					seg_maxcount.second = seg_count_majority[seg_id];
+				}
+			}
+
+			int seg_ind = superfacet_id_index_map[seg_maxcount.first];
+			get_segment_majority_id[ptx] = seg_maxcount.first;
+			cloud_copy->get_vertex_property<vec3>("v:point")[ptx].z = spf_final[seg_ind].avg_ele;
+			cloud2Dproj->get_vertex_property<vec3>("v:point")[ptx].z = 0.0f;
+		}
+
+		//for compute cloud local elevation
+		easy3d::KdTree *cloud_2D_proj_tree = new easy3d::KdTree;
+		Build_kdtree(cloud2Dproj, cloud_2D_proj_tree);
+		float sqr_long_range = long_range_radius_default * long_range_radius_default;
+		cloud_pt_3d->add_vertex_property<std::vector<ptx_z>>("v:pid_local_zmin_queue", std::vector<ptx_z>(local_ground_segs, ptx_z(-1, 999999.0f)));
+		auto get_points_pid_local_zmin = cloud_pt_3d->get_vertex_property<std::vector<ptx_z>>("v:pid_local_zmin_queue");
+		//find local lowest point cloud each point
+#pragma omp parallel for schedule(dynamic)
+		for (int vi = 0; vi < cloud_pt_3d->vertices_size(); ++vi)
+		{
+			//for compute local elevation
+			PTCloud::Vertex ptx(vi);
+			std::vector<int> neighbor_indices;
+			vec2 p2d(cloud_point_coord[ptx].x, cloud_point_coord[ptx].y);
+			cloud_2D_proj_tree->find_points_in_radius(p2d, sqr_long_range, neighbor_indices, cloud_copy, get_points_pid_local_zmin[ptx]);
+		}
+
+		//get first [local_ground_segs] local lowest point with its ids for each face
+#pragma omp parallel for schedule(dynamic)
+		for (int fi = 0; fi < smesh_in->faces_size(); ++fi)
+		{
+			SFMesh::Face fdx(fi);
+			int seg_ind = superfacet_id_index_map[smesh_in->get_face_segment_id[fdx]];
+			if (spf_final[seg_ind].label == -1)
+				continue;
+
+			std::vector<std::pair<int, float>> face_segid_local_elevation_vec(smesh_in->get_face_ele_sampled_points[fdx].size() * local_ground_segs, std::pair<int, float>(-1, FLT_MAX));
+			std::map<int, bool> seg_check;
+			int vec_ind = 0;
+
+			for (int vi = 0; vi < smesh_in->get_face_ele_sampled_points[fdx].size(); ++vi)
+			{
+				PTCloud::Vertex ptx_old(smesh_in->get_face_ele_sampled_points[fdx][vi]);
+				if (ignored_pts_in[ptx_old])
+					continue;
+				PTCloud::Vertex ptx(old_new_ptsmap[ptx_old.idx()]);
+
+				for (int psi = 0; psi < get_points_pid_local_zmin[ptx].size(); ++psi)
+				{
+					if (get_points_pid_local_zmin[ptx][psi].first != -1)
+					{
+						PTCloud::Vertex lcoal_ptx_old(get_points_pid_local_zmin[ptx][psi].first);
+						if (ignored_pts_in[lcoal_ptx_old])
+							continue;
+						PTCloud::Vertex lcoal_ptx(old_new_ptsmap[lcoal_ptx_old.idx()]);
+
+						int local_segi = get_segment_majority_id[lcoal_ptx];
+
+						auto it_s = seg_check.find(local_segi);
+						if (it_s == seg_check.end())
+						{
+							face_segid_local_elevation_vec[vec_ind].first = local_segi;
+							face_segid_local_elevation_vec[vec_ind++].second = get_points_pid_local_zmin[ptx][psi].second;
+							seg_check[local_segi] = true;
+						}
+					}
+					else
+						break;
+				}
+			}
+			sort(face_segid_local_elevation_vec.begin(), face_segid_local_elevation_vec.end(), lower_local_elevation);
+			int temp_size = local_ground_segs > face_segid_local_elevation_vec.size() ? face_segid_local_elevation_vec.size() : local_ground_segs;
+			for (int psi = 0; psi < temp_size; ++psi)
+			{
+				if (face_segid_local_elevation_vec[psi].first != -1)
+					smesh_in->get_face_segid_local_elevation_vec[fdx][psi] = face_segid_local_elevation_vec[psi];
+			}
+		}
+
+		cloud_pt_3d->remove_vertex_property(get_points_pid_local_zmin);
+		cloud_pt_3d_in->remove_vertex_property(ignored_pts_in);
+		delete cloud_copy;
+		delete cloud_pt_3d;
+		delete cloud2Dproj;
+		delete cloud_2D_proj_tree;
+	}
+
+	//construct superfacet from raw mesh
+	void get_superfacets
+	(
+		SFMesh *smesh_in,
+		PTCloud *cloud_sparse,
+		PTCloud *cloud_ele,
+		std::vector<superfacets>& spf_final
+	)
+	{
+		std::cout << "	Get superfacet from over-segmentation result." << std::endl;
+		const double t_total = omp_get_wtime();
+		std::map<int, int> segment_id_vecind;//segment_id and index in the vector
+		//construct superfacet from 'get_face_segment_id'
+		for (auto f : smesh_in->faces())
+		{
+			//check if two small triangles fall into zero
+			if (smesh_in->get_face_area[f] < default_feature_value_minmax.first)
+				smesh_in->get_face_area[f] = default_feature_value_minmax.first;
+			//construct or parsing to segment
+			int seg_i = -1;
+			if (segment_id_vecind.find(smesh_in->get_face_segment_id[f]) == segment_id_vecind.end())
+			{
+				seg_i = spf_final.size();
+				segment_id_vecind[smesh_in->get_face_segment_id[f]] = spf_final.size();
+				superfacets spf_temp;
+				spf_temp.id = smesh_in->get_face_segment_id[f];
+				spf_temp.face_vec.emplace_back(f);
+				if (std::isnormal(smesh_in->get_face_area[f]))
+					spf_temp.sum_area = smesh_in->get_face_area[f];
+				spf_temp.avg_ele = 0.0f;
+				spf_final.emplace_back(spf_temp);
+			}
+			else
+			{
+				seg_i = segment_id_vecind[smesh_in->get_face_segment_id[f]];
+				spf_final[seg_i].face_vec.emplace_back(f);
+				if (std::isnormal(smesh_in->get_face_area[f]))
+					spf_final[seg_i].sum_area += smesh_in->get_face_area[f];
+			}
+		}
+
+		//more faster for OpenMP dynamic if use descending order according to the size of each segment
+		//since the larger segment thread need more time to run
+		sort(spf_final.begin(), spf_final.end(), larger_segment_size);
+
+		//assign superfacet attributes
+		for (int spf_i = 0; spf_i < spf_final.size(); ++spf_i)
+		{
+			spf_final[spf_i].index = spf_i;
+			superfacet_id_index_map[spf_final[spf_i].id] = spf_i;
+			std::vector<int> majority_labels(labels_name_pnp.size(), 0);
+			std::map<SFMesh::Vertex, bool> vert_check;
+			float spf_z_min = FLT_MAX;
+			int count_unclassified = 0;
+
+			PTCloud *temp_pcl = new PTCloud;
+			PTCloud *sample_pcl = new PTCloud;
+
+			for (int fi = 0; fi < spf_final[spf_i].face_vec.size(); ++fi)
+			{
+				//get on segment vertices for plane fitting
+				SFMesh::Face fdx = spf_final[spf_i].face_vec[fi];
+				vec3 face_center(0.0f, 0.0f, 0.0f);
+				for (auto vtx : smesh_in->vertices(fdx))
+				{
+					vec3 p_temp = smesh_in->get_points_coord[vtx];
+					face_center += p_temp;
+					auto it_v = vert_check.find(vtx);
+					if (it_v == vert_check.end())
+					{
+						spf_final[spf_i].ExactVec_CGAL.emplace_back(p_temp.x, p_temp.y, p_temp.z);
+						spf_final[spf_i].avg_ele += p_temp.z;
+						vert_check[vtx] = true;
+					}
+				}
+				face_center /= 3.0f;
+
+				if (std::isnormal(face_center.x)
+					&& std::isnormal(face_center.y)
+					&& std::isnormal(face_center.z)
+					&& std::isnormal(smesh_in->get_face_area[fdx]))
+					spf_final[spf_i].avg_center += face_center * smesh_in->get_face_area[fdx];
+
+				//non-planar majority id
+				if (train_test_predict_val == 0
+					&& smesh_in->get_face_truth_label[fdx] > 0)
+				{
+					++majority_labels[smesh_in->get_face_truth_label[fdx] - 1];
+				}
+				else if (train_test_predict_val != 0
+					&& smesh_in->get_face_predict_label[fdx] > 0)
+				{
+					++majority_labels[smesh_in->get_face_predict_label[fdx] - 1];
+				}
+				else
+				{
+					++count_unclassified;
+				}
+
+				//get sampled points
+				spf_final[spf_i].sampled_points_ids.insert(spf_final[spf_i].sampled_points_ids.end(),
+					smesh_in->get_face_sampled_points[fdx].begin(), smesh_in->get_face_sampled_points[fdx].end());
+			}
+
+			//refit plane 
+			Plane plcgal;
+			CGAL::linear_least_squares_fitting_3(spf_final[spf_i].ExactVec_CGAL.begin(), spf_final[spf_i].ExactVec_CGAL.end(), plcgal, CGAL::Dimension_tag<0>());
+			spf_final[spf_i].plane_parameter = vec4(plcgal.a(), plcgal.b(), plcgal.c(), -plcgal.d());
+			spf_final[spf_i].plane_cgal = plcgal;
+			spf_final[spf_i].avg_ele /= float(spf_final[spf_i].ExactVec_CGAL.size());
+			spf_final[spf_i].avg_center /= float(spf_final[spf_i].sum_area);
+
+			//get non-planar majority id
+			int maxElementIndex = std::max_element(majority_labels.begin(), majority_labels.end()) - majority_labels.begin();
+			if (train_test_predict_val == 0 && majority_labels[maxElementIndex] < count_unclassified)
+			{
+				spf_final[spf_i].ground_truth = -1;
+				spf_final[spf_i].predict = -1;
+				spf_final[spf_i].label = -1;
+			}
+			else
+			{
+				spf_final[spf_i].ground_truth = maxElementIndex;
+				spf_final[spf_i].predict = maxElementIndex;
+				spf_final[spf_i].label = maxElementIndex;
+				std::vector<std::string> spf_i_label_names;
+				if (spf_final[spf_i].label > -1)
+				{
+					spf_i_label_names = get_input_names_with_delim("_", labels_name_pnp[spf_final[spf_i].label]);
+					if (spf_i_label_names[0] == "non")
+						spf_final[spf_i].is_non_planar = true;
+				}
+			}
+
+			//initialize exterior mat relations
+			spf_final[spf_i].exterior_mat_ids = std::vector<int>(spf_final.size(), -1);
+		}
+
+		//compute exterior relations of each segment
+		if (exterior_mat_relations)
+			construct_exterior_mat_relations(smesh_in, cloud_sparse, spf_final);
+
+		//compute local elevation of each sampled points
+		if (local_ground_relations)
+		{
+			local_elevation_for_pointcloud(smesh_in, cloud_ele, spf_final);
+
+			//assign the local ground with lowest elevation in Top3 and largest area
+			for (int spf_i = 0; spf_i < spf_final.size(); ++spf_i)
+			{
+				if (spf_final[spf_i].label < 0)
+					continue;
+
+				//clean exmat 
+				std::vector<int> tmp_exterior_mat_ids;
+				tmp_exterior_mat_ids.insert(tmp_exterior_mat_ids.end(),
+					spf_final[spf_i].exterior_mat_ids.begin(), spf_final[spf_i].exterior_mat_ids.end());
+				spf_final[spf_i].exterior_mat_ids.clear();
+				for (auto exm_i : tmp_exterior_mat_ids)
+				{
+					if (exm_i != -1)
+						spf_final[spf_i].exterior_mat_ids.push_back(exm_i);
+				}
+
+				std::map<int, bool> seg_check;
+				for (int fi = 0; fi < spf_final[spf_i].face_vec.size(); ++fi)
+				{
+					//get on segment vertices for plane fitting
+					SFMesh::Face fdx = spf_final[spf_i].face_vec[fi];
+					//local lowest largest ground segment id
+					for (int psi = 0; psi < local_ground_segs; ++psi)
+					{
+						auto psi_zmin_pair = smesh_in->get_face_segid_local_elevation_vec[fdx][psi];
+						auto it_s = seg_check.find(psi_zmin_pair.first);
+						if (it_s == seg_check.end())
+						{
+							spf_final[spf_i].segid_local_zmin_vec.emplace_back(psi_zmin_pair);
+							seg_check[psi_zmin_pair.first] = true;
+						}
+					}
+				}
+
+				//get local ground
+				std::tuple<int, float, float> segid_maxarea_ele(-1, -FLT_MAX, -1.0f);//id, area, elevation
+				sort(spf_final[spf_i].segid_local_zmin_vec.begin(), spf_final[spf_i].segid_local_zmin_vec.end(), lower_local_elevation);
+				int temp_size = local_ground_segs > spf_final[spf_i].segid_local_zmin_vec.size() ?
+					spf_final[spf_i].segid_local_zmin_vec.size() : local_ground_segs;
+				for (int psi = 0; psi < temp_size; ++psi)
+				{
+					int candidate_segid = spf_final[spf_i].segid_local_zmin_vec[psi].first;
+					int candidate_segind = superfacet_id_index_map[candidate_segid];
+					if (spf_final[spf_i].segid_local_zmin_vec[psi].first != -1
+						&& get<1>(segid_maxarea_ele) < spf_final[candidate_segind].sum_area)
+					{
+						get<0>(segid_maxarea_ele) = candidate_segid;
+						get<1>(segid_maxarea_ele) = spf_final[candidate_segind].sum_area;
+						get<2>(segid_maxarea_ele) = spf_final[spf_i].segid_local_zmin_vec[psi].second;
+					}
+				}
+
+				if (get<0>(segid_maxarea_ele) == -1)
+					spf_final[spf_i].local_ground_id = spf_final[spf_i].id;
+				else
+					spf_final[spf_i].local_ground_id = get<0>(segid_maxarea_ele);
+
+				spf_final[spf_i].relative_ele = spf_final[spf_i].avg_ele - get<2>(segid_maxarea_ele) > relative_elevation_cut_off_max ?
+					relative_elevation_cut_off_max : spf_final[spf_i].avg_ele - get<2>(segid_maxarea_ele);
+			}
+		}
+
+		//extract_individual_segment(smesh_in, spf_final);
+		std::cout << " num faces = " << smesh_in->faces_size() << "; num segs = " << spf_final.size() << std::endl;
+		std::cout << "	Done in (s): " << omp_get_wtime() - t_total << '\n' << std::endl;
+	}
+
+	void remove_close_vertices_for_delaunay
+	(
+		std::vector<superfacets> &spf_vec,
+		std::vector<Point_3> &candidate_points_cgal,
+		std::map<Point_3, int> &seg_indx_cpts_map,
+		std::map<Point_3, int> &segid_cpts_map
+	)
+	{
+		PTCloud* vertex_cloud = new PTCloud;
+		std::map<int, bool> vd_use;
+
+		for (int vi = 0; vi < candidate_points_cgal.size(); ++vi)
+		{
+			vd_use[vi] = true;
+			vertex_cloud->add_vertex(vec3(candidate_points_cgal[vi].x(), candidate_points_cgal[vi].y(), candidate_points_cgal[vi].z()));
+		}
+
+		//get duplicated vertices based on a very small radius
+		easy3d::KdTree *tree_vertex_cloud = new easy3d::KdTree;
+		Build_kdtree(vertex_cloud, tree_vertex_cloud);
+		float sqr_range = remove_close_vertices_for_delaunay_dis * remove_close_vertices_for_delaunay_dis;
+		std::map<SFMesh::Vertex, int> duplicate_ind_map;
+		std::map<int, std::set<SFMesh::Vertex>> ind_duplicate_map;
+		auto v_point_coords = vertex_cloud->get_vertex_property<vec3>("v:point");
+		for (auto vd : vertex_cloud->vertices())
+		{
+			std::vector<int> neighbor_indices;
+			tree_vertex_cloud->find_points_in_radius(v_point_coords[vd], sqr_range, neighbor_indices);
+			if (neighbor_indices.size() > 1)
+			{
+				for (auto v_ni : neighbor_indices)
+				{
+					if (vd.idx() != v_ni)
+					{
+						vd_use[v_ni] = false;
+					}
+				}
+			}
+		}
+
+		std::vector<Point_3> candidate_points_cgal_new;
+		std::vector<superfacets> spf_vec_new;
+		for (int vi = 0; vi < candidate_points_cgal.size(); ++vi)
+		{
+			if (vd_use[vi])
+			{
+				candidate_points_cgal_new.push_back(candidate_points_cgal[vi]);
+				segid_cpts_map[candidate_points_cgal[vi]] = spf_vec[seg_indx_cpts_map[candidate_points_cgal[vi]]].id;
+			}
+			else
+			{
+				spf_vec[seg_indx_cpts_map[candidate_points_cgal[vi]]].is_ignore = true;
+			}
+		}
+		candidate_points_cgal.clear();
+		candidate_points_cgal.insert(candidate_points_cgal.end(), candidate_points_cgal_new.begin(), candidate_points_cgal_new.end());
+
+		delete tree_vertex_cloud;
+		delete vertex_cloud;
+	}
+
+	void segment_geometric_relationships
+	(
+		SFMesh *smesh_in,
+		PTCloud *cloud_in,
+		std::vector<superfacets> &spf_vec,
+		std::vector<std::pair<int, int>> &spf_edges,
+		std::vector<std::pair<int, int>> &spf_sampts_edges,
+		std::map<std::pair<int, int>, bool> &check_segneg_visited,
+		std::map<std::pair<int, int>, bool> &check_combined_segpt_visited
+	)
+	{
+		std::cout << "  Find segment geometric relationships, use ";
+		const double t_total = omp_get_wtime();
+
+		float tol_angle = tolerance_angle * (float)CGAL_PI / (float)(180.0f);
+		float tol_cosangle = (float)(1. - std::cos(tol_angle));
+		float tol_cosangle_ortho = (float)(std::cos((float)0.5f * (float)CGAL_PI - (float)tol_angle));
+		std::vector<Point_3> cpcl_out, c_sp_pcl_out;
+		std::map<Point_3, int> seg_indx_cpts_map, segid_cpts_map, pid_cpts_map;
+
+		std::cout << " Local ground, ExMat, Parallel " << std::endl;
+
+		//remove duplicated segment points
+		for (int i = 0; i < spf_vec.size(); ++i)
+		{
+			if (train_test_predict_val == 0 && spf_vec[i].label == -1)
+			{
+				spf_vec[i].is_ignore = true;
+				continue;
+			}
+
+			Point_3 current_center(spf_vec[i].avg_center.x, spf_vec[i].avg_center.y, spf_vec[i].avg_center.z);
+			if (!std::isnormal(current_center.x())
+				|| !std::isnormal(current_center.y())
+				|| !std::isnormal(current_center.z()))
+			{
+				spf_vec[i].is_ignore = true;
+				continue;
+			}
+
+			cpcl_out.push_back(current_center);
+			seg_indx_cpts_map[current_center] = i;
+		}
+		remove_close_vertices_for_delaunay(spf_vec, cpcl_out, seg_indx_cpts_map, segid_cpts_map);
+
+		for (int i = 0; i < spf_vec.size(); ++i)
+		{
+			if (spf_vec[i].is_ignore)
+				continue;
+
+			int seg_id = spf_vec[i].id, ci = i;
+			vec3 plane_normal_cur(spf_vec[i].plane_parameter.x, spf_vec[i].plane_parameter.y, spf_vec[i].plane_parameter.z);
+
+			//connect to its local ground, if the ground is not it's self
+			if (local_ground_relations)
+			{
+				if (spf_vec[i].local_ground_id != spf_vec[i].id)
+				{
+
+					//int seg_ind = superfacet_id_index_map[seg_id];
+					int neg_ind = superfacet_id_index_map[spf_vec[i].local_ground_id];
+					//std::pair<int, int> temp_pair1 = std::make_pair(seg_ind, neg_ind);
+					//std::pair<int, int> temp_pair2 = std::make_pair(neg_ind, seg_ind);
+					if (spf_vec[neg_ind].is_ignore)
+						continue;
+
+					std::pair<int, int> temp_pair1 = std::make_pair(seg_id, spf_vec[i].local_ground_id);
+					std::pair<int, int> temp_pair2 = std::make_pair(spf_vec[i].local_ground_id, seg_id);
+					segment_pair_checking(temp_pair1, temp_pair2, spf_edges, check_segneg_visited);
+					spf_vec[i].local_ground_ids.push_back(spf_vec[i].local_ground_id);
+				}
+			}
+
+			if (exterior_mat_relations)
+			{
+				for (int emat_i = 0; emat_i < spf_vec[i].exterior_mat_ids.size(); ++emat_i)
+				{
+					if (spf_vec[i].exterior_mat_ids[emat_i] != -1 && spf_vec[i].exterior_mat_ids[emat_i] != spf_vec[i].id)
+					{
+						//int seg_ind = superfacet_id_index_map[seg_id];
+						int neg_ind = superfacet_id_index_map[spf_vec[i].exterior_mat_ids[emat_i]];
+						//std::pair<int, int> temp_pair1 = std::make_pair(seg_ind, neg_ind);
+						//std::pair<int, int> temp_pair2 = std::make_pair(neg_ind, seg_ind);
+						if (spf_vec[neg_ind].is_ignore)
+							continue;
+
+						std::pair<int, int> temp_pair1 = std::make_pair(seg_id, spf_vec[i].exterior_mat_ids[emat_i]);
+						std::pair<int, int> temp_pair2 = std::make_pair(spf_vec[i].exterior_mat_ids[emat_i], seg_id);
+						segment_pair_checking(temp_pair1, temp_pair2, spf_edges, check_segneg_visited);
+					}
+				}
+			}
+
+			if (i == spf_vec.size() - 1)
+				break;
+
+			for (int j = i + 1; j < spf_vec.size(); ++j)
+			{
+				int neg_id = spf_vec[j].id;
+				int seg_ind = superfacet_id_index_map[seg_id];
+				int neg_ind = superfacet_id_index_map[neg_id];
+
+				if (spf_vec[j].is_ignore)
+					continue;
+
+				std::pair<int, int> temp_pair1, temp_pair2;
+				//compute if neighbor is parallel segments, p/p-p/p
+				vec3 plane_normal_neg(spf_vec[j].plane_parameter.x, spf_vec[j].plane_parameter.y, spf_vec[j].plane_parameter.z);
+				if (parallelism_relations && std::fabs(easy3d::dot(plane_normal_cur, plane_normal_neg)) > 1.0f - tol_cosangle)
+				{
+					if (spf_vec[neg_ind].is_ignore)
+						continue;
+					temp_pair1 = std::make_pair(seg_id, neg_id);
+					temp_pair2 = std::make_pair(neg_id, seg_id);
+					segment_pair_checking(temp_pair1, temp_pair2, spf_edges, check_segneg_visited);
+					spf_vec[i].parallelism_neg_ids.push_back(neg_id);
+				}
+			}
+		}
+
+		if (!delaunay_relations_on_sampled_points)
+		{
+			std::cout << " Delaunay_relations_on_segment, used segments " << cpcl_out.size() << "; total segments: " << spf_vec.size();
+			DT3 Delaunay_triangulation_3D(cpcl_out.begin(), cpcl_out.end());
+			DT3::Finite_edges_iterator it = Delaunay_triangulation_3D.finite_edges_begin();
+			DT3::Finite_edges_iterator it_end = Delaunay_triangulation_3D.finite_edges_end();
+			std::cout << "; Delaunay edges: " << Delaunay_triangulation_3D.number_of_finite_edges() << std::endl;
+			for (; it != it_end; ++it)
+			{
+				int seg_id = segid_cpts_map[it->first->vertex(it->second)->point()];
+				int neg_id = segid_cpts_map[it->first->vertex(it->third)->point()];
+				int seg_inx = seg_indx_cpts_map[it->first->vertex(it->second)->point()];
+				int neg_inx = seg_indx_cpts_map[it->first->vertex(it->third)->point()];
+
+				if (seg_id == neg_id || spf_vec[seg_inx].is_ignore || spf_vec[neg_inx].is_ignore)
+					continue;
+
+				std::pair<int, int> temp_pair1, temp_pair2;
+				temp_pair1 = std::make_pair(seg_id, neg_id);
+				temp_pair2 = std::make_pair(neg_id, seg_id);
+				segment_pair_checking(temp_pair1, temp_pair2, spf_edges, check_segneg_visited);
+			}
+		}
+
+		if (delaunay_relations_on_sampled_points)
+		{
+			std::cout << " delaunay_relations_on_sampled_points " << std::endl;
+
+			cloud_in->add_vertex_property<std::vector<PTCloud::Vertex>>("v:duplicated_vertices");
+			auto get_duplicated_vertices = cloud_in->get_vertex_property<std::vector<PTCloud::Vertex>>("v:duplicated_vertices");
+			std::map<PTCloud::Vertex, int> duplicate_ind_map;
+			std::map<int, std::set<PTCloud::Vertex>> ind_duplicate_map;
+			std::map<PTCloud::Vertex, bool> added_vert;
+			for (auto ptx : cloud_in->vertices())
+			{
+				bool allowed_to_add = true;
+				if (get_duplicated_vertices[ptx].size() > 0)
+				{
+					int v_map_i = duplicate_ind_map[ptx];
+					ptx = *ind_duplicate_map[v_map_i].begin();
+
+					if (added_vert.find(ptx) == added_vert.end())
+					{
+						added_vert[ptx] = true;
+					}
+					else
+					{
+						allowed_to_add = false;
+					}
+				}
+
+				if (allowed_to_add)
+				{
+					c_sp_pcl_out.push_back(
+						Point_3(
+							cloud_in->get_points_coord[ptx].x,
+							cloud_in->get_points_coord[ptx].y,
+							cloud_in->get_points_coord[ptx].z)
+					);
+					pid_cpts_map[*(--c_sp_pcl_out.end())] = ptx.idx();
+				}
+			}
+
+			std::cout << "c_sp_pcl_out.size() = " << c_sp_pcl_out.size() << std::endl;
+
+			DT3 Delaunay_triangulation_3D(c_sp_pcl_out.begin(), c_sp_pcl_out.end());
+			DT3::Finite_edges_iterator it = Delaunay_triangulation_3D.finite_edges_begin();
+			DT3::Finite_edges_iterator it_end = Delaunay_triangulation_3D.finite_edges_end();
+
+			for (; it != it_end; ++it)
+			{
+				int pd_id = pid_cpts_map[it->first->vertex(it->second)->point()];
+				int pn_id = pid_cpts_map[it->first->vertex(it->third)->point()];
+
+				std::pair<int, int> temp_pair1, temp_pair2;
+				temp_pair1 = std::make_pair(pd_id, pn_id);
+				temp_pair2 = std::make_pair(pn_id, pd_id);
+				segment_pair_checking(temp_pair1, temp_pair2, spf_sampts_edges, check_combined_segpt_visited);
+			}
+
+			cloud_in->remove_vertex_property(get_duplicated_vertices);
+		}
+		
+		std::cout << "	Found segment edges : " << spf_edges.size() << ", cost " << omp_get_wtime() - t_total << 's' << std::endl;
+		//std::cout << " largest segment id = " << largest_segment.first << "; area = " << largest_segment.second << std::endl;
+	}
+
+	void construct_segment_sampled_point_edges
+	(
+		std::vector<superfacets> &spf_vec,
+		std::vector<std::pair<int, int>> &spf_edges,
+		std::vector<std::pair<int, int>> &spf_sampts_edges,
+		std::map<std::pair<int, int>, bool> &check_combined_segpt_visited
+	)
+	{
+		std::cout << "  Construct closet point pair connections among related segments, use ";
+		const double t_total = omp_get_wtime();
+
+		std::vector<std::pair<int, int>> spf_all_edges;//point id <-> point id, in different
+		for (int ei = 0; ei < spf_edges.size(); ++ei)
+		{
+			int source_id = spf_edges[ei].first;
+			int target_id = spf_edges[ei].second;
+			int source_ind = superfacet_id_index_map[source_id];
+			int target_ind = superfacet_id_index_map[target_id];
+
+			if (spf_vec[source_ind].is_ignore || spf_vec[target_ind].is_ignore)
+			{
+				continue;
+			}
+
+			int min_point_pairs_size = spf_vec[source_ind].sampled_points_ids.size() < spf_vec[target_ind].sampled_points_ids.size() ?
+				spf_vec[source_ind].sampled_points_ids.size() : spf_vec[target_ind].sampled_points_ids.size();
+
+			std::vector<int> small_point_set_ids, larger_point_set_ids;
+			std::vector<vec3> small_point_set_coords, larger_point_set_coords;
+
+			if (spf_vec[source_ind].sampled_points_ids.size() < spf_vec[target_ind].sampled_points_ids.size())
+			{
+				small_point_set_ids = spf_vec[source_ind].sampled_points_ids;
+				larger_point_set_ids = spf_vec[target_ind].sampled_points_ids;
+
+				small_point_set_coords = spf_vec[source_ind].sampled_pts_coords;
+				larger_point_set_coords = spf_vec[target_ind].sampled_pts_coords;
+			}
+			else
+			{
+				small_point_set_ids = spf_vec[target_ind].sampled_points_ids;
+				larger_point_set_ids = spf_vec[source_ind].sampled_points_ids;
+
+				small_point_set_coords = spf_vec[target_ind].sampled_pts_coords;
+				larger_point_set_coords = spf_vec[source_ind].sampled_pts_coords;
+			}
+
+			PTCloud* larger_point_set_cloud = new PTCloud;
+			for (auto ptx : larger_point_set_coords)
+				larger_point_set_cloud->add_vertex(ptx);
+
+			easy3d::KdTree *larger_point_set_cloud_tree = new easy3d::KdTree;
+			Build_kdtree(larger_point_set_cloud, larger_point_set_cloud_tree);
+
+			for (int pi = 0; pi < small_point_set_coords.size(); ++pi)
+			{
+				vec3 current_p = small_point_set_coords[pi];
+				int vi_close = larger_point_set_cloud_tree->find_closest_point(current_p);//squared distance
+
+				std::pair<int, int> temp_pair1, temp_pair2;
+				temp_pair1 = std::make_pair(small_point_set_ids[pi], larger_point_set_ids[vi_close]);
+				temp_pair2 = std::make_pair(larger_point_set_ids[vi_close], small_point_set_ids[pi]);
+				segment_pair_checking(temp_pair1, temp_pair2, spf_sampts_edges, check_combined_segpt_visited);
+			}
+
+			delete larger_point_set_cloud_tree;
+			delete larger_point_set_cloud;
+		}
+
+		std::cout << " (s): " << omp_get_wtime() - t_total << '\n' << std::endl;
+		std::cout << "	Found point-pair segment edges : " << spf_sampts_edges.size() << std::endl;
+	}
+
 }
