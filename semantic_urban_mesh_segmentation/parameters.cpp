@@ -238,18 +238,18 @@ namespace semantic_mesh_segmentation
 	bool add_point_color_for_dp_input = true; //if not then computation fast
 	//"spg/"             | "kpconv/"    | "randlanet/"      | "pointnet2/" | "pointnet/"
 	//"_pcl_gcn_pred_up" | "_pcl_sampled" | "_pcl_sampled_pred" | "_pcl_sampled" | "_pcl_gcn"
-	std::string sota_folder_path = "kpconv/", sota_prefixs = "_pcl_sampled";
+	std::string sota_folder_path = "spg/", sota_prefixs = "_pcl_gcn_pred_up";
 	//"moha_rg/"
 	std::string partition_folder_path = "segments/", partition_prefixs = "_mesh_seg";
 
 	//SPG:"pred"; KPConv: "preds"; RandLanet: "label"; PointNet, PointNet2: "pred"
-	std::string label_string = "preds";
+	std::string label_string = "pred";
 	//SPG: 1; KPConv: 0; RandLanet: 1;  PointNet2: 0 ; PointNet: 0
-	int label_minus = 0; //0: no minus, if label start from 0; 1: minus 1, if label start from 1
+	int label_minus = 1; //0: no minus, if label start from 0; 1: minus 1, if label start from 1
 
 	bool equal_cloud = true; //others: true; Randlanet: false;
 
-	//labels type: change in parameters.hpp, line:166 
+	//labels type: change label_type in parameters.hpp
 
 	//****************** Evaluation ******************
 	bool use_area_weight = true;
@@ -345,7 +345,7 @@ namespace semantic_mesh_segmentation
 		{3, true},  //relative_elevation
 		{4, true},  //triangle density (only useful when input is adaptive mesh)
 		{5, true},  //vertex_count
-		{6, true},  //circumference
+		{6, true},  //points_to_plane_dist_mean
 		{7, true},  //compactness
 		{8, true},  //shape_index
 		{9, true}   //shape_descriptor
@@ -576,7 +576,7 @@ namespace semantic_mesh_segmentation
 		{"relative_elevation", 3}, //relative to local ground which defined as local largest lower segment
 		{"triangle_density", 4},
 		{"vertex_count", 5},
-		{"circumference", 6},
+		{"points_to_plane_dist_mean", 6},
 		{"compactness", 7},
 		{"shape_index", 8},
 		{"shape_descriptor", 9}

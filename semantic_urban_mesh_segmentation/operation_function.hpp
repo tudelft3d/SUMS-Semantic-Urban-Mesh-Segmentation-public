@@ -61,7 +61,7 @@ namespace semantic_mesh_segmentation
 		use_basic_features[3] = false;  //relative_elevation
 		use_basic_features[4] = true;  //triangle density (only useful when input is adaptive mesh)
 		use_basic_features[5] = true;  //vertex_count
-		use_basic_features[6] = true;  //circumference
+		use_basic_features[6] = true;  //points_to_plane_dist_mean
 		use_basic_features[7] = true;  //compactness
 		use_basic_features[8] = true;  //shape_index
 		use_basic_features[9] = true;  //shape_descriptor

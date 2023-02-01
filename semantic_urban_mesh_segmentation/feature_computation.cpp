@@ -820,7 +820,8 @@ namespace semantic_mesh_segmentation
 		PTCloud* point_cloud,
 		superfacets &spf_current,
 		const int seg_i,
-		std::vector<float> &geo_feas
+		std::vector<float> &geo_feas,
+		std::vector< std::vector<float>> &basic_feas
 	)
 	{
 		//--- geometric features define ---
@@ -829,7 +830,7 @@ namespace semantic_mesh_segmentation
 			verticality_eig1 = 0.0f, verticality_eig3 = 0.0f, surface = 0.0f, volume = 0.0f,
 			absolute_eigvec_1_moment_1st = 0.0f, absolute_eigvec_2_moment_1st = 0.0f, absolute_eigvec_3_moment_1st = 0.0f,
 			absolute_eigvec_1_moment_2nd = 0.0f, absolute_eigvec_2_moment_2nd = 0.0f, absolute_eigvec_3_moment_2nd = 0.0f,
-			vertical_moment_1st = 0.0f, vertical_moment_2nd = 0.0f, uniformity = 0.0f;
+			vertical_moment_1st = 0.0f, vertical_moment_2nd = 0.0f, uniformity = 0.0f, points_to_plane_dist_mean = 0.0f;
 
 		//--- get PCA eigen value and vectors, refer to PCA_utils.h from CGAL ---
 		DiagonalizeTraits::Vector eigen_values;
@@ -880,6 +881,9 @@ namespace semantic_mesh_segmentation
 			absolute_eigvec_3_moment_2nd += std::pow(easy3d::dot((point_3d_coord[ntx] - spf_current.avg_center), c_vec3), 2);
 			vertical_moment_1st += easy3d::dot((point_3d_coord[ntx] - spf_current.avg_center), easy3d::vec3(0, 0, 1));
 			vertical_moment_2nd += std::pow(easy3d::dot((point_3d_coord[ntx] - spf_current.avg_center), easy3d::vec3(0, 0, 1)), 2);
+
+			//--- accumulate point to plane distance ---
+			points_to_plane_dist_mean += dist2plane(plane_param, point_3d_coord[ntx]);
 		}
 
 		//--- average eigen moment features ---
@@ -892,7 +896,11 @@ namespace semantic_mesh_segmentation
 		vertical_moment_1st /= float(pts_size);
 		vertical_moment_2nd /= float(pts_size);
 
-		//---  fill the geometric feature vector ---
+		points_to_plane_dist_mean /= float(pts_size);
+		//--- fill the supplementary basic features vector ---
+		basic_feas[seg_i][6] = 0.0f;//points_to_plane_dist_mean
+
+		//---  fill the eigen feature vector ---
 		geo_feas[0] = eigen_1;
 		geo_feas[1] = eigen_2;
 		geo_feas[2] = eigen_3;
@@ -1056,11 +1064,12 @@ namespace semantic_mesh_segmentation
 		superfacets &spf_current,
 		const int seg_i,
 		std::vector<float> &geo_feas,
-		std::vector<float> &tex_feas
+		std::vector<float> &tex_feas,
+		std::vector< std::vector<float>> &basic_feas
 	)
 	{
 		//compute geometric features on vertices and face centers within a segment
-		compute_geometric_features_only_per_scale(smesh_out, point_cloud, spf_current, seg_i, geo_feas);
+		compute_geometric_features_only_per_scale(smesh_out, point_cloud, spf_current, seg_i, geo_feas, basic_feas);
 
 		//compute radiometric features on texture pixels of each facet within a segment
 		compute_radiometric_features_on_face_textures(smesh_out, spf_current, seg_i, tex_feas);
@@ -1205,8 +1214,8 @@ namespace semantic_mesh_segmentation
 			multi_scales_elevations(multi_scales__seg_minmax_ele, mulsc_ele_feas[i], avg_center.z);
 
 			//shape features computation
-			float circumference = 0.0f, shape_descriptor = 0.0f, compactness = 0.0f, shape_index = 0.0f;
-			segment_shape_based_features(smesh_out, cloud_sampled, segment_out, i, circumference, shape_descriptor, compactness, shape_index);
+			float shape_descriptor = 0.0f, compactness = 0.0f, shape_index = 0.0f;
+			segment_shape_based_features(smesh_out, cloud_sampled, segment_out, i, shape_descriptor, compactness, shape_index);
 
 			//parsing ground truth base on majority label
 			seg_truth[i] = segment_out[i].ground_truth;
@@ -1218,7 +1227,7 @@ namespace semantic_mesh_segmentation
 			basic_feas[i][3] = relative_elevation;
 			basic_feas[i][4] = triangle_density > cutoff_spffacetdensity_max ? cutoff_spffacetdensity_max : triangle_density;
 			basic_feas[i][5] = segment_out[i].ExactVec.size() > cutoff_spf_vertex_count ? cutoff_spf_vertex_count : segment_out[i].ExactVec.size();//vertex_count
-			basic_feas[i][6] = circumference;//circumference
+			basic_feas[i][6] =  0.0f;//points_to_plane_dist_mean
 			basic_feas[i][7] = compactness;//compactness
 			basic_feas[i][8] = shape_index;//shape_index
 			basic_feas[i][9] = shape_descriptor;//shape_descriptor
@@ -1255,7 +1264,7 @@ namespace semantic_mesh_segmentation
 				cloud_pt_3d_sampled,
 				segment_out[seg_i],
 				seg_i,
-				eigen_feas[seg_i], color_feas[seg_i]
+				eigen_feas[seg_i], color_feas[seg_i], basic_feas
 			);
 
 			seg_plane_params[seg_i][0] = segment_out[seg_i].plane_parameter.x;

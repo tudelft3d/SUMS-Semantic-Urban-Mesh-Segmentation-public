@@ -579,8 +579,7 @@ namespace semantic_mesh_segmentation
 		SFMesh *smesh_out,
 		float &shape_descriptor,
 		float &compactness,
-		float &shape_index,
-		float &circumference
+		float &shape_index
 	)
 	{
 		int ring_point_size = segment.alpha_border_points.size();
@@ -609,16 +608,13 @@ namespace semantic_mesh_segmentation
 			if (compactness > cutoff_spfcompact_max)
 				compactness = cutoff_spfcompact_max;
 			shape_index = total_length / float(pow(segment.sum_area, 1.0f / 4.0f));
-			circumference = total_length;
 		}
 		else
 		{
 			compactness = default_feature_value_minmax.first;
 			shape_index = default_feature_value_minmax.first;
-			circumference = default_feature_value_minmax.first;
 		}
 
-		value_validation_check(circumference);
 		value_validation_check(shape_descriptor);
 		value_validation_check(compactness);
 		value_validation_check(shape_index);
@@ -847,7 +843,6 @@ namespace semantic_mesh_segmentation
 		PTCloud *cloud_pt_3d, //use dense
 		std::vector<superfacets> &segments,
 		const int seg_i,
-		float &circumference,
 		float &shape_descriptor,
 		float &compactness,
 		float &shape_index
@@ -857,7 +852,7 @@ namespace semantic_mesh_segmentation
 		extract_segment_longest_border(segments, smesh_out, cloud_pt_3d, segments[seg_i]);
 
 		//compute shape based features
-		compute_shape_features(segments[seg_i], smesh_out, shape_descriptor, compactness, shape_index, circumference);
+		compute_shape_features(segments[seg_i], smesh_out, shape_descriptor, compactness, shape_index);
 	}
 	//functions declare
 	//------------------------------------------------ ------------------------------- ----------------------------------------------//
@@ -883,9 +878,9 @@ namespace semantic_mesh_segmentation
 
 	void merge_mesh(SFMesh *, SFMesh *, int &, int &, int &, SFMesh *smesh_overseg = nullptr);
 
-	void compute_geometric_features_only_per_scale(SFMesh*, PTCloud*, superfacets &, const int, std::vector<float> &);
+	void compute_geometric_features_only_per_scale(SFMesh*, PTCloud*, superfacets &, const int, std::vector<float> &, std::vector< std::vector<float>> &);
 
-	void compute_features_on_vertices_face_centers_pcl(SFMesh*, PTCloud*, superfacets &, const int, std::vector<float> &, std::vector<float> &);
+	void compute_features_on_vertices_face_centers_pcl(SFMesh*, PTCloud*, superfacets &, const int, std::vector<float> &, std::vector<float> &, std::vector< std::vector<float>> &);
 
 	void compute_radiometric_features_on_face_textures(SFMesh*, superfacets &, const int, std::vector<float> &);
 
