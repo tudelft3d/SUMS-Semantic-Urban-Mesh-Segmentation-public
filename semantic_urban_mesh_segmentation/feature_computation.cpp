@@ -1204,6 +1204,10 @@ namespace semantic_mesh_segmentation
 			//multi-scale relative elevation based features
 			multi_scales_elevations(multi_scales__seg_minmax_ele, mulsc_ele_feas[i], avg_center.z);
 
+			//shape features computation
+			float circumference = 0.0f, shape_descriptor = 0.0f, compactness = 0.0f, shape_index = 0.0f;
+			segment_shape_based_features(smesh_out, cloud_sampled, segment_out, i, circumference, shape_descriptor, compactness, shape_index);
+
 			//parsing ground truth base on majority label
 			seg_truth[i] = segment_out[i].ground_truth;
 
@@ -1213,6 +1217,11 @@ namespace semantic_mesh_segmentation
 			basic_feas[i][2] = segment_out[i].sum_area > cutoff_spfarea_max ? cutoff_spfarea_max : segment_out[i].sum_area;
 			basic_feas[i][3] = relative_elevation;
 			basic_feas[i][4] = triangle_density > cutoff_spffacetdensity_max ? cutoff_spffacetdensity_max : triangle_density;
+			basic_feas[i][5] = segment_out[i].ExactVec.size() > cutoff_spf_vertex_count ? cutoff_spf_vertex_count : segment_out[i].ExactVec.size();//vertex_count
+			basic_feas[i][6] = circumference;//circumference
+			basic_feas[i][7] = compactness;//compactness
+			basic_feas[i][8] = shape_index;//shape_index
+			basic_feas[i][9] = shape_descriptor;//shape_descriptor
 		}
 		std::cout << "Done in (s): " << omp_get_wtime() - t_total << '\n' << std::endl;
 	}
@@ -1497,7 +1506,7 @@ namespace semantic_mesh_segmentation
 		construct_superfacets(smesh_out, cloud_sampled, segment_out, seg_face_vec, seg_ids);
 
 		//--- assign segment color ---
-		if (save_oversegmentation_mesh)
+		if (save_oversegmentation_mesh && !use_existing_mesh_segments)
 			get_segments_color(smesh_out, segment_out);
 
 		//--- compute segment based features (include point-based multi-scale relative elevation) ---
@@ -1650,5 +1659,130 @@ namespace semantic_mesh_segmentation
 
 		delete tmp_mesh;
 		delete cloud_in;
+	}
+
+	//--- PSSNet for GCN input ---
+
+	//--- feature selection for output ---
+	void feature_selection_for_GCN
+	(
+		SFMesh *smesh_in,
+		PTCloud *cloud_out,
+		std::vector<std::vector<int>> &seg_face_vec,
+		std::vector<int> &seg_ids,
+		std::vector<int> &seg_truth,
+		std::vector< std::vector<float>> & basic_feas,
+		std::vector< std::vector<float> > &eigen_feas,
+		std::vector< std::vector<float> > &color_feas
+	)
+	{
+		std::cout << "  Attaching segment features to points, use ";
+		const double t_total = omp_get_wtime();
+		std::vector<std::vector<int>> seg_pcl_vec(seg_face_vec.size(), std::vector<int>());
+		std::map<int, bool> seg_visited;
+		for (int seg_i = 0; seg_i < seg_face_vec.size(); ++seg_i)
+		{
+			seg_visited[seg_i] = false;
+			for (int fi = 0; fi < seg_face_vec[seg_i].size(); ++fi)
+			{
+				SFMesh::Face fdx(seg_face_vec[seg_i][fi]);
+				seg_pcl_vec[seg_i].insert(seg_pcl_vec[seg_i].end(),
+						smesh_in->get_face_sampled_points[fdx].begin(), smesh_in->get_face_sampled_points[fdx].end());
+			}
+		}
+
+		//cloud_out->remove_all_properties();
+		cloud_out->remove_vertex_property(cloud_out->get_points_on_mesh_border);
+		if (sampling_strategy == 1 || sampling_strategy == 2)
+			get_segment_border_points(cloud_out, seg_truth, seg_pcl_vec);
+
+		cloud_out->add_selected_feature_properties_for_GCN
+		(
+			seg_face_vec,
+			seg_ids,
+			seg_truth,
+			basic_feas,
+			eigen_feas, 
+			color_feas
+		);
+		std::cout << " (s): " << omp_get_wtime() - t_total << '\n' << std::endl;
+	}
+
+	//--- processing feature selection for GCN single tiles ---
+	void feature_selection_for_GCN_single_tiles(const int pi)
+	{
+		std::string sfc_in = base_names[pi];
+		easy3d::PointCloud* pcl_in = read_feature_pointcloud_data(sfc_in);
+
+		SFMesh *smesh_out = new SFMesh;
+		std::vector<cv::Mat> texture_maps;
+		read_mesh_data(smesh_out, pi, texture_maps);
+
+		PTCloud *sampled_cloud = new PTCloud;
+		read_pointcloud_data(smesh_out, sampled_cloud, 0, pi);
+
+		//texture color matching for new sampled point cloud
+		PTCloud* face_center_cloud = new PTCloud;
+		face_center_cloud->get_points_color = face_center_cloud->add_vertex_property<vec3>("v:color", vec3());
+
+		if (!smesh_out->get_face_property<vec3>("f:color"))
+			smesh_out->add_face_property<vec3>("f:color", vec3());
+		smesh_out->get_face_color = smesh_out->get_face_property<vec3>("f:color");
+		for (auto fi : smesh_out->faces())
+		{
+			smesh_out->get_face_color[fi] = vec3();
+			face_center_cloud->add_vertex(smesh_out->get_face_center[fi]);
+		}
+
+		if (with_texture)
+			face_texture_processor(smesh_out, texture_maps, pi);
+
+		easy3d::KdTree *face_center_tree = new easy3d::KdTree;
+		Build_kdtree(face_center_cloud, face_center_tree);
+		sampled_cloud->get_points_color = sampled_cloud->get_vertex_property<vec3>("v:color");
+
+		std::cout << "  Parsing texture color to augmented sampled point cloud, use ";
+		const double t_total = omp_get_wtime();
+#pragma omp parallel for schedule(runtime)
+		for (int pi = 0; pi < sampled_cloud->vertices_size(); ++pi)
+		{
+			PTCloud::Vertex ptx(pi);
+			int closet_ind = face_center_tree->find_closest_point(sampled_cloud->get_vertex_property<vec3>("v:point")[ptx]);
+			SFMesh::Face fd(closet_ind);
+			sampled_cloud->get_points_color[ptx] = smesh_out->get_face_color[fd];
+		}
+		delete face_center_cloud;
+		//write_pointcloud_data(sampled_cloud, 0, pi);
+		std::cout << " (s): " << omp_get_wtime() - t_total << '\n' << std::endl;
+
+		std::vector<int> seg_truth, seg_ids;
+		std::vector<std::vector<int>> seg_face_vec;
+		std::vector< std::vector<float> > basic_feas, mulsc_ele_feas;
+		std::vector< std::vector<float> > eigen_feas, color_feas;
+		get_all_feature_properties_from_feature_point_cloud
+		(
+			pcl_in, seg_face_vec, seg_ids, seg_truth,
+			basic_feas, eigen_feas, color_feas, mulsc_ele_feas
+		);
+
+		seg_truth.clear();
+		get_mesh_labels(smesh_out, seg_truth, seg_face_vec);
+
+		feature_selection_for_GCN
+		(
+			smesh_out,
+			sampled_cloud,
+			seg_face_vec,
+			seg_ids,
+			seg_truth,
+			basic_feas, eigen_feas, color_feas
+		);
+
+		//--- write GCN feature point cloud ---
+		write_feature_pointcloud_data_for_GCN(sampled_cloud, pi);
+
+		delete pcl_in;
+		delete sampled_cloud;
+		delete smesh_out;
 	}
 }

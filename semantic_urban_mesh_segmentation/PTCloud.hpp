@@ -52,6 +52,18 @@ namespace semantic_mesh_segmentation
 		float        //2.max local elevation 
 		> ptx_minmax;
 
+	inline bool smaller_segment_size
+	(
+		std::pair<int, std::vector<int>> seg_1,
+		std::pair<int, std::vector<int>> seg_2
+	)
+	{
+		if (seg_1.second.size() < seg_2.second.size())
+			return true;
+		else
+			return false;
+	}
+
 	class PTCloud :public easy3d::PointCloud
 	{
 	public:
@@ -142,6 +154,16 @@ namespace semantic_mesh_segmentation
 			std::vector<int> &,
 			std::vector< std::vector<float> > &,
 			std::vector< std::vector<float> > &,
+			std::vector< std::vector<float> > &,
+			std::vector< std::vector<float> > &
+		);
+
+		void add_selected_feature_properties_for_GCN
+		(
+			std::vector<std::vector<int>> &,
+			std::vector<int> &,
+			std::vector<int> &,
+			std::vector< std::vector<float>> &,
 			std::vector< std::vector<float> > &,
 			std::vector< std::vector<float> > &
 		);
@@ -380,6 +402,109 @@ namespace semantic_mesh_segmentation
 				color_feas[sfi].insert(color_feas[sfi].end(), p_color_feas[ptx].begin(), p_color_feas[ptx].end());
 		}
 		std::cout << " (s): " << omp_get_wtime() - t_total << '\n' << std::endl;
+	}
+
+
+	//--- add selected features output for GCN ---
+	inline void PTCloud::add_selected_feature_properties_for_GCN
+	(
+		std::vector<std::vector<int>> &seg_pcl_vec,
+		std::vector<int> &seg_ids,
+		std::vector<int> &seg_truth,
+		std::vector< std::vector<float>> & basic_feas,
+		std::vector< std::vector<float> > &eigen_feas,
+		std::vector< std::vector<float> > &color_feas
+	)
+	{
+		std::vector<PTCloud::VertexProperty< float >> v_basic_feas, v_eigen_feas, v_color_feas;
+
+		this->add_vertex_property<int>("v:point_segment_id", -1);
+		for (int selc_i = 0; selc_i < use_feas.size(); ++selc_i)
+		{
+			if (use_feas[selc_i])
+			{
+				switch (selc_i)
+				{
+					case 0: this->add_segment_properties(v_basic_feas, basic_feature_base_names, use_basic_features, selc_i); break;
+					case 1: this->add_segment_properties(v_eigen_feas, eigen_feature_base_names, use_eigen_features, selc_i); break;
+					case 2: this->add_segment_properties(v_color_feas, color_feature_base_names, use_color_features, selc_i); break;
+				}
+			}
+		}
+
+		std::vector<std::pair<int, std::vector<int>>> seg_pcl_vec_sort;
+		for (int i = 0; i < seg_pcl_vec.size(); ++i)
+			seg_pcl_vec_sort.emplace_back(i, seg_pcl_vec[i]);
+		sort(seg_pcl_vec_sort.begin(), seg_pcl_vec_sort.end(), smaller_segment_size);
+
+		this->add_vertex_property<bool>("v:segment_visited", false);
+		auto seg_visited = this->get_vertex_property<bool>("v:segment_visited");
+		for (int seg_sort_i = 0; seg_sort_i < seg_pcl_vec_sort.size(); ++seg_sort_i)
+		{
+			int seg_i = seg_pcl_vec_sort[seg_sort_i].first;
+			for (int vi = 0; vi < seg_pcl_vec[seg_i].size(); ++vi)
+			{
+				PTCloud::Vertex vtx(seg_pcl_vec[seg_i][vi]);
+				if (seg_visited[vtx] == false)
+					seg_visited[vtx] = true;
+				else
+					continue;
+
+				this->get_vertex_property<int>("v:point_segment_id")[vtx] = seg_ids[seg_i];
+				if (sampling_strategy == 1 || sampling_strategy == 2)
+				{
+					if (this->get_points_use_seg_truth[vtx])
+					{
+						if (seg_truth[seg_i] != -1)
+							this->get_points_ground_truth[vtx] = seg_truth[seg_i] + 1;
+						else
+							this->get_points_ground_truth[vtx] = -1;
+					}
+					else
+						this->get_points_ground_truth[vtx] = -1;
+				}
+
+				if (use_feas[0])
+				{
+					int fea_ind = 0;
+					for (int bas_i = 0; bas_i < basic_feas[seg_i].size(); ++bas_i)
+					{
+						if (use_basic_features[bas_i])
+						{
+							v_basic_feas[fea_ind][vtx] = basic_feas[seg_i][bas_i];
+							++fea_ind;
+						}
+					}
+				}
+
+				if (use_feas[1])
+				{
+					int fea_ind = 0;
+					for (int eng_i = 0; eng_i < eigen_feas[seg_i].size(); ++eng_i)
+					{
+						if (use_eigen_features[eng_i])
+						{
+							v_eigen_feas[fea_ind][vtx] = eigen_feas[seg_i][eng_i];
+							++fea_ind;
+						}
+					}
+				}
+
+				if (use_feas[2])
+				{
+					int fea_ind = 0;
+					for (int col_i = 0; col_i < color_feas[seg_i].size(); ++col_i)
+					{
+						if (use_color_features[col_i])
+						{
+							v_color_feas[fea_ind][vtx] = color_feas[seg_i][col_i];
+							++fea_ind;
+						}
+					}
+				}
+			}
+		}
+		this->remove_vertex_property(this->get_vertex_property<bool>("v:segment_visited"));
 	}
 }
 

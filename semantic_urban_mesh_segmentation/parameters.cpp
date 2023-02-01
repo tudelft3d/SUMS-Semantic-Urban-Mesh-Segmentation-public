@@ -257,6 +257,8 @@ namespace semantic_mesh_segmentation
 	//****************** PSSNet parameters ****************
 	bool generate_groundtruth_segments = false;
 	bool only_evaluation = false; //for test and validation data only
+	bool use_GCN_features = true;
+	bool only_write_GCN_features = false;
 
 	//over-segmentation
 	float radius_default = 3.0f;//initial vertex planarity, 0.5f
@@ -279,6 +281,11 @@ namespace semantic_mesh_segmentation
 	bool delaunay_relations_on_sampled_points = true;
 	double remove_close_vertices_for_delaunay_dis = 10E-3 * 2.0f;
 
+	//feature parameters
+	int alpha_shape_val = 1;//1
+	int border_growing_neighbor = 10;//>0, 5 for non batch; 20 for batch
+	float cutoff_spfcompact_max = 1.0f;
+	std::pair<bool, int> ignore_mesh_boundary(true, 1.0f); //is ignore, boundary search radius 
 	//****************** Default parameters ******************
 	//initialized values
 	std::pair<float, float> default_feature_value_minmax(0.000001f, 0.999999f);
@@ -336,7 +343,12 @@ namespace semantic_mesh_segmentation
 		{1, true},  //interior_mat_radius
 		{2, true},  //sum_area
 		{3, true},  //relative_elevation
-		{4, true}   //triangle density (only useful when input is adaptive mesh)
+		{4, true},  //triangle density (only useful when input is adaptive mesh)
+		{5, true},  //vertex_count
+		{6, true},  //circumference
+		{7, true},  //compactness
+		{8, true},  //shape_index
+		{9, true}   //shape_descriptor
 	};
 
 	std::map<int, bool> use_eigen_features
@@ -492,12 +504,14 @@ namespace semantic_mesh_segmentation
 
 	std::vector<std::string> folder_names_pssnet
 	{
-		"spg_intput/",  //0
+		"spg_input/",  //0
 		"segments_pnp/",//1
 		"graph_edges/", //2
 		"graph_nodes/", //3
 		"pcl/",         //4
-		"segments_truth/" //5
+		"segments_truth/", //5
+		"feature_pnp/",    //6
+		"visualization_pnp/" //7
 	};
 
 	std::vector<std::string> prefixs
@@ -519,6 +533,7 @@ namespace semantic_mesh_segmentation
 		"_aug",//14
 		"_groundtruth_L0", //15
 		"_graph",//16
+		"gcn" //17
 	};
 
 	std::vector<std::string> data_types
@@ -559,7 +574,12 @@ namespace semantic_mesh_segmentation
 		{"interior_mat_radius", 1},
 		{"sum_area", 2},
 		{"relative_elevation", 3}, //relative to local ground which defined as local largest lower segment
-		{"triangle_density", 4}
+		{"triangle_density", 4},
+		{"vertex_count", 5},
+		{"circumference", 6},
+		{"compactness", 7},
+		{"shape_index", 8},
+		{"shape_descriptor", 9}
 	};
 
 	std::vector<std::pair<std::string, int>> eigen_feature_base_names

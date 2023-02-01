@@ -328,10 +328,10 @@ namespace semantic_mesh_segmentation
 	)
 	{
 		std::ostringstream str_ostemp;
-		if (enable_augment && train_test_predict_val == 0)
+		if (enable_augment && train_test_predict_val == 0 && !use_GCN_features)
 		{
 			std::cout << "	Start to read augmented features " << s1_test << std::endl;
-			if (processing_mode == 2)
+			if (processing_mode == 2 || current_mode == operating_mode::PSSNet_pcl_generation_for_GCN_backbone)
 				str_ostemp
 				<< root_path
 				<< folder_names_level_0[11]
@@ -357,17 +357,31 @@ namespace semantic_mesh_segmentation
 		{
 			std::cout << "	Start to read features " << s1_test << std::endl;
 
-			if (processing_mode == 2)
-				str_ostemp
-				<< root_path
-				<< folder_names_level_0[11]
-				<< folder_names_level_0[1]
-				<< folder_names_level_1[train_test_predict_val]
-				<< s1_test
-				<< prefixs[0]
-				<< prefixs[3]
-				<< ".ply";
+			if (processing_mode == 2 || current_mode == operating_mode::PSSNet_pcl_generation_for_GCN_backbone)
+			{
+				if (use_GCN_features)
+					str_ostemp
+						<< root_path
+						<< folder_names_level_0[11]
+						<< folder_names_pssnet[6]
+						<< folder_names_level_1[train_test_predict_val]
+						<< s1_test
+						<< prefixs[0]
+						<< prefixs[3]
+						<< ".ply";
+				else
+					str_ostemp
+						<< root_path
+						<< folder_names_level_0[11]
+						<< folder_names_level_0[1]
+						<< folder_names_level_1[train_test_predict_val]
+						<< s1_test
+						<< prefixs[0]
+						<< prefixs[3]
+						<< ".ply";
+			}
 			else
+			{
 				str_ostemp
 					<< root_path
 					<< folder_names_level_0[1]
@@ -376,6 +390,7 @@ namespace semantic_mesh_segmentation
 					<< prefixs[0]
 					<< prefixs[3]
 					<< ".ply";
+			}
 		}
 
 		std::string str_temp = str_ostemp.str().data();
@@ -397,6 +412,9 @@ namespace semantic_mesh_segmentation
 		SFMesh *mesh_seg = new SFMesh;
 		if (use_existing_mesh_segments)
 		{
+			if (current_mode == operating_mode::PSSNet_pcl_generation_for_GCN_backbone)
+				partition_folder_path = folder_names_level_0[11] + folder_names_pssnet[1];
+
 			if (!use_batch_processing)
 			{
 				mesh_seg_str_ostemp
@@ -1356,6 +1374,26 @@ namespace semantic_mesh_segmentation
 								only_evaluation = false;
 						}
 					}
+					else if (param_name == "use_GCN_features")
+					{
+						if (param_value != "default")
+						{
+							if (param_value == "true" || param_value == "True" || param_value == "TRUE")
+								use_GCN_features = true;
+							else if (param_value == "false" || param_value == "False" || param_value == "FALSE")
+								use_GCN_features = false;
+						}
+					}
+					else if (param_name == "only_write_GCN_features")
+					{
+						if (param_value != "default")
+						{
+							if (param_value == "true" || param_value == "True" || param_value == "TRUE")
+								only_write_GCN_features = true;
+							else if (param_value == "false" || param_value == "False" || param_value == "FALSE")
+								only_write_GCN_features = false;
+						}
+					}
 					else if (param_name == "radius_default")
 					{
 						if (param_value != "default")
@@ -1812,7 +1850,7 @@ namespace semantic_mesh_segmentation
 					{
 						if (param_value != "default")
 						{
-							for (int i = 0; i < use_feas.size(); ++i)
+							for (int i = 0; i < use_mulsc_eles.size(); ++i)
 								use_mulsc_eles[i] = false;
 
 							std::vector<std::string> words = Split(param_value, ",", false);
@@ -1826,7 +1864,7 @@ namespace semantic_mesh_segmentation
 					{
 						if (param_value != "default")
 						{
-							for (int i = 0; i < use_feas.size(); ++i)
+							for (int i = 0; i < use_basic_features.size(); ++i)
 								use_basic_features[i] = false;
 
 							std::vector<std::string> words = Split(param_value, ",", false);
@@ -1840,7 +1878,7 @@ namespace semantic_mesh_segmentation
 					{
 						if (param_value != "default")
 						{
-							for (int i = 0; i < use_feas.size(); ++i)
+							for (int i = 0; i < use_eigen_features.size(); ++i)
 								use_eigen_features[i] = false;
 
 							std::vector<std::string> words = Split(param_value, ",", false);
@@ -1854,7 +1892,7 @@ namespace semantic_mesh_segmentation
 					{
 						if (param_value != "default")
 						{
-							for (int i = 0; i < use_feas.size(); ++i)
+							for (int i = 0; i < use_color_features.size(); ++i)
 								use_color_features[i] = false;
 
 							std::vector<std::string> words = Split(param_value, ",", false);
@@ -2274,15 +2312,26 @@ namespace semantic_mesh_segmentation
 		}
 		else if (processing_mode == 2)
 		{
-			str_ostemp
-				<< root_path
-				<< folder_names_level_0[11]
-				<< folder_names_level_0[1]
-				<< folder_names_level_1[train_test_predict_val]
-				<< s1_test
-				<< prefixs[0]
-				<< prefixs[3]
-				<< ".ply";
+			if (use_GCN_features)
+				str_ostemp
+					<< root_path
+					<< folder_names_level_0[11]
+					<< folder_names_pssnet[6]
+					<< folder_names_level_1[train_test_predict_val]
+					<< s1_test
+					<< prefixs[0]
+					<< prefixs[3]
+					<< ".ply";
+			else
+				str_ostemp
+					<< root_path
+					<< folder_names_level_0[11]
+					<< folder_names_level_0[1]
+					<< folder_names_level_1[train_test_predict_val]
+					<< s1_test
+					<< prefixs[0]
+					<< prefixs[3]
+					<< ".ply";
 		}
 
 		std::string str_temp = str_ostemp.str().data();
@@ -2342,17 +2391,27 @@ namespace semantic_mesh_segmentation
 			}
 			else if (processing_mode == 2)
 			{
-				str_ostemp
-					<< root_path
-					<< folder_names_level_0[11]
-					<< folder_names_level_0[7]
-					<< folder_names_level_1[train_test_predict_val]
-					<< base_names[mi]
-					<< prefixs[4]
-					<< prefixs[3]
-					<< ".ply";
+				if (use_GCN_features)
+					str_ostemp
+						<< root_path
+						<< folder_names_level_0[11]
+						<< folder_names_pssnet[7]
+						<< folder_names_level_1[train_test_predict_val]
+						<< base_names[mi]
+						<< prefixs[4]
+						<< prefixs[3]
+						<< ".ply";
+				else
+					str_ostemp
+						<< root_path
+						<< folder_names_level_0[11]
+						<< folder_names_level_0[7]
+						<< folder_names_level_1[train_test_predict_val]
+						<< base_names[mi]
+						<< prefixs[4]
+						<< prefixs[3]
+						<< ".ply";
 			}
-
 		}
 
 		std::string str_temp = str_ostemp.str().data();
@@ -3179,6 +3238,41 @@ namespace semantic_mesh_segmentation
 			fout << ei.first << "\t" << ei.second << "\n";
 		}
 		fout.close();
+	}
+
+	//write GCN point cloud data: sampling point cloud with 1D features
+	void write_feature_pointcloud_data_for_GCN
+	(
+		PTCloud* pcl_out,
+		const int mi
+	)
+	{
+		std::cout << "Start to writing feature point cloud for GCN ..." << std::endl << std::endl;
+
+		pcl_out->remove_vertex_property(pcl_out->get_points_face_belong_ids);
+		pcl_out->remove_vertex_property(pcl_out->get_points_face_ele_belong_ids);
+		pcl_out->remove_vertex_property(pcl_out->get_points_use_seg_truth);
+		pcl_out->remove_vertex_property(pcl_out->get_points_rgb_x);
+		pcl_out->remove_vertex_property(pcl_out->get_points_rgb_y);
+		pcl_out->remove_vertex_property(pcl_out->get_points_rgb_z);
+		pcl_out->remove_vertex_property(pcl_out->get_points_hsv_x);
+		pcl_out->remove_vertex_property(pcl_out->get_points_hsv_y);
+		pcl_out->remove_vertex_property(pcl_out->get_points_hsv_z);
+		std::ostringstream str_ostemp;
+		str_ostemp
+			<< root_path
+			<< folder_names_level_0[11]
+			<< folder_names_pssnet[0] << folder_names_pssnet[4]
+			<< folder_names_level_1[train_test_predict_val]
+			<< base_names[mi]
+			<< prefixs[0]
+			<< prefixs[17]
+			<< ".ply";
+
+		std::string str_temp = str_ostemp.str().data();
+		char * Path_temp = (char *)str_temp.data();
+
+		rply_output(pcl_out, Path_temp);
 	}
 
 	void get_mesh_labels

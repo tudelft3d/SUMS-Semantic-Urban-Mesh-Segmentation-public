@@ -48,7 +48,7 @@ namespace semantic_mesh_segmentation
 	{
 	public:
 		int id, index, ground_truth, predict, local_ground_longrange_segid, label, local_ground_id;
-		float sum_area, avg_ele, relative_ele, local_longrange_ground_ele;
+		float sum_area, avg_ele, relative_ele, local_longrange_ground_ele, border_length;
 		bool contain_mesh_border_facets, seg_visited, is_non_planar, is_ignore;
 		std::vector<int> neighbor_ids, ExactVec, face_id_vec, exterior_mat_ids, sampled_points_ids, local_ground_ids, parallelism_neg_ids;
 		std::pair<float, float> local_elevation_minmax;
@@ -61,9 +61,10 @@ namespace semantic_mesh_segmentation
 		easy3d::vec4 plane_parameter;
 		std::vector<int> sampled_points;
 		Plane plane_cgal;
-		std::vector<vec3> sampled_pts_coords;
+		std::vector<vec3> sampled_pts_coords, border_points, alpha_border_points;
 		std::vector<std::pair<int, float>> segid_local_zmin_vec;
-
+		std::vector<std::tuple<int, easy3d::vec3, bool>> segment_alpha_vertices;//global index, coords, is border
+		std::vector<std::tuple<int, std::pair<int, int>, bool>> segment_alpha_edges;//global index, global vs and vt, is border
 		superfacets
 		()
 		{

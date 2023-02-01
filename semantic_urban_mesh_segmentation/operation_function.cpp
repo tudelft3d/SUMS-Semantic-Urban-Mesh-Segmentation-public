@@ -1090,6 +1090,20 @@ namespace semantic_mesh_segmentation
 
 					//----------------------------------------------------------------------------------------------------------------------------------------------------
 
+		//--- PSSNet pipeline ----
+		//--- write selected features on mesh faces for GCN ---
+		case operating_mode::PSSNet_pipeline_for_GCN:
+		{
+			current_mode = operating_mode::PSSNet_pipeline_for_GCN;
+			run(operating_mode::Get_labels_for_planar_non_planar_from_semantic);
+			run(operating_mode::Pipeline);
+			run(operating_mode::PSSNet_oversegmentation);
+			run(operating_mode::PSSNet_oversegmentation_evaluation);
+			run(operating_mode::PSSNet_graph_construction);
+			run(operating_mode::PSSNet_pcl_generation_for_GCN);
+			break;
+		}
+
 		//--- Get labels for planar and non-planar data from semantic labels ---
 		case operating_mode::Get_labels_for_planar_non_planar_from_semantic:
 		{
@@ -1172,8 +1186,7 @@ namespace semantic_mesh_segmentation
 			break;
 		}
 
-
-		//--- Mesh feature extraction ---
+		//--- PSSNet over-segmentation ---
 		case operating_mode::PSSNet_oversegmentation:
 		{
 			current_mode = operating_mode::PSSNet_oversegmentation;
@@ -1279,6 +1292,142 @@ namespace semantic_mesh_segmentation
 				{
 					PNP_MRF_single_tiles(pi);
 				}
+			}
+
+			break;
+		}
+
+		case operating_mode::PSSNet_oversegmentation_evaluation:
+		{
+			current_mode = operating_mode::PSSNet_oversegmentation_evaluation;
+			std::cout << "Evaluation Operating mode: PSSNet_oversegmentation_evaluation. " << std::endl;
+			std::cout << "	Processing test data and ground truth data." << std::endl;
+			std::vector<bool> train_predict
+			{
+				process_data_selection["train"],
+				process_data_selection["test"],
+				process_data_selection["predict"],
+				process_data_selection["validate"]
+			};
+
+			for (int tr_pr_i = 0; tr_pr_i < train_predict.size(); ++tr_pr_i)
+			{
+				if (train_predict[tr_pr_i] && tr_pr_i != 2)
+				{
+					changing_to_test_or_predict(tr_pr_i);
+
+					int all_face_num = 0;
+					all_eval *all_seg_evaluation = new all_eval();
+
+					if (generate_groundtruth_segments)
+						read_and_write_oversegmentation_ground_truth();
+
+					for (int ti = 0; ti < base_names.size(); ++ti)
+					{
+						SFMesh* test_mesh = new SFMesh;
+						read_oversegmentation_testdata(test_mesh, ti);
+
+						SFMesh* truth_mesh = new SFMesh;
+						read_oversegmentation_truthdata(truth_mesh, ti);
+
+						oversegmentation_evaluation(truth_mesh, test_mesh, ti, all_seg_evaluation);
+						all_face_num += test_mesh->faces_size();
+
+						delete truth_mesh;
+						delete test_mesh;
+					}
+
+					delete all_seg_evaluation;
+					std::cout << "all_face_num = " << all_face_num << std::endl;
+				}
+			}
+
+			break;
+		}
+
+		case operating_mode::PSSNet_pcl_generation_for_GCN:
+		{
+			current_mode = operating_mode::PSSNet_pcl_generation_for_GCN;
+			//default setting
+			GCN_feature_write_configurations();
+
+			if (process_data_selection["train"])
+			{
+				std::cout << "--------------------- Write train mesh feature for GCN : L1 ---------------------" << std::endl;
+
+				train_test_predict_val = 0;
+				get_training_data();
+				data_path = training_data_path;
+				base_names = training_base_names;
+				ply_files = training_ply_files;
+				file_folders = training_file_folders;
+				file_ind_map = training_file_ind_map;
+				use_batch_processing = use_batch_processing_on_training;
+				sampling_strategy = sampling_strategy_training;
+				run(operating_mode::PSSNet_pcl_generation_for_GCN_backbone);
+			}
+
+			if (process_data_selection["test"])
+			{
+				std::cout << "--------------------- Write test mesh feature for GCN : L1 ---------------------" << std::endl;
+
+				train_test_predict_val = 1;
+				get_testing_data();
+				data_path = testing_data_path;
+				base_names = testing_base_names;
+				ply_files = testing_ply_files;
+				file_folders = testing_file_folders;
+				file_ind_map = testing_file_ind_map;
+				use_batch_processing = use_batch_processing_on_testing;
+				sampling_strategy = sampling_strategy_testing;
+				run(operating_mode::PSSNet_pcl_generation_for_GCN_backbone);
+			}
+
+			if (process_data_selection["predict"])
+			{
+				std::cout << "--------------------- Write predict mesh feature for GCN : L1 ---------------------" << std::endl;
+
+				train_test_predict_val = 2;
+				get_predicting_data();
+				data_path = predicting_data_path;
+				base_names = predicting_base_names;
+				ply_files = predicting_ply_files;
+				file_folders = predicting_file_folders;
+				file_ind_map = predicting_file_ind_map;
+				use_batch_processing = use_batch_processing_on_predicting;
+				sampling_strategy = sampling_strategy_predicting;
+				run(operating_mode::PSSNet_pcl_generation_for_GCN_backbone);
+			}
+
+			if (process_data_selection["validate"])
+			{
+				std::cout << "--------------------- Write validate mesh feature for GCN : L1 ---------------------" << std::endl;
+
+				train_test_predict_val = 3;
+				get_validation_data();
+				data_path = validation_data_path;
+				base_names = validation_base_names;
+				ply_files = validation_ply_files;
+				file_folders = validation_file_folders;
+				file_ind_map = validation_file_ind_map;
+				use_batch_processing = use_batch_processing_on_validation;
+				sampling_strategy = sampling_strategy_validation;
+				run(operating_mode::PSSNet_pcl_generation_for_GCN_backbone);
+			}
+
+			break;
+		}
+
+		//--- write selected features on mesh faces for GCN ---
+		case operating_mode::PSSNet_pcl_generation_for_GCN_backbone:
+		{
+			current_mode = operating_mode::PSSNet_pcl_generation_for_GCN_backbone;
+			//process single tile
+			for (std::size_t pi = 0; pi < base_names.size(); ++pi)
+			{
+				if (!only_write_GCN_features)
+					process_single_tile(pi);
+				feature_selection_for_GCN_single_tiles(pi);
 			}
 
 			break;
@@ -1414,56 +1563,6 @@ namespace semantic_mesh_segmentation
 
 			break;
 		}
-
-
-		case operating_mode::PSSNet_oversegmentation_evaluation:
-		{
-			current_mode = operating_mode::PSSNet_oversegmentation_evaluation;
-			std::cout << "Evaluation Operating mode: PSSNet_oversegmentation_evaluation. " << std::endl;
-			std::cout << "	Processing test data and ground truth data." << std::endl;
-			std::vector<bool> train_predict
-			{
-				process_data_selection["train"],
-				process_data_selection["test"],
-				process_data_selection["predict"],
-				process_data_selection["validate"]
-			};
-
-			for (int tr_pr_i = 0; tr_pr_i < train_predict.size(); ++tr_pr_i)
-			{
-				if (train_predict[tr_pr_i] && tr_pr_i != 2)
-				{
-					changing_to_test_or_predict(tr_pr_i);
-
-					int all_face_num = 0;
-					all_eval *all_seg_evaluation = new all_eval();
-
-					if (generate_groundtruth_segments)
-						read_and_write_oversegmentation_ground_truth();
-
-					for (int ti = 0; ti < base_names.size(); ++ti)
-					{
-						SFMesh* test_mesh = new SFMesh;
-						read_oversegmentation_testdata(test_mesh, ti);
-
-						SFMesh* truth_mesh = new SFMesh;
-						read_oversegmentation_truthdata(truth_mesh, ti);
-
-						oversegmentation_evaluation(truth_mesh, test_mesh, ti, all_seg_evaluation);
-						all_face_num += test_mesh->faces_size();
-
-						delete truth_mesh;
-						delete test_mesh;
-					}
-
-					delete all_seg_evaluation;
-					std::cout << "all_face_num = " << all_face_num << std::endl;
-				}
-			}
-
-			break;
-		}
-
 
 		default:
 		{
