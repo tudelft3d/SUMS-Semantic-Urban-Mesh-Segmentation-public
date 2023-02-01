@@ -469,8 +469,8 @@ namespace semantic_mesh_segmentation
 
 			for (int sfi = 0; sfi < basic_feas.size(); ++sfi)
 			{
-				if (seg_truth[sfi] != -1)
-					fea_cloud->add_vertex(vec3(basic_feas[sfi][0], basic_feas[sfi][1], basic_feas[sfi][2]));
+				//if (seg_truth[sfi] != -1)
+				fea_cloud->add_vertex(vec3(basic_feas[sfi][0], basic_feas[sfi][1], basic_feas[sfi][2]));
 			}
 		}
 		else

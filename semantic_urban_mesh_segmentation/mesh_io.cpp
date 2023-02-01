@@ -2286,7 +2286,7 @@ namespace semantic_mesh_segmentation
 		pcl_out->remove_vertex_property(pcl_out->get_points_face_ele_belong_ids);
 		std::ostringstream str_ostemp;
 
-		if (processing_mode == 0)
+		if (processing_mode == 0 && current_mode != operating_mode::PSSNet_pcl_generation_for_GCN_backbone)
 		{
 			str_ostemp
 				<< root_path
@@ -2297,7 +2297,7 @@ namespace semantic_mesh_segmentation
 				<< prefixs[3]
 				<< ".ply";
 		}
-		else if (processing_mode == 1)
+		else if (processing_mode == 1 && current_mode != operating_mode::PSSNet_pcl_generation_for_GCN_backbone)
 		{
 			str_ostemp
 				<< root_path
@@ -2310,7 +2310,7 @@ namespace semantic_mesh_segmentation
 				<< prefixs[3]
 				<< ".ply";
 		}
-		else if (processing_mode == 2)
+		else if (processing_mode == 2 || current_mode == operating_mode::PSSNet_pcl_generation_for_GCN_backbone)
 		{
 			if (use_GCN_features)
 				str_ostemp

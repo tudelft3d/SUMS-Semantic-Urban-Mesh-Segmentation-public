@@ -1671,7 +1671,6 @@ namespace semantic_mesh_segmentation
 	}
 
 	//--- PSSNet for GCN input ---
-
 	//--- feature selection for output ---
 	void feature_selection_for_GCN
 	(
@@ -1752,6 +1751,7 @@ namespace semantic_mesh_segmentation
 
 		std::cout << "  Parsing texture color to augmented sampled point cloud, use ";
 		const double t_total = omp_get_wtime();
+		sampled_cloud->add_vertex_property<int>("v:point_segment_id", -1);
 #pragma omp parallel for schedule(runtime)
 		for (int pi = 0; pi < sampled_cloud->vertices_size(); ++pi)
 		{
@@ -1759,9 +1759,9 @@ namespace semantic_mesh_segmentation
 			int closet_ind = face_center_tree->find_closest_point(sampled_cloud->get_vertex_property<vec3>("v:point")[ptx]);
 			SFMesh::Face fd(closet_ind);
 			sampled_cloud->get_points_color[ptx] = smesh_out->get_face_color[fd];
+			sampled_cloud->get_vertex_property<int>("v:point_segment_id")[ptx] = smesh_out->get_face_segment_id[fd];
 		}
 		delete face_center_cloud;
-		//write_pointcloud_data(sampled_cloud, 0, pi);
 		std::cout << " (s): " << omp_get_wtime() - t_total << '\n' << std::endl;
 
 		std::vector<int> seg_truth, seg_ids;

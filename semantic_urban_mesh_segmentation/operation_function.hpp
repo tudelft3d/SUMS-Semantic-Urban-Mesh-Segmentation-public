@@ -92,9 +92,9 @@ namespace semantic_mesh_segmentation
 		use_eigen_features[23] = false; //vertical_moment_2nd
 		use_eigen_features[24] = false; //uniformity
 
-		use_color_features[0] = false;//red
-		use_color_features[1] = false;//green
-		use_color_features[2] = false;//blue
+		use_color_features[0] = true;//red
+		use_color_features[1] = true;//green
+		use_color_features[2] = true;//blue
 		use_color_features[3] = true;//hue
 		use_color_features[4] = true;//sat
 		use_color_features[5] = true;//val

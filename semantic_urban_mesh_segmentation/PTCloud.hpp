@@ -259,46 +259,21 @@ namespace semantic_mesh_segmentation
 		int pi = 0;
 		for (int sfi = 0; sfi < basic_feas.size(); ++sfi)
 		{
-			if (train_test_predict_val == 0)//!ignored_labels_name.empty() 
-			{
-				if (seg_truth[sfi] != -1)
-				{
-					PTCloud::Vertex ptx(pi);
-					seg_id[ptx] = seg_ids[sfi];
+			PTCloud::Vertex ptx(sfi);
+			seg_id[ptx] = seg_ids[sfi];
 
-					//for features
-					this->get_points_ground_truth[ptx] = seg_truth[sfi];
-					p_faces[ptx].insert(p_faces[ptx].end(), seg_face_vec[sfi].begin(), seg_face_vec[sfi].end());
-					if (use_feas[0])
-						p_basic_feas[ptx].insert(p_basic_feas[ptx].end(), basic_feas[sfi].begin(), basic_feas[sfi].end());
-					if (use_feas[3])
-						p_mulsc_ele_feas[ptx].insert(p_mulsc_ele_feas[ptx].end(), mulsc_ele_feas[sfi].begin(), mulsc_ele_feas[sfi].end());
+			//for features
+			this->get_points_ground_truth[ptx] = seg_truth[sfi];
+			p_faces[ptx].insert(p_faces[ptx].end(), seg_face_vec[sfi].begin(), seg_face_vec[sfi].end());
+			if (use_feas[0])
+				p_basic_feas[ptx].insert(p_basic_feas[ptx].end(), basic_feas[sfi].begin(), basic_feas[sfi].end());
+			if (use_feas[3])
+				p_mulsc_ele_feas[ptx].insert(p_mulsc_ele_feas[ptx].end(), mulsc_ele_feas[sfi].begin(), mulsc_ele_feas[sfi].end());
 
-					if (use_feas[1])
-						p_eigen_feas[ptx].insert(p_eigen_feas[ptx].end(), eigen_feas[sfi].begin(), eigen_feas[sfi].end());
-					if (use_feas[2])
-						p_color_feas[ptx].insert(p_color_feas[ptx].end(), color_feas[sfi].begin(), color_feas[sfi].end());
-					++pi;
-				}
-			}
-			else
-			{
-					PTCloud::Vertex ptx(sfi);
-					seg_id[ptx] = seg_ids[sfi];
-
-					//for features
-					this->get_points_ground_truth[ptx] = seg_truth[sfi];
-					p_faces[ptx].insert(p_faces[ptx].end(), seg_face_vec[sfi].begin(), seg_face_vec[sfi].end());
-					if (use_feas[0])
-						p_basic_feas[ptx].insert(p_basic_feas[ptx].end(), basic_feas[sfi].begin(), basic_feas[sfi].end());
-					if (use_feas[3])
-						p_mulsc_ele_feas[ptx].insert(p_mulsc_ele_feas[ptx].end(), mulsc_ele_feas[sfi].begin(), mulsc_ele_feas[sfi].end());
-
-					if (use_feas[1])
-						p_eigen_feas[ptx].insert(p_eigen_feas[ptx].end(), eigen_feas[sfi].begin(), eigen_feas[sfi].end());
-					if (use_feas[2])
-						p_color_feas[ptx].insert(p_color_feas[ptx].end(), color_feas[sfi].begin(), color_feas[sfi].end());
-			}
+			if (use_feas[1])
+				p_eigen_feas[ptx].insert(p_eigen_feas[ptx].end(), eigen_feas[sfi].begin(), eigen_feas[sfi].end());
+			if (use_feas[2])
+				p_color_feas[ptx].insert(p_color_feas[ptx].end(), color_feas[sfi].begin(), color_feas[sfi].end());
 		}
 	}
 
@@ -418,7 +393,6 @@ namespace semantic_mesh_segmentation
 	{
 		std::vector<PTCloud::VertexProperty< float >> v_basic_feas, v_eigen_feas, v_color_feas;
 
-		this->add_vertex_property<int>("v:point_segment_id", -1);
 		for (int selc_i = 0; selc_i < use_feas.size(); ++selc_i)
 		{
 			if (use_feas[selc_i])
@@ -432,24 +406,11 @@ namespace semantic_mesh_segmentation
 			}
 		}
 
-		std::vector<std::pair<int, std::vector<int>>> seg_pcl_vec_sort;
-		for (int i = 0; i < seg_pcl_vec.size(); ++i)
-			seg_pcl_vec_sort.emplace_back(i, seg_pcl_vec[i]);
-		sort(seg_pcl_vec_sort.begin(), seg_pcl_vec_sort.end(), smaller_segment_size);
-
-		this->add_vertex_property<bool>("v:segment_visited", false);
-		auto seg_visited = this->get_vertex_property<bool>("v:segment_visited");
-		for (int seg_sort_i = 0; seg_sort_i < seg_pcl_vec_sort.size(); ++seg_sort_i)
+		for (int seg_i = 0; seg_i < seg_pcl_vec.size(); ++seg_i)
 		{
-			int seg_i = seg_pcl_vec_sort[seg_sort_i].first;
 			for (int vi = 0; vi < seg_pcl_vec[seg_i].size(); ++vi)
 			{
 				PTCloud::Vertex vtx(seg_pcl_vec[seg_i][vi]);
-				if (seg_visited[vtx] == false)
-					seg_visited[vtx] = true;
-				else
-					continue;
-
 				this->get_vertex_property<int>("v:point_segment_id")[vtx] = seg_ids[seg_i];
 				if (sampling_strategy == 1 || sampling_strategy == 2)
 				{
@@ -504,7 +465,6 @@ namespace semantic_mesh_segmentation
 				}
 			}
 		}
-		this->remove_vertex_property(this->get_vertex_property<bool>("v:segment_visited"));
 	}
 }
 
