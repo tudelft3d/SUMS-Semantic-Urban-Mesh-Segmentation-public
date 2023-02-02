@@ -439,7 +439,7 @@ namespace semantic_mesh_segmentation
 		smesh_out->get_points_coord = smesh_out->get_vertex_property<vec3>("v:point");
 
 		//mesh face properties
-		smesh_out->get_face_truth_label = smesh_out->get_face_property<int>("f:label");
+		smesh_out->get_face_truth_label = smesh_out->get_face_property<int>("f:" + label_definition);
 		smesh_out->add_face_property<vec3>("f:normal");
 		smesh_out->get_face_normals = smesh_out->get_face_property<vec3>("f:normal");
 
@@ -539,12 +539,12 @@ namespace semantic_mesh_segmentation
 		smesh_out->get_points_coord = smesh_out->get_vertex_property<vec3>("v:point");
 
 		//mesh face properties
-		if (smesh_out->get_face_property<int>("f:label"))
-			smesh_out->get_face_truth_label = smesh_out->get_face_property<int>("f:label");
+		if (smesh_out->get_face_property<int>("f:" + label_definition))
+			smesh_out->get_face_truth_label = smesh_out->get_face_property<int>("f:" + label_definition);
 		else
 		{
-			smesh_out->add_face_property<int>("f:label", -1);
-			smesh_out->get_face_truth_label = smesh_out->get_face_property<int>("f:label");
+			smesh_out->add_face_property<int>("f:" + label_definition, -1);
+			smesh_out->get_face_truth_label = smesh_out->get_face_property<int>("f:" + label_definition);
 		}
 
 		if (smesh_out->get_face_property<int>("f:face_predict"))
@@ -780,6 +780,11 @@ namespace semantic_mesh_segmentation
 							else if (param_value == "false" || param_value == "False" || param_value == "FALSE")
 								process_data_selection["validate"] = false;
 						}
+					}
+					else if (param_name == "label_definition")
+					{
+						if (param_value != "default")
+							label_definition = param_value;
 					}
 					else if (param_name == "labels_name")
 					{
@@ -1855,9 +1860,9 @@ namespace semantic_mesh_segmentation
 
 		if (train_test_predict_val == 2)
 		{
-			if (!smesh_out->get_face_property<int>("f:label"))
-				smesh_out->add_face_property<int>("f:label", -1);
-			smesh_out->get_face_truth_label = smesh_out->get_face_property<int>("f:label");
+			if (!smesh_out->get_face_property<int>("f:" + label_definition))
+				smesh_out->add_face_property<int>("f:" + label_definition, -1);
+			smesh_out->get_face_truth_label = smesh_out->get_face_property<int>("f:" + label_definition);
 
 			for (int fi = 0; fi < smesh_out->faces_size(); ++fi)
 			{
@@ -1950,9 +1955,9 @@ namespace semantic_mesh_segmentation
 
 		if (train_test_predict_val == 2)
 		{
-			if (!smesh_out->get_face_property<int>("f:label"))
-				smesh_out->add_face_property<int>("f:label", -1);
-			smesh_out->get_face_truth_label = smesh_out->get_face_property<int>("f:label");
+			if (!smesh_out->get_face_property<int>("f:" + label_definition))
+				smesh_out->add_face_property<int>("f:" + label_definition, -1);
+			smesh_out->get_face_truth_label = smesh_out->get_face_property<int>("f:" + label_definition);
 
 #pragma omp parallel for schedule(dynamic)
 			for (int fi = 0; fi < smesh_out->faces_size(); ++fi)

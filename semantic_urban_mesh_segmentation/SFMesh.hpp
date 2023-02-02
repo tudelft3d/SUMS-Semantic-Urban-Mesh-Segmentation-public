@@ -369,14 +369,14 @@ namespace semantic_mesh_segmentation
 			case 3: this->add_segment_properties(f_mulsc_ele_feas, temp_ele_feature_base_names, 3); use_feas[3] = true; break;
 			}
 		}
-		this->add_face_property<int>("f:label", -1);
+		this->add_face_property<int>("f:" + label_definition, -1);
 
 		for (int seg_i = 0; seg_i < seg_face_vec.size(); ++seg_i)
 		{
 			for (int fi = 0 ; fi < seg_face_vec[seg_i].size(); ++fi)
 			{
 				SFMesh::Face fdx(seg_face_vec[seg_i][fi]);
-				this->get_face_property<int>("f:label")[fdx] = seg_truth[seg_i];
+				this->get_face_property<int>("f:" + label_definition)[fdx] = seg_truth[seg_i];
 				if (use_feas[0])
 					for (int shp_i = 0; shp_i < basic_feas[seg_i].size(); ++shp_i)
 						f_basic_feas[shp_i][fdx] = basic_feas[seg_i][shp_i];

@@ -413,8 +413,8 @@ namespace semantic_mesh_segmentation
 	)
 	{
 		smesh_all->get_points_coord = smesh_all->get_vertex_property<vec3>("v:point");
-		smesh_all->add_face_property<int>("f:label", -1);
-		smesh_all->get_face_truth_label = smesh_all->get_face_property<int>("f:label");
+		smesh_all->add_face_property<int>("f:" + label_definition, -1);
+		smesh_all->get_face_truth_label = smesh_all->get_face_property<int>("f:" + label_definition);
 		smesh_all->add_face_property<int>("f:face_predict", -1);
 		smesh_all->get_face_predict_label = smesh_all->get_face_property<int>("f:face_predict");
 		smesh_all->add_face_property<vec3>("f:color");
