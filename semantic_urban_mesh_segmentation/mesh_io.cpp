@@ -1198,7 +1198,7 @@ namespace semantic_mesh_segmentation
 					{
 						if (param_value != "default")
 						{
-							for (int i = 0; i < use_feas.size(); ++i)
+							for (int i = 0; i < use_mulsc_eles.size(); ++i)
 								use_mulsc_eles[i] = false;
 
 							std::vector<std::string> words = Split(param_value, ",", false);
@@ -1212,7 +1212,7 @@ namespace semantic_mesh_segmentation
 					{
 						if (param_value != "default")
 						{
-							for (int i = 0; i < use_feas.size(); ++i)
+							for (int i = 0; i < use_basic_features.size(); ++i)
 								use_basic_features[i] = false;
 
 							std::vector<std::string> words = Split(param_value, ",", false);
@@ -1226,7 +1226,7 @@ namespace semantic_mesh_segmentation
 					{
 						if (param_value != "default")
 						{
-							for (int i = 0; i < use_feas.size(); ++i)
+							for (int i = 0; i < use_eigen_features.size(); ++i)
 								use_eigen_features[i] = false;
 
 							std::vector<std::string> words = Split(param_value, ",", false);
@@ -1240,7 +1240,7 @@ namespace semantic_mesh_segmentation
 					{
 						if (param_value != "default")
 						{
-							for (int i = 0; i < use_feas.size(); ++i)
+							for (int i = 0; i < use_color_features.size(); ++i)
 								use_color_features[i] = false;
 
 							std::vector<std::string> words = Split(param_value, ",", false);
@@ -1309,6 +1309,11 @@ namespace semantic_mesh_segmentation
 					{
 						if (param_value != "default")
 							sota_folder_path = param_value;
+					}
+					else if (param_name == "sota_prefixs")
+					{
+						if (param_value != "default")
+							sota_prefixs = param_value;
 					}
 					else if (param_name == "partition_folder_path")
 					{
