@@ -8,23 +8,23 @@ It is mainly implemented in C++ with other open-source libraries, such as [CGAL]
 For more information, please visit our [project website](https://3d.bk.tudelft.nl/projects/meshannotation/).
 
 <div align="center">    
-<img src="images/sum_fuse.png" width="800px" />
+<img src="images/pssnet_pnp.png" width="800px" />
 </div>
 
 ## Citation
 
 If you use it in a scientific work, we kindly ask you to cite it:
 
-<div class="filteredelement"><strong> SUM: A Benchmark Dataset of Semantic Urban Meshes </strong>. Weixiao Gao, Liangliang Nan, Bas Boom and Hugo Ledoux. <em> ISPRS Journal of Photogrammetry and Remote Sensing</em> 179 (2021) 108-120. <br/><a href="https://www.sciencedirect.com/science/article/pii/S0924271621001854"><i class="fas fa-external-link-alt"></i> PDF</a> <a href="#myref" data-toggle="collapse"><i class="fas fa-caret-square-down"></i> BibTeX</a> <div id="myref" class="collapse" tabindex="-1"><pre class="bibtex">@article{sum2021,
+<div class="filteredelement"><strong>PSSNet: Planarity-sensible Semantic Segmentation of large-scale urban meshes</strong>. Weixiao Gao, Liangliang Nan, Bas Boom and Hugo Ledoux. <em> ISPRS Journal of Photogrammetry and Remote Sensing</em> 196 (2023) 32-44. <br/><a href="https://www.sciencedirect.com/science/article/pii/S0924271622003355"><i class="fas fa-external-link-alt"></i> PDF</a> <a href="#myref" data-toggle="collapse"><i class="fas fa-caret-square-down"></i> BibTeX</a> <div id="myref" class="collapse" tabindex="-1"><pre class="bibtex">@article{sum2021,
 author = {Weixiao Gao and Liangliang Nan and Bas Boom and Hugo Ledoux},
-title = {SUM: A Benchmark Dataset of Semantic Urban Meshes},
+title = {PSSNet: Planarity-sensible Semantic Segmentation of large-scale urban meshes},
 journal = {ISPRS Journal of Photogrammetry and Remote Sensing},
-volume = {179},
-pages = {108-120},
-year={2021},
+volume = {196},
+pages = {32-44},
+year={2023},
 issn = {0924-2716},
-doi = {10.1016/j.isprsjprs.2021.07.008},
-url = {https://www.sciencedirect.com/science/article/pii/S0924271621001854},
+doi = {10.1016/j.isprsjprs.2022.12.020},
+url = {https://www.sciencedirect.com/science/article/pii/S0924271622003355},
 }
 </pre></div></div>
 
@@ -55,64 +55,23 @@ For the **size** of mesh tiles, each tile should be larger than 50 x 50 m.
 
 ### Running the code
 Before you run the program, make sure that your input data meet the requirements and that you have configured `config.txt`.
-You can refer to the [demo data](https://3d.bk.tudelft.nl/opendata/sum/1.0/data_demo/) to check how to prepare the configuration file.
+You can refer to the [demo data](https://3d.bk.tudelft.nl/opendata/sum/1.0/data_demo_pssnet/) to check how to prepare the configuration file.
 Besides, you need to install [`Python (>=3.7)`](https://www.python.org/), [`imbalanced-learn`](https://imbalanced-learn.org/), and [`numpy`](https://numpy.org/), and replace the `..\Python\Python37\Lib\site-packages\imblearn\over_sampling\_smote\filter.py` with provided `..\3rd_party\python_parsing\py_aug\filter.py`.
 You could run the code as follows: 
 ```
 .\semantic_urban_mesh_segmentation.exe [path to config.txt]
 ```
+The generated graphs and point clouds are stored in ```.\data_demo\PSSNet\spg_input\graph_edges``` and ```.\data_demo\PSSNet\spg_input\pcl``` respectively. After obtaining the predictions from [*Step-2*](https://github.com/WeixiaoGao/PSSNet), simply copy the predictions into ```.\data_demo\PSSNet\spg_output\```, and run the *Evaluation_SOTA* mode. The parsed semantic mesh will be saved in the ```.\data_demo\PSSNet\spg_output\```, and evaluation results will be saved in ```.\data_demo\PSSNet\evaluation```.
 
-### Operation modes
+### Operation modes for PSSNet
+* **PSSNet_pipeline_for_GCN**: Run the following modes in sequence: *Get_labels_for_planar_non_planar_from_semantic*, *Pipeline*, *PSSNet_oversegmentation*, *PSSNet_oversegmentation_evaluation,* *PSSNet_graph_construction*, and *PSSNet_pcl_generation_for_GCN*.
+* **Get_labels_for_planar_non_planar_from_semantic**: Use the label map defined in ```L1_to_L0_label_map``` to generate planar and non-planar ground truth meshes.
 * **Pipeline**: Run the following modes in sequence: Mesh_feature_extraction, Train_and_Test_config, and Data_evaluation_for_all_tiles_config.
-* **Mesh_feature_extraction**: Perform mesh-oversegmentation and extract segment-based features.
-* **Train_config**: Use random forest to train the extracted features.
-* **Test_config**: Use the trained model(`trained_model.gz`) and extracted features to classify the test data. Please note that the trained model is not used for direct decompression. The user can read it directly from the `data/model/trained_model.gz` folder by setting the operation mode to 'Test_config'. 
-* **Train_and_Test_config**: Run Train_config and Test_config in sequence.
-* **Data_evaluation_for_all_tiles_config**: Evaluate all test results (based on mesh area, not on the number of triangles).
-* **Save_mesh_features_for_visualization**: Save mesh features in a [`*.ply`](http://paulbourke.net/dataformats/ply/) file, the user can visualise these features in scalar rendering mode using [Mapple](https://3d.bk.tudelft.nl/liangliang/software/Mapple.zip).
-* **Class_statistics**: Output class statistics on mesh area and segments.
-* **Generate_semantic_sampled_points**: Sampling the mesh into a point cloud, and the output point cloud can be used as input for deep learning based methods.
-* **Moha_Verdi_SOTA_pipeline**: Perform [Mohammad Rouhani's](https://doi.org/10.1016/j.isprsjprs.2016.12.001) method for semantic mesh segmentation.
-* **Evaluation_SOTA**: Transferring the semantic labels from point clouds to mesh triangles and evaluating the results.
-
-#### Convert to ply format
-You could use [MeshLab](https://www.meshlab.net/) to convert your data to `*.ply` format.
-The Meshlabserver and the following code can be used for batch processing (e.g., convert from `*.obj` to `*.ply`):
-```
-@set inputFolder = [input_data_folder]
-@set outputFolder= [output_data_folder]
-for /r %inputFolder% %F in (*.obj) do (meshlabserver.exe -i %F -o %outputFolder%%~nF.ply -m wt sa)
-```
-
-#### Non-manifold meshes
-You could use [MeshLab](https://www.meshlab.net/) to repair the non-manifold vertices or edges.
-The Meshlabserver and the following code can be used for for batch processing:
-```
-@set inputFolder = [input_data_folder]
-@set outputFolder= [output_data_folder]
-@set scriptFolder= [script_code_folder]
-for /r %inputFolder% %F in (*.ply) do (meshlabserver.exe -i %F -o %outputFolder%\%~nF\%~nF.ply -m wt sa -s %scriptFolder%\repair_script.mlx)
-```
-
-You can refer to [MeshLab](https://www.meshlab.net/) to create the the scripts (e.g., `repair_script.mlx`) for batch processing.
-An example of fixing non-manifold vertices is shown below:
-```
-<!DOCTYPE FilterScript>
-<FilterScript>
- <filter name="Repair non Manifold Vertices by splitting">
-  <Param isxmlparam="0" value="0" type="RichFloat" tooltip="When a vertex is split it is moved along the average vector going from its position to the baricyenter of the FF connected faces sharing it" name="VertDispRatio" description="Vertex Displacement Ratio"/>
- </filter>
-</FilterScript>
-```
-
-#### Small mesh tiles
-For mesh tiles smaller than 50 x 50 m, you could set *Batch processing parameters* in `config.txt` to process small tiles in merged batches.
-
-#### Data without labels
-For unlabelled urban scene mesh data, you can use our [trained model](https://3d.bk.tudelft.nl/opendata/sum/1.0/trained_model/SUM_Helsinki_C6_trained_model/) from [SUM dataset](https://3d.bk.tudelft.nl/projects/meshannotation/#data-download).
-
-#### Manual refinement of predict labels
-To refine the predict results or to label the raw meshes, you can use our [mesh annotation tool](https://github.com/tudelft3d/3D_Urban_Mesh_Annotator). 
+* **PSSNet_oversegmentation**: Performing over-segmentation of PSSNet by using geometric features and priors from planar and non-planar classifications.
+* **PSSNet_oversegmentation_evaluation**: Evaluation of the mesh over-segmentation results according to the metric proposed in the paper. 
+* **PSSNet_graph_construction**: Use the proposed four types of edges to construct the input graph for the GCN.
+* **PSSNet_pcl_generation_for_GCN**: Generate a point cloud consisting of mesh vertices and face centers with hand-crafted features as input to the GCN.
+* **Evaluation_SOTA**: Transferring the semantic labels from point clouds to mesh triangles and evaluating the results for PSSNet.
 
 ## Build from source
 
@@ -133,4 +92,4 @@ If you have any questions, comments, or suggestions, please contact me at <i>gao
 
 [<b><i>Weixiao GAO</i></b>](https://3d.bk.tudelft.nl/weixiao/)
 
-Oct. 4, 2021
+Feb. 2, 2023
