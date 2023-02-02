@@ -713,17 +713,26 @@ namespace semantic_mesh_segmentation
 			basic_write_path = root_path + folder_names_level_0[0] + folder_names_level_1[train_test_predict_val];
 			pref_tmp = "evaluation";
 		}
-		else if (processing_mode == 1) //sota
+		else if (processing_mode == 1 && sota_folder_path != "PSSNet/") //sota
 		{
 			std::cout << "writing SOTA test evaluation " << std::endl;
 			basic_write_path = root_path + folder_names_level_0[8] + sota_folder_path + folder_names_level_0[0] + folder_names_level_1[train_test_predict_val];
 			pref_tmp = "evaluation";
 		}
-		else if (processing_mode == 2) //PSSNet
+		else if (processing_mode == 2 || sota_folder_path == "PSSNet/") //PSSNet
 		{
-			std::cout << "writing PSSNet test evaluation " << std::endl;
-			basic_write_path = root_path + folder_names_level_0[11] + folder_names_level_0[0] + folder_names_level_1[train_test_predict_val];
-			pref_tmp = "evaluation";
+			if (previous_mode != operating_mode::Process_semantic_pcl)
+			{
+				std::cout << "writing PSSNet step-1 test evaluation " << std::endl;
+				basic_write_path = root_path + folder_names_level_0[11] + folder_names_level_0[0] + folder_names_level_1[train_test_predict_val];
+				pref_tmp = "evaluation_pssnet_step_1";
+			}
+			else
+			{
+				std::cout << "writing PSSNet step-2 test evaluation " << std::endl;
+				basic_write_path = root_path + folder_names_level_0[11] + folder_names_level_0[0] + folder_names_level_1[train_test_predict_val];
+				pref_tmp = "evaluation_pssnet_step_2";
+			}
 		}
 
 		if (use_batch_processing)

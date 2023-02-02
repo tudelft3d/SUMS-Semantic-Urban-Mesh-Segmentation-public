@@ -189,7 +189,7 @@ namespace semantic_mesh_segmentation
 			temp_str = prefixs[10];
 
 		std::ostringstream str_ostemp;
-		if (processing_mode == 0 || processing_mode == 2) //RF
+		if (processing_mode == 0 || (processing_mode == 1 && sota_folder_path == "PSSNet/")) //RF
 		{
 			str_ostemp
 				<< root_path
@@ -592,15 +592,29 @@ namespace semantic_mesh_segmentation
 	{
 		std::cout << "Start to reading semantic point cloud " << base_names[pi] << std::endl;
 		std::ostringstream str_ostemp;
-		str_ostemp
-			<< root_path
-			<< folder_names_level_0[8]
-			<< sota_folder_path
-			<< folder_names_level_0[10]
-			<< folder_names_level_1[train_test_predict_val]
-			<< base_names[pi]
-			<< sota_prefixs
-			<< ".ply";
+		if (sota_folder_path == "PSSNet/")
+		{
+			str_ostemp
+				<< root_path
+				<< folder_names_level_0[11]
+				<< folder_names_pssnet[8]
+				<< folder_names_level_1[train_test_predict_val]
+				<< base_names[pi]
+				<< sota_prefixs
+				<< ".ply";
+		}
+		else
+		{
+			str_ostemp
+				<< root_path
+				<< folder_names_level_0[8]
+				<< sota_folder_path
+				<< folder_names_level_0[10]
+				<< folder_names_level_1[train_test_predict_val]
+				<< base_names[pi]
+				<< sota_prefixs
+				<< ".ply";
+		}
 
 		std::string str_temp = str_ostemp.str().data();
 		char * Path_temp = (char *)str_temp.data();
@@ -623,18 +637,27 @@ namespace semantic_mesh_segmentation
 			basic_write_path = root_path + folder_names_level_0[4] + folder_names_level_1[train_test_predict_val];
 			pref_tmp = prefixs[4] + prefixs[5];
 		}
-		else if (processing_mode == 1) //SOTA
+		else if (processing_mode == 1 && sota_folder_path != "PSSNet/") //SOTA
 		{
 			std::cout << "loading SOTA test result : " << base_names[mi] << std::endl;
 			basic_write_path = root_path + folder_names_level_0[8] + sota_folder_path + folder_names_level_0[4] + folder_names_level_1[train_test_predict_val];
 
 			pref_tmp = prefixs[4] + prefixs[5];
 		}
-		else if (processing_mode == 2) //PSSNet
+		else if (processing_mode == 2 || sota_folder_path == "PSSNet/") //PSSNet
 		{
-			std::cout << "loading PSSNet test result : " << base_names[mi] << std::endl;
-			basic_write_path = root_path + folder_names_level_0[11] + folder_names_level_0[4] + folder_names_level_1[train_test_predict_val];
-			pref_tmp = prefixs[4] + prefixs[5];
+			if (previous_mode != operating_mode::Process_semantic_pcl)
+			{
+				std::cout << "loading PSSNet step-1 test result : " << base_names[mi] << std::endl;
+				basic_write_path = root_path + folder_names_level_0[11] + folder_names_level_0[4] + folder_names_level_1[train_test_predict_val];
+				pref_tmp = prefixs[4] + prefixs[5];
+			}
+			else
+			{
+				std::cout << "loading PSSNet step-2 test result : " << base_names[mi] << std::endl;
+				basic_write_path = root_path + folder_names_level_0[11] + folder_names_pssnet[8] + folder_names_level_1[train_test_predict_val];
+				pref_tmp = prefixs[4] + prefixs[5];
+			}
 		}
 
 		if (use_batch_processing)
@@ -1962,6 +1985,11 @@ namespace semantic_mesh_segmentation
 						if (param_value != "default")
 							sota_folder_path = param_value;
 					}
+					else if (param_name == "sota_prefixs")
+					{
+						if (sota_prefixs != "default")
+							sota_prefixs = param_value;
+					}
 					else if (param_name == "partition_folder_path")
 					{
 						if (param_value != "default")
@@ -2552,17 +2580,26 @@ namespace semantic_mesh_segmentation
 			basic_write_path = root_path + folder_names_level_0[4] + folder_names_level_1[train_test_predict_val];
 			pref_tmp = prefixs[4] + prefixs[5];
 		}
-		else if (processing_mode == 1) //SOTA
+		else if (processing_mode == 1 && sota_folder_path != "PSSNet/") //SOTA
 		{
 			std::cout << "	Writing SOTA test result : " << base_names[mi] << std::endl;
 			basic_write_path = root_path + folder_names_level_0[8] + sota_folder_path + folder_names_level_0[4] + folder_names_level_1[train_test_predict_val];
 			pref_tmp = prefixs[4] + prefixs[5];
 		}
-		else if (processing_mode == 2)
+		else if (processing_mode == 2 || sota_folder_path == "PSSNet/")
 		{
-			std::cout << "	Writing PSSNet test result : " << base_names[mi] << std::endl;
-			basic_write_path = root_path + folder_names_level_0[11] + folder_names_level_0[4] + folder_names_level_1[train_test_predict_val];
-			pref_tmp = prefixs[4] + prefixs[5];
+			if (current_mode != operating_mode::Process_semantic_pcl)
+			{
+				std::cout << "	Writing PSSNet step-1 test result : " << base_names[mi] << std::endl;
+				basic_write_path = root_path + folder_names_level_0[11] + folder_names_level_0[4] + folder_names_level_1[train_test_predict_val];
+				pref_tmp = prefixs[4] + prefixs[5];
+			}
+			else
+			{
+				std::cout << "	Writing PSSNet step-2 test result : " << base_names[mi] << std::endl;
+				basic_write_path = root_path + folder_names_level_0[11] + folder_names_pssnet[8] + folder_names_level_1[train_test_predict_val];
+				pref_tmp = prefixs[4] + prefixs[5];
+			}
 		}
 
 		if (save_textures_in_predict)
@@ -2671,17 +2708,26 @@ namespace semantic_mesh_segmentation
 			basic_write_path = root_path + folder_names_level_0[4] + folder_names_level_1[train_test_predict_val];
 			pref_tmp = prefixs[4] + prefixs[5];
 		}
-		else if (processing_mode == 1) //SOTA
+		else if (processing_mode == 1 && sota_folder_path != "PSSNet/") //SOTA
 		{
 			std::cout << "	Writing SOTA test result : " << base_names[mi] << std::endl;
 			basic_write_path = root_path + folder_names_level_0[8] + sota_folder_path + folder_names_level_0[4] + folder_names_level_1[train_test_predict_val];
 			pref_tmp = prefixs[4] + prefixs[5];
 		}
-		else if (processing_mode == 2) //RF
+		else if (processing_mode == 2 || sota_folder_path == "PSSNet/") //RF
 		{
-			std::cout << "	Writing PSSNet test result : " << base_names[mi] << std::endl;
-			basic_write_path = root_path + folder_names_level_0[11] + folder_names_level_0[4] + folder_names_level_1[train_test_predict_val];
-			pref_tmp = prefixs[4] + prefixs[5];
+			if (previous_mode != operating_mode::Process_semantic_pcl)
+			{
+				std::cout << "	Writing PSSNet step-1 test result : " << base_names[mi] << std::endl;
+				basic_write_path = root_path + folder_names_level_0[11] + folder_names_level_0[4] + folder_names_level_1[train_test_predict_val];
+				pref_tmp = prefixs[4] + prefixs[5];
+			}
+			else
+			{
+				std::cout << "	Writing PSSNet step-2 test result : " << base_names[mi] << std::endl;
+				basic_write_path = root_path + folder_names_level_0[11] + folder_names_pssnet[8] + folder_names_level_1[train_test_predict_val];
+				pref_tmp = prefixs[4] + prefixs[5];
+			}
 		}
 
 		pref_tmp += prefixs[1];

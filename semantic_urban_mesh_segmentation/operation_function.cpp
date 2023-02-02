@@ -1084,7 +1084,9 @@ namespace semantic_mesh_segmentation
 			processing_mode = 1;
 
 			run(operating_mode::Process_semantic_pcl);
+			previous_mode = operating_mode::Process_semantic_pcl;
 			run(operating_mode::Data_evaluation_for_all_tiles_config);
+			previous_mode = operating_mode::Data_evaluation_for_all_tiles_config;
 			break;
 		}
 

@@ -122,7 +122,7 @@ namespace semantic_mesh_segmentation
 	extern std::map<int, int> superfacet_id_index_map;
 
 	//--- default ---
-	extern operating_mode current_mode;
+	extern operating_mode current_mode, previous_mode;
 
 	//--- sampling parameters ---
 	extern int sampling_strategy;

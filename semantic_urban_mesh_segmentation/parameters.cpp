@@ -460,7 +460,7 @@ namespace semantic_mesh_segmentation
 		training_file_folders, testing_file_folders, predicting_file_folders, validation_file_folders;
 	std::map<std::string, int> file_ind_map, training_file_ind_map, testing_file_ind_map, predicting_file_ind_map, validation_file_ind_map;
 
-	operating_mode current_mode = operating_mode::Pipeline;
+	operating_mode current_mode = operating_mode::Pipeline, previous_mode;
 	std::string data_path, training_data_path, testing_data_path, predicting_data_path, validation_data_path;
 
 	std::map<int, int> superfacet_id_index_map = std::map<int, int>();
@@ -511,7 +511,8 @@ namespace semantic_mesh_segmentation
 		"pcl/",         //4
 		"segments_truth/", //5
 		"feature_pnp/",    //6
-		"visualization_pnp/" //7
+		"visualization_pnp/", //7
+		"spg_output/" //8
 	};
 
 	std::vector<std::string> prefixs
