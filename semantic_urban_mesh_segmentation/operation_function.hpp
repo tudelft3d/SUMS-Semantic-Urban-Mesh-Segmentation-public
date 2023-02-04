@@ -41,6 +41,7 @@ namespace semantic_mesh_segmentation
 		processing_mode = 0;
 		use_existing_mesh_segments = true;
 		is_pointclouds_exist = true;
+		use_GCN_features = true;
 
 		use_feas[0] = true;
 		use_feas[1] = true;

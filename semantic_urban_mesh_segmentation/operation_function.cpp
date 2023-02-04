@@ -46,7 +46,7 @@ namespace semantic_mesh_segmentation
 		case operating_mode::Mesh_feature_extraction:
 		{
 			current_mode = operating_mode::Mesh_feature_extraction;
-
+			use_GCN_features = false;
 			if (process_data_selection["train"])
 			{
 				std::cout << "--------------------- Generating train mesh features ---------------------" << std::endl;
@@ -134,6 +134,7 @@ namespace semantic_mesh_segmentation
 		case operating_mode::Feature_extraction_backbone:
 		{
 			current_mode = operating_mode::Feature_extraction_backbone;
+			use_GCN_features = false;
 			if (processing_mode == 2)
 			{
 				labels_name = labels_name_pnp;
@@ -170,6 +171,7 @@ namespace semantic_mesh_segmentation
 		case operating_mode::Train_config:
 		{
 			current_mode = operating_mode::Train_config;
+			use_GCN_features = false;
 			std::cout << "--------------------- Training Mode ---------------------" << std::endl;
 			train_test_predict_val = 0;
 			get_training_data();
@@ -186,7 +188,7 @@ namespace semantic_mesh_segmentation
 		case operating_mode::Test_config:
 		{
 			current_mode = operating_mode::Test_config;
-
+			use_GCN_features = false;
 			if (process_data_selection["test"])
 			{
 				std::cout << "--------------------- Testing Mode ---------------------" << std::endl;
@@ -235,7 +237,7 @@ namespace semantic_mesh_segmentation
 		case operating_mode::Train_and_Test_config:
 		{
 			current_mode = operating_mode::Train_and_Test_config;
-
+			use_GCN_features = false;
 			train_test_predict_val = 0;
 			get_training_data();
 			data_path = training_data_path;
@@ -252,6 +254,7 @@ namespace semantic_mesh_segmentation
 		case operating_mode::Train_Backbone:
 		{
 			current_mode = operating_mode::Train_Backbone;
+			use_GCN_features = false;
 			if (processing_mode == 2)
 			{
 				labels_name = labels_name_pnp;
@@ -327,6 +330,7 @@ namespace semantic_mesh_segmentation
 		case operating_mode::Test_Backbone:
 		{
 			current_mode = operating_mode::Test_Backbone;
+			use_GCN_features = false;
 			if (processing_mode == 2)
 			{
 				labels_name = labels_name_pnp;
@@ -389,6 +393,7 @@ namespace semantic_mesh_segmentation
 		case operating_mode::Train_and_Test_Backbone:
 		{
 			current_mode = operating_mode::Train_and_Test_Backbone;
+			use_GCN_features = false;
 			if (processing_mode == 2)
 			{
 				labels_name = labels_name_pnp;
@@ -505,6 +510,7 @@ namespace semantic_mesh_segmentation
 		case operating_mode::Data_evaluation_for_all_tiles_config:
 		{
 			current_mode = operating_mode::Data_evaluation_for_all_tiles_config;
+			use_GCN_features = false;
 			if (processing_mode == 2)
 			{
 				labels_name = labels_name_pnp;
@@ -555,6 +561,7 @@ namespace semantic_mesh_segmentation
 		case operating_mode::Data_evaluation_for_all_tiles:
 		{
 			current_mode = operating_mode::Data_evaluation_for_all_tiles;
+			use_GCN_features = false;
 			//add labels
 			Label_set labels;
 			add_labels(labels);
@@ -1086,7 +1093,6 @@ namespace semantic_mesh_segmentation
 			run(operating_mode::Process_semantic_pcl);
 			previous_mode = operating_mode::Process_semantic_pcl;
 			run(operating_mode::Data_evaluation_for_all_tiles_config);
-			previous_mode = operating_mode::Data_evaluation_for_all_tiles_config;
 			break;
 		}
 
@@ -1129,57 +1135,49 @@ namespace semantic_mesh_segmentation
 
 					std::cout << "Get labels for planar and non-planar data from semantic labels." << std::endl;
 
-					for (std::size_t mi = 0; mi < base_names.size(); ++mi)
+					//process single tile
+					for (int mi = 0; mi < base_names.size(); ++mi)
 					{
-						if (train_predict[tr_pr_i])
+						SFMesh *smesh_original = new SFMesh;
+
+						//read original mesh
+						read_labeled_mesh_data(smesh_original, mi);
+
+						//merge semantics
+						for (auto fd : smesh_original->faces())
 						{
-							changing_to_test_or_predict(tr_pr_i);
-
-							//process single tile
-							for (int mi = 0; mi < base_names.size(); ++mi)
+							std::string current_label;
+							if (smesh_original->get_face_truth_label[fd] != 0)
 							{
-								SFMesh *smesh_original = new SFMesh;
-
-								//read original mesh
-								read_labeled_mesh_data(smesh_original, mi);
-
-								//merge semantics
-								for (auto fd : smesh_original->faces())
-								{
-									std::string current_label;
-									if (smesh_original->get_face_truth_label[fd] != 0)
-									{
-										int current_label_ind = smesh_original->get_face_truth_label[fd] - 1;
-										if (current_label_ind >= 0 && current_label_ind < labels_name.size())
-											current_label = labels_name[current_label_ind];
+								int current_label_ind = smesh_original->get_face_truth_label[fd] - 1;
+								if (current_label_ind >= 0 && current_label_ind < labels_name.size())
+									current_label = labels_name[current_label_ind];
 	
-										bool matched = false;
-										for (auto la : L1_to_L0_label_map)
-										{
-											if (la.first.compare(current_label) == 0)
-											{
-												matched = true;
-												smesh_original->get_face_truth_label[fd] = la.second + 1;
-												smesh_original->get_face_color[fd] = labels_color_pnp[la.second];
-												break;
-											}
-										}
-
-										if (!matched)
-										{
-											matched = true;
-											smesh_original->get_face_truth_label[fd] = -1;
-											smesh_original->get_face_color[fd] = easy3d::vec3(0.0f, 0.0f, 0.0f);
-										}
+								bool matched = false;
+								for (auto la : L1_to_L0_label_map)
+								{
+									if (la.first.compare(current_label) == 0)
+									{
+										matched = true;
+										smesh_original->get_face_truth_label[fd] = la.second + 1;
+										smesh_original->get_face_color[fd] = labels_color_pnp[la.second];
+										break;
 									}
 								}
 
-								//write L0 mesh
-								write_pnp_mesh_data(smesh_original, mi);
-
-								delete smesh_original;
+								if (!matched)
+								{
+									matched = true;
+									smesh_original->get_face_truth_label[fd] = -1;
+									smesh_original->get_face_color[fd] = easy3d::vec3(0.0f, 0.0f, 0.0f);
+								}
 							}
 						}
+
+						//write L0 mesh
+						write_pnp_mesh_data(smesh_original, mi);
+
+						delete smesh_original;
 					}
 				}
 			}
@@ -1452,7 +1450,6 @@ namespace semantic_mesh_segmentation
 				file_ind_map = training_file_ind_map;
 				sampling_strategy = sampling_strategy_training;
 				run(operating_mode::PSSNet_graph_construction_backbone);
-				process_data_selection["train"] = false;
 			}
 
 			if (process_data_selection["test"])
@@ -1468,7 +1465,6 @@ namespace semantic_mesh_segmentation
 				file_ind_map = testing_file_ind_map;
 				sampling_strategy = sampling_strategy_testing;
 				run(operating_mode::PSSNet_graph_construction_backbone);
-				process_data_selection["test"] = false;
 			}
 
 			if (process_data_selection["predict"])
@@ -1484,7 +1480,6 @@ namespace semantic_mesh_segmentation
 				file_ind_map = predicting_file_ind_map;
 				sampling_strategy = sampling_strategy_predicting;
 				run(operating_mode::PSSNet_graph_construction_backbone);
-				process_data_selection["predict"] = false;
 			}
 
 			if (process_data_selection["validate"])
@@ -1500,7 +1495,6 @@ namespace semantic_mesh_segmentation
 				file_ind_map = validation_file_ind_map;
 				sampling_strategy = sampling_strategy_validation;
 				run(operating_mode::PSSNet_graph_construction_backbone);
-				process_data_selection["validate"] = false;
 			}
 			break;
 		}

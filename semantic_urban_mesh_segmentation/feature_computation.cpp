@@ -1441,7 +1441,7 @@ namespace semantic_mesh_segmentation
 		write_feature_pointcloud_data(fea_cloud, sfc_out);
 
 		//--- write mesh segments ---
-		if (save_oversegmentation_mesh)
+		if (save_oversegmentation_mesh && !use_GCN_features)
 			write_mesh_segments(smesh_out, mi);
 
 		delete smesh_out;

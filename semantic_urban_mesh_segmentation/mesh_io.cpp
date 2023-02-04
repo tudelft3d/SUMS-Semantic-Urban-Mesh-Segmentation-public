@@ -189,7 +189,9 @@ namespace semantic_mesh_segmentation
 			temp_str = prefixs[10];
 
 		std::ostringstream str_ostemp;
-		if (processing_mode == 0 || (processing_mode == 1 && sota_folder_path == "PSSNet/")) //RF
+		if (processing_mode == 0 || 
+			(processing_mode == 2 || current_mode == operating_mode::PSSNet_oversegmentation_backbone) ||
+			(processing_mode == 1 && sota_folder_path == "PSSNet/")) //RF
 		{
 			str_ostemp
 				<< root_path
@@ -1395,16 +1397,6 @@ namespace semantic_mesh_segmentation
 								only_evaluation = true;
 							else if (param_value == "false" || param_value == "False" || param_value == "FALSE")
 								only_evaluation = false;
-						}
-					}
-					else if (param_name == "use_GCN_features")
-					{
-						if (param_value != "default")
-						{
-							if (param_value == "true" || param_value == "True" || param_value == "TRUE")
-								use_GCN_features = true;
-							else if (param_value == "false" || param_value == "False" || param_value == "FALSE")
-								use_GCN_features = false;
 						}
 					}
 					else if (param_name == "only_write_GCN_features")
