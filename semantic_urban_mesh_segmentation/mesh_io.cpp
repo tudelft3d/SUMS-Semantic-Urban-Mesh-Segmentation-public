@@ -414,7 +414,7 @@ namespace semantic_mesh_segmentation
 		SFMesh *mesh_seg = new SFMesh;
 		if (use_existing_mesh_segments)
 		{
-			if (current_mode == operating_mode::PSSNet_pcl_generation_for_GCN_backbone)
+			if (current_mode == operating_mode::PSSNet_pcl_generation_for_GCN_backbone || (current_mode == operating_mode::Class_statistics && processing_mode == 2))
 				partition_folder_path = folder_names_level_0[11] + folder_names_pssnet[1];
 
 			if (!use_batch_processing)
@@ -2875,12 +2875,25 @@ namespace semantic_mesh_segmentation
 		const double t_total = omp_get_wtime();
 		std::cout << "	Saving class statistics." << std::endl;
 		std::ostringstream stat_out;
-		stat_out
-			<< root_path
-			<< folder_names_level_0[0]
-			<< data_types[train_test_predict_val]
-			<< prefixs[12]
-			<< ".txt";
+		if (processing_mode == 2)
+		{
+			stat_out
+				<< root_path
+				<< folder_names_level_0[11]
+				<< folder_names_level_0[0]
+				<< data_types[train_test_predict_val]
+				<< prefixs[12] + "_pssnet"
+				<< ".txt";
+		}
+		else
+		{
+			stat_out
+				<< root_path
+				<< folder_names_level_0[0]
+				<< data_types[train_test_predict_val]
+				<< prefixs[12]
+				<< ".txt";
+		}
 
 		float sum_area = std::accumulate(label_statistics.begin(), label_statistics.end(), 0);
 		int sum_segs = std::accumulate(label_seg_statistics.begin(), label_seg_statistics.end(), 0);

@@ -550,8 +550,7 @@ namespace semantic_mesh_segmentation
 			{
 				SFMesh::Face fdx(seg_face_vec[si][fi]);
 				int fdx_label_truth = smesh_in->get_face_truth_label[fdx];
-
-				if (fdx_label_truth != 0 && fdx_label_truth != -1)
+				if (fdx_label_truth != -1)
 					++majority_labels[fdx_label_truth];
 				else
 					++majority_labels[0];

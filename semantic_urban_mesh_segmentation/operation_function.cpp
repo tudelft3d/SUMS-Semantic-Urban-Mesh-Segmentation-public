@@ -833,7 +833,8 @@ namespace semantic_mesh_segmentation
 		{
 			current_mode = operating_mode::Class_statistics;
 			use_existing_mesh_segments = true;
-
+			int save_processing_mode = processing_mode;
+			
 			//--- For testing data ---//
 			std::vector<bool> train_predict
 			{
@@ -847,6 +848,7 @@ namespace semantic_mesh_segmentation
 			{
 				if (train_predict[tr_pr_i])
 				{
+					processing_mode = 0;
 					changing_to_test_or_predict(tr_pr_i);
 
 					std::vector<float> label_statistics(labels_name.size() + 1, 0);
@@ -856,9 +858,11 @@ namespace semantic_mesh_segmentation
 						if (input_type_for_statistics == 0)
 						{
 							//read original mesh
+							processing_mode = 0;
 							SFMesh *smesh_original = new SFMesh;
 							read_labeled_mesh_data(smesh_original, mi);
 
+							processing_mode = save_processing_mode;
 							SFMesh *smesh_seg = new SFMesh;
 							read_mesh_data(smesh_seg, mi);
 
@@ -867,7 +871,7 @@ namespace semantic_mesh_segmentation
 							for (auto fd : smesh_original->faces())
 							{
 								int current_label_ind = smesh_original->get_face_truth_label[fd];
-								if (smesh_original->get_face_truth_label[fd] != 0 && smesh_original->get_face_truth_label[fd] != -1)
+								if (smesh_original->get_face_truth_label[fd] != -1)
 								{
 									label_statistics[current_label_ind] += FaceArea(smesh_original, fd);
 								}
