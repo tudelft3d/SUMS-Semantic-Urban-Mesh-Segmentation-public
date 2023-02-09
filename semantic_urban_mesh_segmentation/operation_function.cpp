@@ -871,7 +871,7 @@ namespace semantic_mesh_segmentation
 							for (auto fd : smesh_original->faces())
 							{
 								int current_label_ind = smesh_original->get_face_truth_label[fd];
-								if (smesh_original->get_face_truth_label[fd] != -1)
+								if (smesh_original->get_face_truth_label[fd] != 0 && smesh_original->get_face_truth_label[fd] != -1)
 								{
 									label_statistics[current_label_ind] += FaceArea(smesh_original, fd);
 								}

@@ -35,7 +35,7 @@ namespace semantic_mesh_segmentation
 	//------------------------------------------------ ------------------------------- ----------------------------------------------//
 	//------------------------------------------------ Surface mesh sampling functions ----------------------------------------------//
 	//------------------------------------------------ ------------------------------- ----------------------------------------------//
-		//Calculate single facet feature property<float>
+	//Calculate single facet feature property<float>
 	void texture_pointcloud_generation
 	(
 		SFMesh* smesh_in,
@@ -199,6 +199,63 @@ namespace semantic_mesh_segmentation
 		}
 	}
 
+	void face_color_from_texture
+	(
+		SFMesh* smesh_in,
+		SFMesh::Face &fd,
+		std::vector<cv::Mat> &texture_maps
+	)
+	{
+		int texture_id = smesh_in->get_face_texnumber[fd];
+		std::vector<float> U_vec, V_vec;
+
+		U_vec.push_back(smesh_in->get_face_texcoord[fd][0]);
+		U_vec.push_back(smesh_in->get_face_texcoord[fd][2]);
+		U_vec.push_back(smesh_in->get_face_texcoord[fd][4]);
+		V_vec.push_back(smesh_in->get_face_texcoord[fd][1]);
+		V_vec.push_back(smesh_in->get_face_texcoord[fd][3]);
+		V_vec.push_back(smesh_in->get_face_texcoord[fd][5]);
+
+		float x_mid = (smesh_in->get_face_texcoord[fd][0] + smesh_in->get_face_texcoord[fd][2] + smesh_in->get_face_texcoord[fd][4]) / 3.0f;
+		float y_mid = (smesh_in->get_face_texcoord[fd][1] + smesh_in->get_face_texcoord[fd][3] + smesh_in->get_face_texcoord[fd][5]) / 3.0f;
+
+		std::vector<std::pair<float, float>> four_pts =
+		{
+			std::pair<double, double>(smesh_in->get_face_texcoord[fd][0], smesh_in->get_face_texcoord[fd][1]),
+			std::pair<double, double>(smesh_in->get_face_texcoord[fd][2], smesh_in->get_face_texcoord[fd][3]),
+			std::pair<double, double>(smesh_in->get_face_texcoord[fd][4], smesh_in->get_face_texcoord[fd][5]),
+			std::pair<double, double>(x_mid, y_mid),
+		};
+
+		int count_pix = 0;
+		for (int pi = 0; pi < four_pts.size(); ++pi)
+		{
+			std::vector<float> P = { four_pts[pi].first,  four_pts[pi].second };
+
+			if (P[0] > 1.0f || P[0] < 0.0f || P[1] > 1.0f || P[1] < 0.0f)
+			{
+				P.clear();
+				continue;
+			}
+
+			if (PointinTriangle(U_vec, V_vec, P))
+			{
+				//get matched pixel
+				float Rf_temp = (float)texture_maps[texture_id].at<cv::Vec3b>((1 - P[1])*texture_maps[texture_id].rows - 1, P[0] * texture_maps[texture_id].cols)[2];
+				float Gf_temp = (float)texture_maps[texture_id].at<cv::Vec3b>((1 - P[1])*texture_maps[texture_id].rows - 1, P[0] * texture_maps[texture_id].cols)[1];
+				float Bf_temp = (float)texture_maps[texture_id].at<cv::Vec3b>((1 - P[1])*texture_maps[texture_id].rows - 1, P[0] * texture_maps[texture_id].cols)[0];
+
+				smesh_in->get_face_color[fd] += vec3(Rf_temp / 255.0f, Gf_temp / 255.0f, Bf_temp / 255.0f);
+				++count_pix;
+			}
+		}
+
+		if (count_pix == 0)
+			smesh_in->get_face_color[fd] = vec3();
+		else
+			smesh_in->get_face_color[fd] /= float(count_pix);
+	}
+
 	//--- get face texture colors ---
 	void face_texture_processor
 	(
@@ -233,6 +290,30 @@ namespace semantic_mesh_segmentation
 				texture_pointcloud_generation(smesh_out, fd, texture_maps, hsv_maps, tex_cloud);
 			else
 				texture_pointcloud_generation(smesh_out, fd, texture_maps, hsv_maps);
+		}
+		std::cout << "Done in (s): " << omp_get_wtime() - t_total << '\n' << std::endl;
+	}
+
+	void face_color_computation
+	(
+		SFMesh *smesh_out,
+		std::vector<cv::Mat> &texture_maps,
+		const int mi
+	)
+	{
+		std::cout << "	- Preprocessing of mesh textures: ";
+		const double t_total = omp_get_wtime();
+		int prev_percent = -1;
+		for (auto fd : smesh_out->faces())
+		{
+			int progress = int(100.0f * (fd.idx() + 1) / float(smesh_out->n_faces()));
+			if (progress != prev_percent)
+			{
+				printf("%3d%%\b\b\b\b", progress);
+				prev_percent = progress;
+			}
+			smesh_out->get_face_color[fd] = vec3();
+			face_color_from_texture(smesh_out, fd, texture_maps);
 		}
 		std::cout << "Done in (s): " << omp_get_wtime() - t_total << '\n' << std::endl;
 	}
@@ -1706,7 +1787,7 @@ namespace semantic_mesh_segmentation
 
 		cloud_out->add_selected_feature_properties_for_GCN
 		(
-			seg_face_vec,
+			seg_pcl_vec,
 			seg_ids,
 			seg_truth,
 			basic_feas,
@@ -1729,39 +1810,20 @@ namespace semantic_mesh_segmentation
 		PTCloud *sampled_cloud = new PTCloud;
 		read_pointcloud_data(smesh_out, sampled_cloud, 0, pi);
 
-		//texture color matching for new sampled point cloud
-		PTCloud* face_center_cloud = new PTCloud;
-		face_center_cloud->get_points_color = face_center_cloud->add_vertex_property<vec3>("v:color", vec3());
-
 		if (!smesh_out->get_face_property<vec3>("f:color"))
 			smesh_out->add_face_property<vec3>("f:color", vec3());
 		smesh_out->get_face_color = smesh_out->get_face_property<vec3>("f:color");
-		for (auto fi : smesh_out->faces())
-		{
-			smesh_out->get_face_color[fi] = vec3();
-			face_center_cloud->add_vertex(smesh_out->get_face_center[fi]);
-		}
-
 		if (with_texture)
-			face_texture_processor(smesh_out, texture_maps, pi);
-
-		easy3d::KdTree *face_center_tree = new easy3d::KdTree;
-		Build_kdtree(face_center_cloud, face_center_tree);
+			face_color_computation(smesh_out, texture_maps, pi);
 		sampled_cloud->get_points_color = sampled_cloud->get_vertex_property<vec3>("v:color");
-
-		std::cout << "  Parsing texture color to augmented sampled point cloud, use ";
+		std::cout << "  Parsing texture color to sampled point cloud, use ";
 		const double t_total = omp_get_wtime();
-		sampled_cloud->add_vertex_property<int>("v:point_segment_id", -1);
-#pragma omp parallel for schedule(runtime)
 		for (int pi = 0; pi < sampled_cloud->vertices_size(); ++pi)
 		{
 			PTCloud::Vertex ptx(pi);
-			int closet_ind = face_center_tree->find_closest_point(sampled_cloud->get_vertex_property<vec3>("v:point")[ptx]);
-			SFMesh::Face fd(closet_ind);
+			SFMesh::Face fd(sampled_cloud->get_points_face_belong_id[ptx]);
 			sampled_cloud->get_points_color[ptx] = smesh_out->get_face_color[fd];
-			sampled_cloud->get_vertex_property<int>("v:point_segment_id")[ptx] = smesh_out->get_face_segment_id[fd];
 		}
-		delete face_center_cloud;
 		std::cout << " (s): " << omp_get_wtime() - t_total << '\n' << std::endl;
 
 		std::vector<int> seg_truth, seg_ids;

@@ -3336,19 +3336,24 @@ namespace semantic_mesh_segmentation
 	{
 		for (int si = 0; si < seg_face_vec.size(); ++si)
 		{
-			std::vector<int> majority_labels(labels_name.size(), 0);
+			std::vector<int> majority_labels(labels_name.size() + 1, 0);
 			for (int fi = 0; fi < seg_face_vec[si].size(); ++fi)
 			{
 				SFMesh::Face fdx(seg_face_vec[si][fi]);
 				int fdx_label_truth = tmp_mesh->get_face_truth_label[fdx];
 
 				if (fdx_label_truth != 0 && fdx_label_truth != -1)
-					++majority_labels[fdx_label_truth - 1];
+					++majority_labels[fdx_label_truth];
+				else
+					++majority_labels[0];
 
 				tmp_mesh->get_face_segment_id[fdx] = seg_ids[si];
 			}
 			int maxElementIndex = std::max_element(majority_labels.begin(), majority_labels.end()) - majority_labels.begin();
-			seg_truth_train.push_back(maxElementIndex);
+			if (maxElementIndex != 0)
+				seg_truth_train.push_back(maxElementIndex - 1);
+			else
+				seg_truth_train.push_back(-1);
 		}
 	}
 
@@ -3362,7 +3367,7 @@ namespace semantic_mesh_segmentation
 		superfacet_id_index_map.clear();
 		for (int si = 0; si < seg_face_vec.size(); ++si)
 		{
-			std::vector<int> majority_labels(labels_name.size(), 0);
+			std::vector<int> majority_labels(labels_name.size() + 1, 0);
 			for (int fi = 0; fi < seg_face_vec[si].size(); ++fi)
 			{
 				SFMesh::Face fdx(seg_face_vec[si][fi]);
@@ -3371,7 +3376,9 @@ namespace semantic_mesh_segmentation
 					int fdx_label_truth = tmp_mesh->get_face_truth_label[fdx];
 					//labels should be within [1 to INF]
 					if (fdx_label_truth != 0 && fdx_label_truth != -1)
-						++majority_labels[fdx_label_truth - 1];
+						++majority_labels[fdx_label_truth];
+					else
+						++majority_labels[0];
 				}
 
 				tmp_mesh->get_face_segment_id[fdx] = si;
@@ -3382,7 +3389,10 @@ namespace semantic_mesh_segmentation
 			if (train_test_predict_val != 2)
 			{
 				int maxElementIndex = std::max_element(majority_labels.begin(), majority_labels.end()) - majority_labels.begin();
-				seg_truth_train.push_back(maxElementIndex);
+				if (maxElementIndex != 0)
+					seg_truth_train.push_back(maxElementIndex - 1);
+				else
+					seg_truth_train.push_back(-1);
 			}
 		}
 	}

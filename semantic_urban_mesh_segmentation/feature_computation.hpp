@@ -862,6 +862,10 @@ namespace semantic_mesh_segmentation
 
 	void face_texture_processor(SFMesh *, std::vector<cv::Mat> &, const int, PTCloud* tex_cloud = nullptr);
 
+	void face_color_from_texture(SFMesh*, SFMesh::Face &, std::vector<cv::Mat> &);
+
+	void face_color_computation(SFMesh *, std::vector<cv::Mat> &, const int);
+
 	void get_sampling_cloud_normals_from_mesh_faces(SFMesh *, PTCloud *, PTCloud *, PTCloud *, easy3d::KdTree *, easy3d::KdTree *);
 
 	void finalization_sampling_point_cloud(PTCloud*, PTCloud *, easy3d::PointCloud*, easy3d::PointCloud*);
