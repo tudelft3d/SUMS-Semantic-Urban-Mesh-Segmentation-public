@@ -217,8 +217,6 @@ namespace semantic_mesh_segmentation
 		const int
 	);
 
-	void get_mesh_labels(SFMesh *, std::vector<int> &, std::vector<int> &, std::vector< std::vector<int>> &);
-
 	void get_mesh_labels(SFMesh *, std::vector<int> &, std::vector< std::vector<int>> &);
 }
 

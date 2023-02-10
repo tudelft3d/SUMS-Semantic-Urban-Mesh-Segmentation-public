@@ -419,10 +419,10 @@ namespace semantic_mesh_segmentation
 						if (seg_truth[seg_i] != -1)
 							this->get_points_ground_truth[vtx] = seg_truth[seg_i];
 						else
-							this->get_points_ground_truth[vtx] = -1;
+							this->get_points_ground_truth[vtx] = 0;
 					}
 					else
-						this->get_points_ground_truth[vtx] = -1;
+						this->get_points_ground_truth[vtx] = 0;
 				}
 
 				if (use_feas[0])
