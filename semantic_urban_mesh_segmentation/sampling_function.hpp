@@ -28,7 +28,8 @@
 #pragma once
 #ifndef semantic_mesh_segmentation__SAMPLING_FUNCTION_HPP
 #define semantic_mesh_segmentation__SAMPLING_FUNCTION_HPP
-
+#include <algorithm>
+#include <random>
 #include <easy3d/point_cloud.h>
 #include "super_segment.hpp"
 #include "math_base.hpp"
@@ -214,7 +215,7 @@ namespace semantic_mesh_segmentation
 		// At this point we just assume that there is the quality values as sampled from the base mesh
 		// shuffle active cells
 		unsigned int(*p_myrandom)(unsigned int) = RandomInt;
-		std::random_shuffle(montecarloSHT.AllocatedCells.begin(), montecarloSHT.AllocatedCells.end(), p_myrandom);
+		std::shuffle(montecarloSHT.AllocatedCells.begin(), montecarloSHT.AllocatedCells.end(), std::mt19937(std::random_device()()));
 
 		int montecarloSampleNum = sampling_points_number;
 		int sampleNum = 0;

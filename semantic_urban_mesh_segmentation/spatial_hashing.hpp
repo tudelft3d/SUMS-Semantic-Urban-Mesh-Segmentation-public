@@ -263,7 +263,7 @@ namespace semantic_mesh_segmentation {
 	};
 	
     // hashing function
-    struct HashFunctor : public std::unary_function<easy3d::Vec<3, int>, size_t>
+    struct HashFunctor
     {
         enum
         { // parameters for hash table
@@ -284,6 +284,9 @@ namespace semantic_mesh_segmentation {
         { // test if s1 ordered before s2
             return (s1 < s2);
         }
+
+		using argument_type = easy3d::Vec<3, int>;
+		using result_type = size_t;
     };
 
     template < typename ObjType>
