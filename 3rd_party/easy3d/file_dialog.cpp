@@ -38,9 +38,9 @@
 #include <Windows.h>
 #else
 #include <algorithm>
-#include <stdexcept>
 #endif
 
+#include <stdexcept>
 
 namespace easy3d {
 
