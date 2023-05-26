@@ -635,6 +635,7 @@ namespace semantic_mesh_segmentation
 				base_names = testing_base_names;
 				ply_files = testing_ply_files;
 				file_folders = testing_file_folders;
+				sampling_strategy = sampling_strategy_testing;
 				use_batch_processing = use_batch_processing_on_testing;
 
 				if (use_batch_processing)
@@ -669,8 +670,9 @@ namespace semantic_mesh_segmentation
 				base_names = predicting_base_names;
 				ply_files = predicting_ply_files;
 				file_folders = predicting_file_folders;
-
+				sampling_strategy = sampling_strategy_predicting;
 				use_batch_processing = use_batch_processing_on_predicting;
+				
 				if (use_batch_processing)
 				{
 					//Batch separation
@@ -702,6 +704,7 @@ namespace semantic_mesh_segmentation
 				base_names = validation_base_names;
 				ply_files = validation_ply_files;
 				file_folders = validation_file_folders;
+				sampling_strategy = sampling_strategy_validation;
 				use_batch_processing = use_batch_processing_on_validation;
 
 				if (use_batch_processing)
