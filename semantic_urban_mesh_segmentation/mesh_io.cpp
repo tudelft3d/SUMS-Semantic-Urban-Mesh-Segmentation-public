@@ -334,26 +334,44 @@ namespace semantic_mesh_segmentation
 		{
 			std::cout << "	Start to read augmented features " << s1_test << std::endl;
 			if (processing_mode == 2 || current_mode == operating_mode::PSSNet_pcl_generation_for_GCN_backbone)
+			{
 				str_ostemp
-				<< root_path
-				<< folder_names_level_0[11]
-				<< folder_names_level_0[1]
-				<< folder_names_level_1[4]
-				<< s1_test
-				<< prefixs[0]
-				<< prefixs[3]
-				<< prefixs[14]
-				<< ".ply";
+					<< root_path
+					<< folder_names_level_0[11]
+					<< folder_names_level_0[1]
+					<< folder_names_level_1[4]
+					<< s1_test
+					<< prefixs[0]
+					<< prefixs[3]
+					<< prefixs[14]
+					<< ".ply";
+			}
+			else if (processing_mode == 1)
+			{
+				str_ostemp
+					<< root_path
+					<< folder_names_level_0[8]
+					<< sota_folder_path
+					<< folder_names_level_0[1]
+					<< folder_names_level_1[4]
+					<< s1_test
+					<< prefixs[0]
+					<< prefixs[3]
+					<< prefixs[14]
+					<< ".ply";
+			}
 			else
+			{
 				str_ostemp
-				<< root_path
-				<< folder_names_level_0[1]
-				<< folder_names_level_1[4]
-				<< s1_test
-				<< prefixs[0]
-				<< prefixs[3]
-				<< prefixs[14]
-				<< ".ply";
+					<< root_path
+					<< folder_names_level_0[1]
+					<< folder_names_level_1[4]
+					<< s1_test
+					<< prefixs[0]
+					<< prefixs[3]
+					<< prefixs[14]
+					<< ".ply";
+			}
 		}
 		else
 		{
@@ -362,6 +380,7 @@ namespace semantic_mesh_segmentation
 			if (processing_mode == 2 || current_mode == operating_mode::PSSNet_pcl_generation_for_GCN_backbone)
 			{
 				if (use_GCN_features)
+				{
 					str_ostemp
 						<< root_path
 						<< folder_names_level_0[11]
@@ -371,7 +390,9 @@ namespace semantic_mesh_segmentation
 						<< prefixs[0]
 						<< prefixs[3]
 						<< ".ply";
+				}
 				else
+				{
 					str_ostemp
 						<< root_path
 						<< folder_names_level_0[11]
@@ -381,6 +402,20 @@ namespace semantic_mesh_segmentation
 						<< prefixs[0]
 						<< prefixs[3]
 						<< ".ply";
+				}
+			}
+			else if (processing_mode == 1)
+			{
+				str_ostemp
+					<< root_path
+					<< folder_names_level_0[8]
+					<< sota_folder_path
+					<< folder_names_level_0[1]
+					<< folder_names_level_1[train_test_predict_val]
+					<< s1_test
+					<< prefixs[0]
+					<< prefixs[3]
+					<< ".ply";
 			}
 			else
 			{

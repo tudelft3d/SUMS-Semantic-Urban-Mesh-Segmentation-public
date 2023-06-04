@@ -1085,7 +1085,7 @@ namespace semantic_mesh_segmentation
 			use_color_features[2] = false;
 			use_color_features[6] = false;
 
-			//run(operating_mode::Mesh_feature_extraction);
+			run(operating_mode::Mesh_feature_extraction);
 			run(operating_mode::Train_and_Test_config);
 			run(operating_mode::Data_evaluation_for_all_tiles_config);
 			break;
