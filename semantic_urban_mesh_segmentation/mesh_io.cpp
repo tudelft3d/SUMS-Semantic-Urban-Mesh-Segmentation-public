@@ -326,28 +326,61 @@ namespace semantic_mesh_segmentation
 		if (enable_augment && train_test_predict_val == 0)
 		{
 			std::cout << "	Start to read augmented features " << s1_test << std::endl;
-			str_ostemp
-				<< root_path
-				<< folder_names_level_0[1]
-				<< folder_names_level_1[4]
-				<< s1_test
-				<< prefixs[0]
-				<< prefixs[3]
-				<< prefixs[14]
-				<< ".ply";
+			if (processing_mode == 0)
+			{
+				str_ostemp
+					<< root_path
+					<< folder_names_level_0[1]
+					<< folder_names_level_1[4]
+					<< s1_test
+					<< prefixs[0]
+					<< prefixs[3]
+					<< prefixs[14]
+					<< ".ply";
+			}
+			else
+			{
+				str_ostemp
+					<< root_path
+					<< folder_names_level_0[8]
+					<< sota_folder_path
+					<< folder_names_level_0[1]
+					<< folder_names_level_1[4]
+					<< s1_test
+					<< prefixs[0]
+					<< prefixs[3]
+					<< prefixs[14]
+					<< ".ply";
+			}
+
 		}
 		else
 		{
 			std::cout << "	Start to read features " << s1_test << std::endl;
-
-			str_ostemp
-				<< root_path
-				<< folder_names_level_0[1]
-				<< folder_names_level_1[train_test_predict_val]
-				<< s1_test
-				<< prefixs[0]
-				<< prefixs[3]
-				<< ".ply";
+			if (processing_mode == 0)
+			{
+				str_ostemp
+					<< root_path
+					<< folder_names_level_0[1]
+					<< folder_names_level_1[train_test_predict_val]
+					<< s1_test
+					<< prefixs[0]
+					<< prefixs[3]
+					<< ".ply";
+			}
+			else
+			{
+				str_ostemp
+					<< root_path
+					<< folder_names_level_0[8]
+					<< sota_folder_path
+					<< folder_names_level_0[1]
+					<< folder_names_level_1[train_test_predict_val]
+					<< s1_test
+					<< prefixs[0]
+					<< prefixs[3]
+					<< ".ply";
+			}
 		}
 
 		std::string str_temp = str_ostemp.str().data();
