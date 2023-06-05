@@ -889,7 +889,7 @@ namespace semantic_mesh_segmentation
 			use_existing_mesh_segments = true;
 			add_point_color = true;
 
-			sampling_point_density = 7.0f;//for deep learning methods, same as in SUM paper
+			//sampling_point_density = 7.0f;//for deep learning methods, same as in SUM paper
 
 			//--- For testing data ---//
 			std::vector<bool> train_predict
