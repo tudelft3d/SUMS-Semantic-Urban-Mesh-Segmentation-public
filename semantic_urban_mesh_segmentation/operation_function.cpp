@@ -502,7 +502,7 @@ namespace semantic_mesh_segmentation
 				<< training_mesh_area << std::endl;
 			std::cout << "Testing mesh total surface area: " << std::fixed << std::showpoint << std::setprecision(6)
 				<< test_mesh_area << std::endl;
-
+			process_data_selection["train"] = true;
 			break;
 		}
 

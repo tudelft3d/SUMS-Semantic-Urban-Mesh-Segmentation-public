@@ -890,11 +890,14 @@ namespace semantic_mesh_segmentation
 				if (!smesh_seg->get_face_property<int>("f:face_predict"))
 					smesh_seg->add_face_property<int>("f:face_predict", -1);
 				smesh_seg->get_face_predict_label = smesh_seg->get_face_property<int>("f:face_predict");
-#pragma omp parallel for schedule(dynamic)
-				for (int fi = 0; fi < tmp_mesh->faces_size(); ++fi)
+				if (tmp_mesh->get_face_predict_label)
 				{
-					SFMesh::Face fdx(fi);
-					smesh_seg->get_face_predict_label[fdx] = tmp_mesh->get_face_predict_label[fdx];
+#pragma omp parallel for schedule(dynamic)
+					for (int fi = 0; fi < tmp_mesh->faces_size(); ++fi)
+					{
+						SFMesh::Face fdx(fi);
+						smesh_seg->get_face_predict_label[fdx] = tmp_mesh->get_face_predict_label[fdx];
+					}
 				}
 			}
 			delete tmp_mesh;
