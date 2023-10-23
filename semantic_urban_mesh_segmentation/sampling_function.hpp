@@ -293,7 +293,15 @@ namespace semantic_mesh_segmentation
 		}
 	}
 
-	void  sampling_pointcloud_on_mesh(easy3d::PointCloud*, SFMesh *, const float);
+	void sampling_pointcloud_on_mesh(easy3d::PointCloud*, SFMesh *, const float);
+
+	void random_sampling_pointcloud_on_selected_faces
+	(
+		SFMesh* ,
+		std::vector<SFMesh::Face>& ,
+		easy3d::PointCloud* ,
+		const float 
+	);
 }
 
 #endif

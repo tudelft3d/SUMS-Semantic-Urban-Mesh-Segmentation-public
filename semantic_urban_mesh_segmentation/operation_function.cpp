@@ -1068,6 +1068,74 @@ namespace semantic_mesh_segmentation
 			break;
 		}
 
+		case operating_mode::Extract_semantic_component:
+		{
+			current_mode = operating_mode::Extract_semantic_component;
+			std::cout << "--------------------- Extract semantic component ---------------------" << std::endl;
+
+			train_test_predict_val = 0;
+			get_training_data();
+			data_path = training_data_path;
+			base_names = training_base_names;
+			ply_files = training_ply_files;
+			file_folders = training_file_folders;
+			sampling_strategy = sampling_strategy_training;
+			use_batch_processing = use_batch_processing_on_training;
+
+			SFMesh* mesh_merged = new SFMesh;
+			int vert_size = 0;
+			std::vector<cv::Mat> texture_maps, texture_mask_maps;
+			input_mesh_configuration(mesh_merged);
+			for (std::size_t pi = 0; pi < base_names.size(); ++pi)
+			{
+				add_mesh_to_merge(mesh_merged, texture_maps, texture_mask_maps, pi, vert_size);
+				vert_size = mesh_merged->n_vertices();
+			}
+
+			//extract semantic mesh
+			std::vector<std::vector<SFMesh::Face>> label_component_faces;
+			std::vector<float> component_area;
+			extract_semantic_mesh(mesh_merged, label_component_faces, component_area);
+
+			//sampling all mesh
+			for (int i = 0; i < label_component_faces.size(); ++i)
+			{
+				std::cout << "i = " << i << " / " << label_component_faces.size() << std::endl;
+
+				easy3d::PointCloud* sampled_cloud = new easy3d::PointCloud;
+				random_sampling_pointcloud_on_selected_faces(mesh_merged, label_component_faces[i], sampled_cloud, component_area[i]);
+
+				std::string output_pcl_b = "C:/data/PhDthesis/git_sum_public/data_demo/output/train/sampled_pcl.ply";
+				easy3d::PointCloudIO::save(output_pcl_b, sampled_cloud, true);
+
+				std::vector<std::vector<SFMesh::Face>> geo_component_faces;
+				extract_connected_component_from_sampled_cloud(mesh_merged, label_component_faces[i], sampled_cloud, geo_component_faces);
+
+				//std::vector<SFMesh*> component_meshes;
+				//construct_component_mesh(semantic_mesh_collection[si], component_faces, component_meshes);
+
+				for (int j = 0; j < geo_component_faces.size(); ++j)
+				{
+					easy3d::PointCloud* tex_pcl = new easy3d::PointCloud;
+					texture_point_cloud_generation(mesh_merged, geo_component_faces[j], tex_pcl, texture_maps, texture_mask_maps);
+
+					std::string main_class_name = get_main_class(mesh_merged, geo_component_faces[j]);
+					write_semantic_texture_pointcloud_data(tex_pcl, main_class_name, j);
+
+					delete tex_pcl;
+				}
+
+				mesh_merged->remove_face_property(mesh_merged->get_face_property<bool>("f:visited"));
+				mesh_merged->remove_face_property(mesh_merged->get_face_property<int>("f:geometry_component_id"));
+				mesh_merged->remove_face_property(mesh_merged->get_face_property<std::vector<easy3d::vec3>>("f:sampled_points"));
+
+				delete sampled_cloud;
+			}
+
+			delete mesh_merged;
+			break;
+		}
+
 		default:
 		{
 			std::cerr << std::endl << "No operation model has been chosen!!!" << std::endl;

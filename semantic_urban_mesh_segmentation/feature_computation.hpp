@@ -307,6 +307,44 @@ namespace semantic_mesh_segmentation
 		return u + v <= 1;
 	}
 
+	inline bool PointinTriangle
+	(
+		std::vector<double>& U_vec,
+		std::vector<double>& V_vec,
+		std::vector<double>& P
+	) //U_vec={X1,X2,X3}, V_vec={Y1,Y2,Y3}, P={X,Y}
+	{
+		double x0 = U_vec[0]; double y0 = V_vec[0];//A
+		double x1 = U_vec[1]; double y1 = V_vec[1];//B
+		double x2 = U_vec[2]; double y2 = V_vec[2];//C
+		double x = P[0]; double y = P[1];
+
+		double v0_x = x2 - x0; double v0_y = y2 - y0;
+		double v1_x = x1 - x0; double v1_y = y1 - y0;
+		double v2_x = x - x0; double v2_y = y - y0;
+
+		double dot00 = v0_x * v0_x + v0_y * v0_y;
+		double dot01 = v0_x * v1_x + v0_y * v1_y;
+		double dot02 = v0_x * v2_x + v0_y * v2_y;
+		double dot11 = v1_x * v1_x + v1_y * v1_y;
+		double dot12 = v1_x * v2_x + v1_y * v2_y;
+
+		double inverDeno = 1 / (dot00 * dot11 - dot01 * dot01);
+
+		double u = (dot11 * dot02 - dot01 * dot12) * inverDeno;
+		if (u < 0 || u > 1) // if u out of range, return directly
+		{
+			return false;
+		}
+
+		double v = (dot00 * dot12 - dot01 * dot02) * inverDeno;
+		if (v < 0 || v > 1) // if v out of range, return directly
+		{
+			return false;
+		}
+		return u + v <= 1;
+	}
+
 	//From UV to 3D coordinates
 	inline void uv_to_3D_coordinates
 	(
@@ -523,6 +561,15 @@ namespace semantic_mesh_segmentation
 		std::vector< std::vector< std::vector<float> > > &,
 		std::vector< std::vector< std::vector<float> > > &,
 		std::vector< std::vector<float> > &
+	);
+
+	void texture_point_cloud_generation
+	(
+		SFMesh*,
+		std::vector<SFMesh::Face>&,
+		easy3d::PointCloud*,
+		const std::vector<cv::Mat>&,
+		const std::vector<cv::Mat>&
 	);
 }
 

@@ -58,7 +58,8 @@ namespace semantic_mesh_segmentation
 		Evaluation_SOTA,
 		Process_semantic_pcl,
 		Feature_diversity_meaure,
-		Compute_mesh_area
+		Compute_mesh_area,
+		Extract_semantic_component
 	};
 
 	//--- global variables for point cloud sampling ---
@@ -159,7 +160,7 @@ namespace semantic_mesh_segmentation
 	extern bool use_face_pixels_color_aggregation_on_predicting;
 	extern bool use_face_pixels_color_aggregation_on_validation;
 
-	extern bool with_texture;
+	extern bool with_texture, with_texture_mask;
 	extern bool save_tex_cloud, save_textures_in_predict;
 	extern bool add_point_color;
 	extern bool add_point_color_for_dp_input;
@@ -210,8 +211,9 @@ namespace semantic_mesh_segmentation
 	extern int sub_batch_size;
 
 	//--- label names ---
-	extern std::vector<std::string> labels_name, ignored_labels_name;
-	extern std::vector<easy3d::vec3> labels_color;
+	extern std::vector<std::string> labels_name, ignored_labels_name, tex_labels_name;
+	extern std::vector< std::vector<std::string>> component_label_name;
+	extern std::vector<easy3d::vec3> labels_color, tex_labels_color;
 	typedef typename int label_type;//other: int; PointNet, PointNet2, ConvPoints: float
 	extern std::map<int, int> label_shiftdis, new_label_shiftback;
 	extern std::map<int, bool> label_ignore;

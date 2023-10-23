@@ -47,4 +47,58 @@ namespace semantic_mesh_segmentation
 		PoissonDiskPruning(possion_cloud, cloud_temp, radius_temp);
 		delete cloud_temp;
 	}
+
+	void random_sampling_pointcloud_on_selected_faces
+	(
+		SFMesh* smesh_in,
+		std::vector<SFMesh::Face>& label_component_faces_i,
+		easy3d::PointCloud* sampled_cloud,
+		const float component_area
+	)
+	{
+		if (!smesh_in->get_face_property<std::vector<easy3d::vec3>>("f:sampled_points"))
+			smesh_in->add_face_property<std::vector<easy3d::vec3>>("f:sampled_points", std::vector<easy3d::vec3>());
+		auto fd_sampled_pts = smesh_in->get_face_property<std::vector<easy3d::vec3>>("f:sampled_points");
+		sampled_cloud->add_vertex_property<int>("v:face_id", -1);
+		auto vt_fid = sampled_cloud->get_vertex_property<int>("v:face_id");
+		int num_needed = int(component_area * sampling_point_density);
+		std::cout << "sampling_points_number = " << num_needed << std::endl;
+		for (auto fd : label_component_faces_i)
+		{
+			// samples number considering the facet size (i.e., area)
+			float samples_num = smesh_in->get_face_area[fd] * sampling_point_density;
+			if (samples_num < 1)
+				samples_num = 1;
+			std::size_t quant_samples_num = (std::size_t)samples_num;
+
+			// generate points
+			for (unsigned int j = 0; j < quant_samples_num; j++) {
+				// compute barycentric coords
+				double s = sqrt((double)rand() / (double)RAND_MAX);
+				double t = (double)rand() / (double)RAND_MAX;
+				double c[3];
+
+				c[0] = 1.0 - s;
+				c[1] = s * (1.0 - t);
+				c[2] = s * t;
+
+				vec3 p;
+				std::size_t i = 0;
+				for (auto vd : smesh_in->vertices(fd))
+				{
+					p = p + c[i] * smesh_in->get_points_coord[vd];
+					++i;
+				}
+
+				auto sampled_vd = sampled_cloud->add_vertex(p);//PointCloud::Vertex v = 
+				vt_fid[sampled_vd] = fd.idx();
+				fd_sampled_pts[fd].push_back(p);
+			}
+
+			//add face center
+			auto sampled_vd = sampled_cloud->add_vertex(smesh_in->get_face_center[fd]);
+			vt_fid[sampled_vd] = fd.idx();
+			fd_sampled_pts[fd].push_back(smesh_in->get_face_center[fd]);
+		}
+	}
 }

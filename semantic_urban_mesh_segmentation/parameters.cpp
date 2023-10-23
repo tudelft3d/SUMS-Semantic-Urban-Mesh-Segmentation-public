@@ -48,7 +48,7 @@ namespace semantic_mesh_segmentation
 	};
 
 	//in ply data: -1: unlabelled; 0: unclassified; 1: terrain, 2: .....
-	//in program: -2: unlabelled; -1: unclassifiedl; 0: terrain, 1: ..... 
+	//in program: -2: unlabelled; -1: unclassified; 0: terrain, 1: ..... 
 	std::vector<std::string> labels_name
 	{
 		"terrain",             //0
@@ -58,6 +58,10 @@ namespace semantic_mesh_segmentation
 		"car",                 //4
 		"boat"                 //5
 	};
+
+	std::vector<std::string> tex_labels_name;
+
+	std::vector< std::vector<std::string>> component_label_name;
 
 	std::vector<easy3d::vec3> labels_color
 	{
@@ -69,10 +73,13 @@ namespace semantic_mesh_segmentation
 		easy3d::vec3(0.0f, 0.0f, float(153.0f / 255.0f)) //5
 	};
 
+	std::vector<easy3d::vec3> tex_labels_color;
+
 	std::vector<std::string> ignored_labels_name{};
 
 	//****************** Mesh_feature_extraction ******************
 	bool with_texture = true; // depends on the read data
+	bool with_texture_mask = false;
 	bool is_pointclouds_exist = false;
 
 	//save intermediate data

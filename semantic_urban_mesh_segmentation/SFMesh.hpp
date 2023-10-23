@@ -212,7 +212,7 @@ namespace semantic_mesh_segmentation
 		SurfaceMesh::FaceProperty<std::set<int>>
 			add_face_1_ring_neighbor, get_face_1_ring_neighbor;
 
-		std::vector<std::string> texture_names;
+		std::vector<std::string> texture_names, texture_mask_names;
 
 		void remove_common_non_used_properties();
 		void remove_non_used_properties_for_feature_mesh();

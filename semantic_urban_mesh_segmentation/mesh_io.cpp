@@ -756,6 +756,10 @@ namespace semantic_mesh_segmentation
 							{
 								current_mode = operating_mode::Evaluation_SOTA;
 							}
+							else if (param_value == "Extract_semantic_component")
+							{
+								current_mode = operating_mode::Extract_semantic_component;
+							}
 						}
 					}
 					else if (param_name == "root_path")
@@ -843,6 +847,45 @@ namespace semantic_mesh_segmentation
 							}
 						}
 					}
+					else if (param_name == "texture_labels_name")
+					{
+						if (param_value != "default")
+						{
+							std::vector<std::string> words = Split(param_value, ",", false);
+							if (words.size() > 0)
+							{
+								tex_labels_name.resize(words.size());
+								for (int li = 0; li < tex_labels_name.size(); ++li)
+								{
+									tex_labels_name[li] = words[li];
+								}
+							}
+						}
+					}
+					else if (param_name == "component_labels_name")
+					{
+						if (param_value != "default")
+						{
+							std::vector<std::string> words = Split(param_value, ";", false);
+							int i = 0;
+							if (words.size() > 0)
+							{
+								component_label_name.resize(words.size());
+								for (auto words2 : words)
+								{
+									std::vector<std::string> words3 = Split(words2, ",", false);
+									component_label_name[i].resize(words3.size());
+									int j = 0;
+									for (auto w : words3)
+									{
+										component_label_name[i][j] = w;
+										++j;
+									}
+									++i;
+								}
+							}
+						}
+					}
 					else if (param_name == "ignored_labels_name")
 					{
 						if (param_value != "default")
@@ -884,6 +927,32 @@ namespace semantic_mesh_segmentation
 							}
 						}
 					}
+					else if (param_name == "texture_labels_color")
+					{
+						if (param_value != "default")
+						{
+							std::vector<std::string> words = Split(param_value, ";", false);
+							int i = 0;
+							if (words.size() > 0)
+							{
+								tex_labels_color.resize(words.size());
+								for (auto words2 : words)
+								{
+									std::vector<std::string> words3 = Split(words2, ",", false);
+									int j = 0;
+									for (auto w : words3)
+									{
+										float c = std::stof(w);
+										if (c > 1)
+											c /= 255.0f;
+										tex_labels_color[i][j] = c;
+										++j;
+									}
+									++i;
+								}
+							}
+						}
+					}
 					else if (param_name == "with_texture")
 					{
 						if (param_value != "default")
@@ -892,6 +961,16 @@ namespace semantic_mesh_segmentation
 								with_texture = true;
 							else if (param_value == "false" || param_value == "False" || param_value == "FALSE")
 								with_texture = false;
+						}
+					}
+					else if (param_name == "with_texture_mask")
+					{
+						if (param_value != "default")
+						{
+							if (param_value == "true" || param_value == "True" || param_value == "TRUE")
+								with_texture_mask = true;
+							else if (param_value == "false" || param_value == "False" || param_value == "FALSE")
+								with_texture_mask = false;
 						}
 					}
 					else if (param_name == "use_pointcloud_region_growing")
@@ -1582,6 +1661,38 @@ namespace semantic_mesh_segmentation
 		else
 			std::cerr << "failed create the new file" << std::endl;
 	}
+
+	void write_semantic_texture_pointcloud_data
+	(
+		easy3d::PointCloud* pcl_out,
+		const std::string class_i,
+		const int component_i
+	)
+	{
+		const double t_total = omp_get_wtime();
+		//pcl_out->remove_non_used_properties();
+
+		std::string temp_str;
+		std::ostringstream str_ostemp;
+		str_ostemp
+			<< root_path
+			<< folder_names_level_0[10]
+			<< folder_names_level_1[train_test_predict_val]
+			<< class_i <<"_"
+			<< std::to_string(component_i)
+			<< ".ply";
+
+		std::string str_temp = str_ostemp.str().data();
+		char* Path_temp = (char*)str_temp.data();
+
+		bool success = easy3d::PointCloudIO::save(Path_temp, pcl_out, true);
+		if (success)
+			std::cout << "pointcloud saved" << std::endl;
+		else
+			std::cerr << "failed create the new file" << std::endl;
+		std::cout << "	Done in (s): " << omp_get_wtime() - t_total << '\n' << std::endl;
+	}
+
 
 	void write_pointcloud_data
 	(

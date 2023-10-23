@@ -35,7 +35,7 @@ namespace semantic_mesh_segmentation
 	//------------------------------------------------ ------------------------------- ----------------------------------------------//
 	//------------------------------------------------ Surface mesh sampling functions ----------------------------------------------//
 	//------------------------------------------------ ------------------------------- ----------------------------------------------//
-		//Calculate single facet feature property<float>
+	//Calculate single facet feature property<float>
 	void texture_pointcloud_generation
 	(
 		SFMesh* smesh_in,
@@ -235,6 +235,167 @@ namespace semantic_mesh_segmentation
 				texture_pointcloud_generation(smesh_out, fd, texture_maps, hsv_maps);
 		}
 		std::cout << "Done in (s): " << omp_get_wtime() - t_total << '\n' << std::endl;
+	}
+
+	void enlarge_uv_triangle
+	(
+		std::vector<double>& UL_vec,
+		std::vector<double>& VL_vec,
+		std::pair<int, int>& uv_dis,
+		std::pair<double, double>& uv_min,
+		const int scaled_width,
+		const int scaled_height
+	)
+	{
+		//enlarge the uv_triangle with 1 pixel
+		int umin_i, umax_i, vmin_i, vmax_i;
+		std::pair<double, double> u_minmax(FLT_MAX, -FLT_MAX), v_minmax(FLT_MAX, -FLT_MAX);
+		for (int i = 0; i < 3; ++i)
+		{
+			if (UL_vec[i] < u_minmax.first)
+			{
+				u_minmax.first = UL_vec[i];
+				umin_i = i;
+			}
+
+			if (UL_vec[i] > u_minmax.second)
+			{
+				u_minmax.second = UL_vec[i];
+				umax_i = i;
+			}
+
+			if (VL_vec[i] < v_minmax.first)
+			{
+				v_minmax.first = VL_vec[i];
+				vmin_i = i;
+			}
+
+			if (VL_vec[i] > v_minmax.second)
+			{
+				v_minmax.second = VL_vec[i];
+				vmax_i = i;
+			}
+		}
+
+		int u_t_min = std::floor(UL_vec[umin_i] * double(scaled_width)) - 1;
+		int v_t_min = std::floor(VL_vec[vmin_i] * double(scaled_height)) - 1;
+		int u_t_max = std::ceil(UL_vec[umax_i] * double(scaled_width)) + 1;
+		int v_t_max = std::ceil(VL_vec[vmax_i] * double(scaled_height)) + 1;
+
+		UL_vec[umin_i] = double(u_t_min) / double(scaled_width);
+		VL_vec[vmin_i] = double(v_t_min) / double(scaled_height);
+		UL_vec[umax_i] = double(u_t_max) / double(scaled_width);
+		VL_vec[vmax_i] = double(v_t_max) / double(scaled_height);
+
+		uv_dis = std::make_pair(u_t_max - u_t_min, v_t_max - v_t_min);
+		uv_min = std::make_pair(UL_vec[umin_i], VL_vec[vmin_i]);
+	}
+
+	void texture_point_cloud_generation
+	(
+		SFMesh* merged_mesh,
+		std::vector<SFMesh::Face>& geo_component_faces_i,
+		easy3d::PointCloud* tex_pcl,
+		const std::vector<cv::Mat>& texture_maps,
+		const std::vector<cv::Mat>& texture_mask_maps
+	)
+	{
+		if (!tex_pcl->get_vertex_property<easy3d::vec3>("v:normal"))
+			tex_pcl->add_vertex_property<easy3d::vec3>("v:normal", easy3d::vec3());
+		auto get_pcl_normal = tex_pcl->get_vertex_property<easy3d::vec3>("v:normal");
+		if (!tex_pcl->get_vertex_property<easy3d::vec3>("v:color"))
+			tex_pcl->add_vertex_property<easy3d::vec3>("v:color", easy3d::vec3());
+		auto get_pcl_color = tex_pcl->get_vertex_property<easy3d::vec3>("v:color");
+		tex_pcl->add_vertex_property<int>("v:label", -1);
+		auto get_pcl_label = tex_pcl->get_vertex_property<int>("v:label");
+		for (auto& fd : geo_component_faces_i)
+		{
+			int texture_id = merged_mesh->get_face_texnumber[fd];
+			int width = texture_maps[texture_id].cols;
+			int height = texture_maps[texture_id].rows;
+
+			std::vector<easy3d::vec2> uv_triangle;
+			std::vector<double> U_vec, V_vec, UL_vec, VL_vec;
+			std::vector<easy3d::vec3> coord3d_triangle;
+			for (auto& vd : merged_mesh->vertices(fd))
+				coord3d_triangle.push_back(merged_mesh->get_points_coord[vd]);
+
+			U_vec.push_back(merged_mesh->get_face_texcoord[fd][0]);
+			U_vec.push_back(merged_mesh->get_face_texcoord[fd][2]);
+			U_vec.push_back(merged_mesh->get_face_texcoord[fd][4]);
+			V_vec.push_back(merged_mesh->get_face_texcoord[fd][1]);
+			V_vec.push_back(merged_mesh->get_face_texcoord[fd][3]);
+			V_vec.push_back(merged_mesh->get_face_texcoord[fd][5]);
+
+			uv_triangle.emplace_back(U_vec[0], V_vec[0]);
+			uv_triangle.emplace_back(U_vec[1], V_vec[1]);
+			uv_triangle.emplace_back(U_vec[2], V_vec[2]);
+
+			UL_vec.insert(UL_vec.end(), U_vec.begin(), U_vec.end());
+			VL_vec.insert(VL_vec.end(), V_vec.begin(), V_vec.end());
+
+			std::pair<int, int> uv_dis;
+			std::pair<double, double> uv_min;
+			enlarge_uv_triangle(UL_vec, VL_vec, uv_dis, uv_min, width, height);
+
+			for (int u_i = 0; u_i < uv_dis.first; ++u_i)
+			{
+				for (int v_i = 0; v_i < uv_dis.second; ++v_i)
+				{
+					std::vector<double> P =
+					{
+						uv_min.first + double(u_i) / double(width),
+						uv_min.second + double(v_i) / double(height)
+					};
+
+					if (P[0] > 1.0f || P[0] < 0.0f || P[1] > 1.0f || P[1] < 0.0f)
+					{
+						P.clear();
+						continue;
+					}
+
+					if (PointinTriangle(UL_vec, VL_vec, P))
+					{
+						easy3d::vec2 newcoord(P[0], P[1]);
+						easy3d::vec3 current_3d;
+
+						uv_to_3D_coordinates(uv_triangle, coord3d_triangle, newcoord, current_3d);
+
+						tex_pcl->add_vertex(current_3d);
+						get_pcl_normal[*(--tex_pcl->vertices_end())] = merged_mesh->get_face_normals[fd];
+						get_pcl_label[*(--tex_pcl->vertices_end())] = merged_mesh->get_face_truth_label[fd];
+
+						int x_coord = std::round(P[0] * double(width - 1)); //x is horizontal axis in Qt, origin is up-left corner 
+						int y_coord = std::round(P[1] * double(height - 1));
+
+						//float Rf = (float)texture_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * texture_maps[texture_id].rows - 1, newcoord[0] * texture_maps[texture_id].cols)[2];
+						//float Gf = (float)texture_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * texture_maps[texture_id].rows - 1, newcoord[0] * texture_maps[texture_id].cols)[1];
+						//float Bf = (float)texture_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * texture_maps[texture_id].rows - 1, newcoord[0] * texture_maps[texture_id].cols)[0];
+
+						//get_pcl_color[*(--tex_pcl->vertices_end())] = easy3d::vec3(Rf, Gf, Bf);
+						if (merged_mesh->get_face_truth_label[fd] < 0)
+							get_pcl_color[*(--tex_pcl->vertices_end())] = easy3d::vec3(0.0f, 0.0f, 0.0f);
+						else
+							get_pcl_color[*(--tex_pcl->vertices_end())] = labels_color[merged_mesh->get_face_truth_label[fd] - 1];
+
+						float Rf_mask = (float)texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * texture_mask_maps[texture_id].rows - 1, newcoord[0] * texture_mask_maps[texture_id].cols)[2];
+						float Gf_mask = (float)texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * texture_mask_maps[texture_id].rows - 1, newcoord[0] * texture_mask_maps[texture_id].cols)[1];
+						float Bf_mask = (float)texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * texture_mask_maps[texture_id].rows - 1, newcoord[0] * texture_mask_maps[texture_id].cols)[0];
+
+						for (int tex_ci = 0; tex_ci < tex_labels_color.size(); ++tex_ci)
+						{
+							if (std::abs(Rf_mask - 255.0f * tex_labels_color[tex_ci][0]) <= 1.0f &&
+								std::abs(Gf_mask - 255.0f * tex_labels_color[tex_ci][1]) <= 1.0f &&
+								std::abs(Bf_mask - 255.0f * tex_labels_color[tex_ci][2]) <= 1.0f)
+							{
+								get_pcl_color[*(--tex_pcl->vertices_end())] = tex_labels_color[tex_ci];
+								get_pcl_label[*(--tex_pcl->vertices_end())] = labels_color.size() + tex_ci;
+							}
+						}
+					}
+				}
+			}
+		}
 	}
 
 	void parsing_texture_color_to_sampled_pointcloud

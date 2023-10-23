@@ -1789,6 +1789,320 @@ namespace semantic_mesh_segmentation
 		delete spg_semantic_pcl;
 	}
 
+	//--- collect input meshes ---//
+	void add_mesh_to_merge
+	(
+		SFMesh* mesh_merged,
+		std::vector<cv::Mat>& texture_maps,
+		std::vector<cv::Mat>& texture_mask_maps,
+		const int mi,
+		const int vert_size
+	)
+	{
+		SFMesh* smesh_in = new SFMesh;
+		std::cout << "Start to extract from mesh " << base_names[mi] << std::endl;
+		//read training mesh data
+		read_mesh_data(smesh_in, mi);
+		if (with_texture)
+		{
+			if (!smesh_in->get_face_property<int>("f:texnumber"))
+				smesh_in->add_face_property<int>("f:texnumber", 0);
+			smesh_in->get_face_texnumber = smesh_in->get_face_property<int>("f:texnumber");
+
+			if (!smesh_in->get_face_property<std::vector<float>>("f:texcoord"))
+				smesh_in->add_face_property<std::vector<float>>("f:texcoord", std::vector<float>({ 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f }));
+			smesh_in->get_face_texcoord = smesh_in->get_face_property<std::vector<float>>("f:texcoord");
+		}
+
+		//add mesh
+		for (auto& vd : smesh_in->vertices())
+			mesh_merged->add_vertex(smesh_in->get_points_coord[vd]);
+
+		float mesh_total_area = 0.0f;
+		for (auto& fd : smesh_in->faces())
+		{
+			std::vector<easy3d::SurfaceMesh::Vertex> verts;
+			easy3d::vec3 fd_cen(0.0f, 0.0f, 0.0f);
+			for (auto& vd : smesh_in->vertices(fd))
+			{
+				easy3d::SurfaceMesh::Vertex v_to_add(vd.idx() + vert_size);
+				verts.push_back(v_to_add);
+				fd_cen += smesh_in->get_points_coord[vd];
+			}
+			fd_cen /= 3.0f;
+			mesh_merged->add_face(verts);
+
+			mesh_merged->get_face_truth_label[*(--mesh_merged->faces_end())] = smesh_in->get_face_truth_label[fd];
+			mesh_merged->get_face_area[*(--mesh_merged->faces_end())] = FaceArea(mesh_merged, fd);
+			mesh_total_area += mesh_merged->get_face_area[*(--mesh_merged->faces_end())];
+			mesh_merged->get_face_normals[*(--mesh_merged->faces_end())] = mesh_merged->compute_face_normal(fd);
+			mesh_merged->get_face_center[*(--mesh_merged->faces_end())] = fd_cen;
+
+			if (with_texture)
+			{
+				mesh_merged->get_face_texnumber[*(--mesh_merged->faces_end())] = smesh_in->get_face_texnumber[fd] + mesh_merged->textures.size();
+				mesh_merged->get_face_texcoord[*(--mesh_merged->faces_end())] = smesh_in->get_face_texcoord[fd];
+			}
+		}
+		mesh_merged->mesh_area = mesh_total_area;
+
+		if (with_texture)
+		{
+			mesh_merged->textures.insert(mesh_merged->textures.end(), smesh_in->textures.begin(), smesh_in->textures.end());
+			for (int ti = 0; ti < smesh_in->textures.size(); ++ti)
+			{
+				auto tex_i = smesh_in->textures[ti];
+				if (!tex_i.empty() && tex_i[tex_i.size() - 1] == '\r')
+					tex_i.erase(tex_i.size() - 1);
+				mesh_merged->texture_names.push_back(tex_i);
+
+				std::ostringstream texture_str_ostemp;
+				std::string path_tmp;
+				if (file_folders.size() > 1)
+					path_tmp = file_folders[mi] + tex_i;
+				else
+					path_tmp = file_folders[0] + tex_i;
+
+				texture_str_ostemp << path_tmp;
+				std::string texture_str_temp = texture_str_ostemp.str().data();
+				char* texturePath_temp = (char*)texture_str_temp.data();
+				cv::Mat texture_map = cv::imread(texturePath_temp);
+				if (texture_map.empty())
+				{
+					std::cout << "read texture failure or no texture provide!" << std::endl;
+					cv::Mat dummy(128, 128, CV_8UC3, cv::Scalar(0, 255, 0));
+					texture_map = dummy;
+				}
+				texture_maps.emplace_back(texture_map);
+
+				if (with_texture_mask)
+				{
+					std::ostringstream texture_mask_str_ostemp;
+					std::string mask_path_tmp;
+					std::vector<std::string> texture_name_splits = Split(tex_i, ".", false);
+					if (file_folders.size() > 1)
+						mask_path_tmp = file_folders[mi] + "mask_" + texture_name_splits[0] + ".png";
+					else
+						mask_path_tmp = file_folders[0] + "mask_" + texture_name_splits[0] + ".png";
+
+					texture_mask_str_ostemp << mask_path_tmp;
+					std::string texture_mask_str_temp = texture_mask_str_ostemp.str().data();
+					char* mask_texturePath_temp = (char*)texture_mask_str_temp.data();
+					cv::Mat mask_texture_map = cv::imread(mask_texturePath_temp);
+					if (mask_texture_map.empty())
+					{
+						std::cout << "read texture mask failure or no texture provide!" << std::endl;
+						cv::Mat dummy(128, 128, CV_8UC3, cv::Scalar(0, 255, 0));
+						mask_texture_map = dummy;
+					}
+					texture_mask_maps.emplace_back(mask_texture_map);
+				}
+			}
+		}
+
+		delete smesh_in;
+	}
+
+	void extract_semantic_mesh
+	(
+		SFMesh* mesh_merged,
+		std::vector<std::vector<SFMesh::Face>>& label_component_faces, 
+		std::vector<float>& component_area
+	)
+	{
+		if (!mesh_merged->get_face_property<int>("f:semantic_component_id"))
+			mesh_merged->add_face_property<int>("f:semantic_component_id", -1);
+		auto fd_semantic_cid = mesh_merged->get_face_property<int>("f:semantic_component_id");
+		for (int i = 0; i < component_label_name.size(); ++i)
+		{
+			float sum_area = 0.0f;
+			std::map<int, int> vd_map;
+			std::vector<SFMesh::Face> collected_faces;
+			for (auto& fd : mesh_merged->faces())
+			{
+				bool is_match = false;
+				int fd_label = mesh_merged->get_face_truth_label[fd] - 1;
+				if (fd_label >= 0)
+				{
+					std::string cur_label_name = labels_name[fd_label];
+					for (int j = 0; j < component_label_name[i].size(); ++j)
+					{
+						int res = cur_label_name.compare(component_label_name[i][j]);
+						if (res == 0)
+						{
+							is_match = true;
+							break;
+						}
+					}
+				}
+
+				if (is_match)
+				{
+					collected_faces.push_back(fd);
+					fd_semantic_cid[fd] = i;
+					sum_area += mesh_merged->get_face_area[fd];
+				}
+			}
+
+			component_area.push_back(sum_area);
+			label_component_faces.push_back(collected_faces);
+		}
+	}
+
+	void extract_connected_component_from_sampled_cloud
+	(
+		SFMesh* mesh_merged,
+		std::vector<SFMesh::Face>& label_component_faces_i,
+		easy3d::PointCloud* sampled_pcl,
+		std::vector<std::vector<SFMesh::Face>> &geo_component_faces
+	)
+	{
+		auto fd_semantic_cid = mesh_merged->get_face_property<int>("f:semantic_component_id");
+		if (!mesh_merged->get_face_property<int>("f:geometry_component_id"))
+			mesh_merged->add_face_property<int>("f:geometry_component_id", -1);
+		auto fd_cid = mesh_merged->get_face_property<int>("f:geometry_component_id");
+		if (!mesh_merged->get_face_property<bool>("f:visited"))
+			mesh_merged->add_face_property<bool>("f:visited", false);
+		auto fd_visited = mesh_merged->get_face_property<bool>("f:visited");
+		auto fd_sampled_pts = mesh_merged->get_face_property<std::vector<easy3d::vec3>>("f:sampled_points");
+
+		easy3d::KdTree tree_3d;
+		tree_3d.begin();
+		tree_3d.add_point_cloud(sampled_pcl);
+		tree_3d.end();
+
+		auto vt_fid = sampled_pcl->get_vertex_property<int>("v:face_id");
+		for (auto& fd : label_component_faces_i)
+		{
+			if (fd_visited[fd])
+				continue;
+			std::vector<SFMesh::Face> cur_component;
+			std::stack<SFMesh::Face> stack;
+			stack.push(fd);
+			while (!stack.empty())
+			{
+				easy3d::SurfaceMesh::Face top = stack.top();
+				fd_visited[top] = true;
+				fd_cid[top] = cur_component.size();
+				cur_component.push_back(top);
+				stack.pop();
+				if (top.is_valid() && top.idx() != -1)
+				{
+					std::map<int, bool> local_fd_visited;
+					for (auto vd : mesh_merged->vertices(top))
+					{
+						for (auto fd_neg : mesh_merged->faces(vd))
+						{
+							if (!fd_visited[fd_neg] &&
+								local_fd_visited.find(fd_neg.idx()) == local_fd_visited.end() && 
+								fd_semantic_cid[top] == fd_semantic_cid[fd_neg])
+							{
+								stack.push(fd_neg);
+								local_fd_visited[fd_neg.idx()] = true;
+							}
+						}
+					}
+
+					if (mesh_merged->is_boundary(top))
+					{
+						for (auto pt : fd_sampled_pts[top])
+						{
+							std::vector<int> neighbors;
+							tree_3d.find_points_in_radius(pt, std::pow(adjacent_radius, 2), neighbors);
+
+							for (auto vi : neighbors)
+							{
+								easy3d::PointCloud::Vertex v_neg(vi);
+								easy3d::SurfaceMesh::Face fd_neg(vt_fid[v_neg]);
+								if (!fd_visited[fd_neg] &&
+									local_fd_visited.find(fd_neg.idx()) == local_fd_visited.end() && 
+									fd_semantic_cid[top] == fd_semantic_cid[fd_neg])
+								{
+									stack.push(fd_neg);
+									local_fd_visited[fd_neg.idx()] = true;
+								}
+							}
+						}
+					}
+				}
+			}
+			geo_component_faces.push_back(cur_component);
+		}
+	}
+
+	//void construct_component_mesh
+	//(
+	//	SFMesh* mesh_in,
+	//	std::vector<std::vector<SFMesh::Face>>& component_faces,
+	//	std::vector<SFMesh*>& component_meshes
+	//)
+	//{
+	//	auto get_point_coord = mesh_in->get_vertex_property<easy3d::vec3>("v:point");
+	//	for (int i = 0; i < component_faces.size(); ++i)
+	//	{
+	//		SFMesh* c_mesh = new SFMesh;
+	//		input_mesh_configuration(c_mesh);
+	//		mesh_in->add_vertex_property<bool>("v:v_cur_visited", false);
+	//		auto visited_vd = mesh_in->get_vertex_property<bool>("v:v_cur_visited");
+	//		std::map<int, int> old_new_vd_map;
+	//		int vi = 0;
+	//		for (auto& fd : component_faces[i])
+	//		{
+	//			for (auto& vd : mesh_in->vertices(fd))
+	//			{
+	//				if (!visited_vd[vd])
+	//				{
+	//					c_mesh->add_vertex(get_point_coord[vd]);
+	//					visited_vd[vd] = true;
+	//					old_new_vd_map[vd.idx()] = vi;
+	//					++vi;
+	//				}
+	//			}
+	//		}
+
+	//		int fi = 0;
+	//		for (auto& fd : component_faces[i])
+	//		{
+	//			std::vector<SFMesh::Vertex> verts;
+	//			for (auto& vd : mesh_in->vertices(fd))
+	//			{
+	//				verts.push_back(SFMesh::Vertex(old_new_vd_map[vd.idx()]));
+	//			}
+	//			auto cur_fd = c_mesh->add_face(verts);
+	//			c_mesh->get_face_truth_label[cur_fd] = mesh_in->get_face_truth_label[fd];
+	//			c_mesh->get_face_normals[cur_fd] = mesh_in->get_face_normals[fd];
+
+	//			if (with_texture)
+	//			{
+	//				c_mesh->get_face_texnumber[cur_fd] = mesh_in->get_face_texnumber[fd];
+	//				c_mesh->get_face_texcoord[cur_fd] = mesh_in->get_face_texcoord[fd];
+	//			}
+
+	//			++fi;
+	//		}
+
+	//		component_meshes.push_back(c_mesh);
+	//		mesh_in->remove_vertex_property(visited_vd);
+	//	}
+	//}
+
+	std::string get_main_class(SFMesh* mesh_merged, std::vector<SFMesh::Face>& geo_component_face_i)
+	{
+		std::string main_c_name;
+		auto fd0 = geo_component_face_i[0];
+		int f_li = mesh_merged->get_face_truth_label[fd0];
+		if (f_li == 3 || f_li == 7 || f_li == 8 || f_li == 9 || f_li == 10 || f_li == 11)
+		{
+			main_c_name = "building";
+		}
+		else
+		{
+			main_c_name = labels_name[f_li];
+		}
+
+		return main_c_name;
+	}
+
 	void compute_feature_diversity
 	(
 		std::vector<float> &feas_var

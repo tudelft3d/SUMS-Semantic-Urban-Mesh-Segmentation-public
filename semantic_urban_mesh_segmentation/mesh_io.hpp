@@ -54,6 +54,18 @@
 
 namespace semantic_mesh_segmentation
 {
+	inline bool smallest_segment_id
+	(
+		superfacets spf_1,
+		superfacets spf_2
+	)
+	{
+		if (spf_1.id < spf_2.id)
+			return true;
+		else
+			return false;
+	}
+
 	//---------------------- function for splitting string ----------------------//
 	inline std::vector<std::string> Split(const std::string &s, const std::string &delim, const bool keep_empty = true)
 	{
@@ -127,7 +139,17 @@ namespace semantic_mesh_segmentation
 
 	void read_test_mesh_data(SFMesh *, const int);
 
+	void read_graph_nodes_ply(std::vector<superfacets> &, const int);
+
+	void read_seg_mesh_with_pnp_info(SFMesh*, const int);
+
 	void read_labeled_mesh_data(SFMesh *, const int);
+
+	void read_and_write_oversegmentation_ground_truth();
+
+	void read_oversegmentation_testdata(SFMesh*, const int);
+
+	void read_oversegmentation_truthdata(SFMesh*, const int);
 
 	void read_txt_batches(std::vector<std::vector<std::pair<int, std::string>>> &);
 
@@ -141,6 +163,13 @@ namespace semantic_mesh_segmentation
 	void rply_output(SFMesh*, char*);
 
 	void rply_output(PTCloud*, char*);
+
+	void write_semantic_texture_pointcloud_data
+	(
+		easy3d::PointCloud* ,
+		const std::string,
+		const int 
+	);
 
 	void write_mesh_segments(SFMesh*, const int);
 
@@ -156,6 +185,8 @@ namespace semantic_mesh_segmentation
 
 	void write_error_mesh_data(SFMesh*, const int);
 
+	void write_pnp_mesh_data(SFMesh*, const int);
+
 	void save_txt_batches(std::vector<std::vector<std::pair<int, std::string>>> &);
 
 	void save_txt_statistics(std::vector<float> &, std::vector<float> &);
@@ -168,7 +199,30 @@ namespace semantic_mesh_segmentation
 
 	void save_txt_evaluation(CGAL::Classification::Label_set &, CGAL::Classification::Evaluation &, std::ostringstream &, const int);
 
-	void get_mesh_labels(SFMesh *, std::vector<int> &, std::vector<int> &, std::vector< std::vector<int>> &);
+	void save_graph_nodes_ply(std::vector<superfacets> &, PTCloud *, const int);
+
+	void save_graph_edges_ply
+	(
+		PTCloud*,
+		std::vector<std::pair<int, int>> &,
+		const int,
+		std::vector<superfacets> spf_current = std::vector<superfacets>()
+	);
+
+	void save_txt_evaluation
+	(
+		std::vector<float> &,
+		std::vector<float> &,
+		std::vector<float> &,
+		std::ostringstream &,
+		const int 
+	);
+
+	void write_feature_pointcloud_data_for_GCN
+	(
+		PTCloud*,
+		const int
+	);
 
 	void get_mesh_labels(SFMesh *, std::vector<int> &, std::vector< std::vector<int>> &);
 }

@@ -539,6 +539,14 @@ namespace semantic_mesh_segmentation
 		if (!smesh->get_vertex_property<vec3>("v:normal"))
 			smesh->add_vertex_property<vec3>("v:normal");
 		smesh->get_points_normals = smesh->get_vertex_property<vec3>("v:normal");
+
+		if (!smesh->get_face_property<int>("f:texnumber"))
+			smesh->add_face_property<int>("f:texnumber", 0);
+		smesh->get_face_texnumber = smesh->get_face_property<int>("f:texnumber");
+
+		if (!smesh->get_face_property<std::vector<float>>("f:texcoord"))
+			smesh->add_face_property<std::vector<float>>("f:texcoord", std::vector<float>({ 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f }));
+		smesh->get_face_texcoord = smesh->get_face_property<std::vector<float>>("f:texcoord");
 	}
 
 	//--- add mesh properties from input mesh ---

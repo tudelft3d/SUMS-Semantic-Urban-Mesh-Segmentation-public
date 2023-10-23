@@ -234,6 +234,39 @@ namespace semantic_mesh_segmentation
 		const int
 	);
 
+	void add_mesh_to_merge
+	(
+		SFMesh*,
+		std::vector<cv::Mat>&,
+		std::vector<cv::Mat>&,
+		const int,
+		const int
+	);
+
+	void extract_semantic_mesh
+	(
+		SFMesh* ,
+		std::vector<std::vector<SFMesh::Face>>&,
+		std::vector<float>&
+	);
+
+	void extract_connected_component_from_sampled_cloud
+	(
+		SFMesh* ,
+		std::vector<SFMesh::Face>& ,
+		easy3d::PointCloud* ,
+		std::vector<std::vector<SFMesh::Face>>& 
+	);
+
+	//void construct_component_mesh
+	//(
+	//	SFMesh* ,
+	//	std::vector<std::vector<SFMesh::Face>>& ,
+	//	std::vector<SFMesh*>& 
+	//);
+
+	std::string get_main_class(SFMesh* , std::vector<SFMesh::Face>&);
+
 	void processing_semantic_pcl_input
 	(
 		SFMesh*,
