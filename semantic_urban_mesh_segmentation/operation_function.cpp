@@ -1105,14 +1105,8 @@ namespace semantic_mesh_segmentation
 				easy3d::PointCloud* sampled_cloud = new easy3d::PointCloud;
 				random_sampling_pointcloud_on_selected_faces(mesh_merged, label_component_faces[i], sampled_cloud, component_area[i]);
 
-				std::string output_pcl_b = "C:/data/PhDthesis/git_sum_public/data_demo/output/train/sampled_pcl.ply";
-				easy3d::PointCloudIO::save(output_pcl_b, sampled_cloud, true);
-
 				std::vector<std::vector<SFMesh::Face>> geo_component_faces;
 				extract_connected_component_from_sampled_cloud(mesh_merged, label_component_faces[i], sampled_cloud, geo_component_faces);
-
-				//std::vector<SFMesh*> component_meshes;
-				//construct_component_mesh(semantic_mesh_collection[si], component_faces, component_meshes);
 
 				for (int j = 0; j < geo_component_faces.size(); ++j)
 				{
@@ -1122,6 +1116,8 @@ namespace semantic_mesh_segmentation
 					std::string main_class_name = get_main_class(mesh_merged, geo_component_faces[j]);
 					write_semantic_texture_pointcloud_data(tex_pcl, main_class_name, j);
 
+					//SFMesh* c_mesh = construct_component_mesh(mesh_merged, geo_component_faces[j]);
+					//delete c_mesh;
 					delete tex_pcl;
 				}
 

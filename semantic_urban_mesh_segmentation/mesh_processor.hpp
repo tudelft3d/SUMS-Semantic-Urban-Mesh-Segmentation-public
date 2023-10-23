@@ -258,11 +258,10 @@ namespace semantic_mesh_segmentation
 		std::vector<std::vector<SFMesh::Face>>& 
 	);
 
-	//void construct_component_mesh
+	//SFMesh* construct_component_mesh
 	//(
 	//	SFMesh* ,
-	//	std::vector<std::vector<SFMesh::Face>>& ,
-	//	std::vector<SFMesh*>& 
+	//	std::vector<SFMesh::Face>& 
 	//);
 
 	std::string get_main_class(SFMesh* , std::vector<SFMesh::Face>&);

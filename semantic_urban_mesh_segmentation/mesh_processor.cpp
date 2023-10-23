@@ -1830,18 +1830,18 @@ namespace semantic_mesh_segmentation
 				fd_cen += smesh_in->get_points_coord[vd];
 			}
 			fd_cen /= 3.0f;
-			mesh_merged->add_face(verts);
+			auto cur_fd = mesh_merged->add_face(verts);
 
-			mesh_merged->get_face_truth_label[*(--mesh_merged->faces_end())] = smesh_in->get_face_truth_label[fd];
-			mesh_merged->get_face_area[*(--mesh_merged->faces_end())] = FaceArea(mesh_merged, fd);
-			mesh_total_area += mesh_merged->get_face_area[*(--mesh_merged->faces_end())];
-			mesh_merged->get_face_normals[*(--mesh_merged->faces_end())] = mesh_merged->compute_face_normal(fd);
-			mesh_merged->get_face_center[*(--mesh_merged->faces_end())] = fd_cen;
+			mesh_merged->get_face_truth_label[cur_fd] = smesh_in->get_face_truth_label[fd];
+			mesh_merged->get_face_area[cur_fd] = FaceArea(smesh_in, fd);
+			mesh_total_area += mesh_merged->get_face_area[cur_fd];
+			mesh_merged->get_face_normals[cur_fd] = smesh_in->compute_face_normal(fd);
+			mesh_merged->get_face_center[cur_fd] = fd_cen;
 
 			if (with_texture)
 			{
-				mesh_merged->get_face_texnumber[*(--mesh_merged->faces_end())] = smesh_in->get_face_texnumber[fd] + mesh_merged->textures.size();
-				mesh_merged->get_face_texcoord[*(--mesh_merged->faces_end())] = smesh_in->get_face_texcoord[fd];
+				mesh_merged->get_face_texnumber[cur_fd] = smesh_in->get_face_texnumber[fd] + mesh_merged->textures.size();
+				mesh_merged->get_face_texcoord[cur_fd] = smesh_in->get_face_texcoord[fd];
 			}
 		}
 		mesh_merged->mesh_area = mesh_total_area;
@@ -2030,60 +2030,54 @@ namespace semantic_mesh_segmentation
 		}
 	}
 
-	//void construct_component_mesh
+	//SFMesh* construct_component_mesh
 	//(
-	//	SFMesh* mesh_in,
-	//	std::vector<std::vector<SFMesh::Face>>& component_faces,
-	//	std::vector<SFMesh*>& component_meshes
+	//	SFMesh* mesh_merged,
+	//	std::vector<SFMesh::Face>& geo_component_faces_i
 	//)
 	//{
-	//	auto get_point_coord = mesh_in->get_vertex_property<easy3d::vec3>("v:point");
-	//	for (int i = 0; i < component_faces.size(); ++i)
+	//	auto get_point_coord = mesh_merged->get_vertex_property<easy3d::vec3>("v:point");
+
+	//	SFMesh* c_mesh = new SFMesh;
+	//	input_mesh_configuration(c_mesh);
+	//	mesh_merged->add_vertex_property<bool>("v:v_cur_visited", false);
+	//	auto visited_vd = mesh_merged->get_vertex_property<bool>("v:v_cur_visited");
+	//	std::map<int, int> old_new_vd_map;
+	//	int vi = 0;
+	//	for (auto& fd : geo_component_faces_i)
 	//	{
-	//		SFMesh* c_mesh = new SFMesh;
-	//		input_mesh_configuration(c_mesh);
-	//		mesh_in->add_vertex_property<bool>("v:v_cur_visited", false);
-	//		auto visited_vd = mesh_in->get_vertex_property<bool>("v:v_cur_visited");
-	//		std::map<int, int> old_new_vd_map;
-	//		int vi = 0;
-	//		for (auto& fd : component_faces[i])
+	//		for (auto& vd : mesh_merged->vertices(fd))
 	//		{
-	//			for (auto& vd : mesh_in->vertices(fd))
+	//			if (!visited_vd[vd])
 	//			{
-	//				if (!visited_vd[vd])
-	//				{
-	//					c_mesh->add_vertex(get_point_coord[vd]);
-	//					visited_vd[vd] = true;
-	//					old_new_vd_map[vd.idx()] = vi;
-	//					++vi;
-	//				}
+	//				c_mesh->add_vertex(get_point_coord[vd]);
+	//				visited_vd[vd] = true;
+	//				old_new_vd_map[vd.idx()] = vi;
+	//				++vi;
 	//			}
 	//		}
-
-	//		int fi = 0;
-	//		for (auto& fd : component_faces[i])
-	//		{
-	//			std::vector<SFMesh::Vertex> verts;
-	//			for (auto& vd : mesh_in->vertices(fd))
-	//			{
-	//				verts.push_back(SFMesh::Vertex(old_new_vd_map[vd.idx()]));
-	//			}
-	//			auto cur_fd = c_mesh->add_face(verts);
-	//			c_mesh->get_face_truth_label[cur_fd] = mesh_in->get_face_truth_label[fd];
-	//			c_mesh->get_face_normals[cur_fd] = mesh_in->get_face_normals[fd];
-
-	//			if (with_texture)
-	//			{
-	//				c_mesh->get_face_texnumber[cur_fd] = mesh_in->get_face_texnumber[fd];
-	//				c_mesh->get_face_texcoord[cur_fd] = mesh_in->get_face_texcoord[fd];
-	//			}
-
-	//			++fi;
-	//		}
-
-	//		component_meshes.push_back(c_mesh);
-	//		mesh_in->remove_vertex_property(visited_vd);
 	//	}
+
+	//	for (auto& fd : geo_component_faces_i)
+	//	{
+	//		std::vector<SFMesh::Vertex> verts;
+	//		for (auto& vd : mesh_merged->vertices(fd))
+	//		{
+	//			verts.push_back(SFMesh::Vertex(old_new_vd_map[vd.idx()]));
+	//		}
+	//		auto cur_fd = c_mesh->add_face(verts);
+	//		c_mesh->get_face_truth_label[cur_fd] = mesh_merged->get_face_truth_label[fd];
+	//		c_mesh->get_face_normals[cur_fd] = mesh_merged->get_face_normals[fd];
+
+	//		if (with_texture)
+	//		{
+	//			c_mesh->get_face_texnumber[cur_fd] = mesh_merged->get_face_texnumber[fd];
+	//			c_mesh->get_face_texcoord[cur_fd] = mesh_merged->get_face_texcoord[fd];
+	//		}
+	//	}
+
+	//	mesh_merged->remove_vertex_property(visited_vd);
+	//	return c_mesh;
 	//}
 
 	std::string get_main_class(SFMesh* mesh_merged, std::vector<SFMesh::Face>& geo_component_face_i)

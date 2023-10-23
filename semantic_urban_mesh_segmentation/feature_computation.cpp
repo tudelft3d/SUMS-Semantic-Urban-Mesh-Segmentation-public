@@ -361,9 +361,9 @@ namespace semantic_mesh_segmentation
 
 						uv_to_3D_coordinates(uv_triangle, coord3d_triangle, newcoord, current_3d);
 
-						tex_pcl->add_vertex(current_3d);
-						get_pcl_normal[*(--tex_pcl->vertices_end())] = merged_mesh->get_face_normals[fd];
-						get_pcl_label[*(--tex_pcl->vertices_end())] = merged_mesh->get_face_truth_label[fd];
+						auto cur_vd = tex_pcl->add_vertex(current_3d);
+						get_pcl_normal[cur_vd] = merged_mesh->get_face_normals[fd];
+						get_pcl_label[cur_vd] = merged_mesh->get_face_truth_label[fd];
 
 						int x_coord = std::round(P[0] * double(width - 1)); //x is horizontal axis in Qt, origin is up-left corner 
 						int y_coord = std::round(P[1] * double(height - 1));
@@ -374,9 +374,9 @@ namespace semantic_mesh_segmentation
 
 						//get_pcl_color[*(--tex_pcl->vertices_end())] = easy3d::vec3(Rf, Gf, Bf);
 						if (merged_mesh->get_face_truth_label[fd] < 0)
-							get_pcl_color[*(--tex_pcl->vertices_end())] = easy3d::vec3(0.0f, 0.0f, 0.0f);
+							get_pcl_color[cur_vd] = easy3d::vec3(0.0f, 0.0f, 0.0f);
 						else
-							get_pcl_color[*(--tex_pcl->vertices_end())] = labels_color[merged_mesh->get_face_truth_label[fd] - 1];
+							get_pcl_color[cur_vd] = labels_color[merged_mesh->get_face_truth_label[fd] - 1];
 
 						float Rf_mask = (float)texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * texture_mask_maps[texture_id].rows - 1, newcoord[0] * texture_mask_maps[texture_id].cols)[2];
 						float Gf_mask = (float)texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * texture_mask_maps[texture_id].rows - 1, newcoord[0] * texture_mask_maps[texture_id].cols)[1];
@@ -388,8 +388,8 @@ namespace semantic_mesh_segmentation
 								std::abs(Gf_mask - 255.0f * tex_labels_color[tex_ci][1]) <= 1.0f &&
 								std::abs(Bf_mask - 255.0f * tex_labels_color[tex_ci][2]) <= 1.0f)
 							{
-								get_pcl_color[*(--tex_pcl->vertices_end())] = tex_labels_color[tex_ci];
-								get_pcl_label[*(--tex_pcl->vertices_end())] = labels_color.size() + tex_ci;
+								get_pcl_color[cur_vd] = tex_labels_color[tex_ci];
+								get_pcl_label[cur_vd] = labels_color.size() + tex_ci;
 							}
 						}
 					}
