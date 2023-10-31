@@ -206,6 +206,7 @@ namespace semantic_mesh_segmentation
 	bool use_pointcloud_region_growing = false;
 	bool use_face_pixels_color_aggregation = false;
 	bool use_merged_segments = false;
+	bool save_texture_pcl = false;//semantic component 
 
 	//feature cutoff values
 	int cutoff_spf_vertex_count = 10000;
@@ -383,7 +384,7 @@ namespace semantic_mesh_segmentation
 		"visualization/",//7
 		"sota/",//8
 		"sampled_pointcloud/", //9
-		"semantic_pointcloud/" //10
+		"semantic_components/" //10
 	};
 
 	std::vector<std::string> folder_names_level_1
@@ -427,7 +428,8 @@ namespace semantic_mesh_segmentation
 		"TextureFile",
 		"label",
 		"unclassified", //labeled as unclassified
-		"unlabeled"
+		"unlabeled",
+		"texlabel"
 	};
 
 	std::vector<std::pair<std::string, int>> selected_pcl_vertex_features

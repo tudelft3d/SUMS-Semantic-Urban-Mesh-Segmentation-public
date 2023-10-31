@@ -1110,15 +1110,17 @@ namespace semantic_mesh_segmentation
 
 				for (int j = 0; j < geo_component_faces.size(); ++j)
 				{
-					easy3d::PointCloud* tex_pcl = new easy3d::PointCloud;
-					texture_point_cloud_generation(mesh_merged, geo_component_faces[j], tex_pcl, texture_maps, texture_mask_maps);
-
 					std::string main_class_name = get_main_class(mesh_merged, geo_component_faces[j]);
-					write_semantic_texture_pointcloud_data(tex_pcl, main_class_name, j);
-
-					//SFMesh* c_mesh = construct_component_mesh(mesh_merged, geo_component_faces[j]);
-					//delete c_mesh;
-					delete tex_pcl;
+					SFMesh* c_mesh = construct_component_mesh(mesh_merged, geo_component_faces[j]);
+					write_semantic_mesh_component(c_mesh, main_class_name, j);
+					delete c_mesh;
+					if (save_texture_pcl)
+					{
+						easy3d::PointCloud* tex_pcl = new easy3d::PointCloud;
+						texture_point_cloud_generation(mesh_merged, geo_component_faces[j], tex_pcl, texture_maps, texture_mask_maps);
+						write_semantic_texture_pointcloud_data(tex_pcl, main_class_name, j);
+						delete tex_pcl;
+					}
 				}
 
 				mesh_merged->remove_face_property(mesh_merged->get_face_property<bool>("f:visited"));
