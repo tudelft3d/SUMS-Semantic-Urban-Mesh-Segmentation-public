@@ -571,6 +571,8 @@ namespace semantic_mesh_segmentation
 		const std::vector<cv::Mat>&,
 		const std::vector<cv::Mat>&
 	);
+
+	void remove_duplicated_points(easy3d::PointCloud* );
 }
 
 #endif//MESH_SEGMENTATION__SEGMENT_FILE_HPP

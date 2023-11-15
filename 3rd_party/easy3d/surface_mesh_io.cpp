@@ -89,7 +89,7 @@ namespace easy3d {
 
 		bool success = false;
 		if (ext == "ply")
-			success = io::save_ply(file_name, mesh, comment, false);
+			success = io::save_ply(file_name, mesh, comment, true);
 		else
 		{
 			std::cerr << "cannot save this file in ply format: " << ext << std::endl;

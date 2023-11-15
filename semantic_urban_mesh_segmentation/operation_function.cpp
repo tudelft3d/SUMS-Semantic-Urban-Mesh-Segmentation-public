@@ -1118,6 +1118,7 @@ namespace semantic_mesh_segmentation
 					{
 						easy3d::PointCloud* tex_pcl = new easy3d::PointCloud;
 						texture_point_cloud_generation(mesh_merged, geo_component_faces[j], tex_pcl, texture_maps, texture_mask_maps);
+						remove_duplicated_points(tex_pcl);
 						write_semantic_texture_pointcloud_data(tex_pcl, main_class_name, j);
 						delete tex_pcl;
 					}

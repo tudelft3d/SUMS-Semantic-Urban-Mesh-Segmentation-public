@@ -198,6 +198,7 @@ namespace semantic_mesh_segmentation
 	float test_mesh_area = 0.0f;
 	int train_test_predict_val = -1;
 	int sampling_strategy = -1;
+	double duplicates_precision = 1E-3;
 
 	//default bool switcher
 	bool use_batch_processing = false;  // depends on the read data

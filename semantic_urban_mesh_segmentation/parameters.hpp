@@ -88,6 +88,7 @@ namespace semantic_mesh_segmentation
 	extern float long_range_radius_default, short_range_radius_default;
 	extern int local_ground_segs;
 	extern std::vector<int> hsv_bins;
+	extern double duplicates_precision;
 
 	//cgal region growing parameters setting
 	extern float adjacent_radius;

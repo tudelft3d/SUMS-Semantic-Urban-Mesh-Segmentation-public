@@ -398,6 +398,48 @@ namespace semantic_mesh_segmentation
 		}
 	}
 
+	// mostly caused by precision lost due to float type
+	void remove_duplicated_points(easy3d::PointCloud* tex_pcl)
+	{
+		easy3d::KdTree* cloud_tree = new easy3d::KdTree;
+		Build_kdtree(tex_pcl, cloud_tree);
+		auto points = tex_pcl->get_vertex_property<easy3d::vec3>("v:point");
+		tex_pcl->add_vertex_property<bool>("v:visited_vd", false);
+		auto visited_vd = tex_pcl->get_vertex_property<bool>("v:visited_vd");
+		tex_pcl->add_vertex_property<bool>("v:to_delete", false);
+		auto delete_vd = tex_pcl->get_vertex_property<bool>("v:to_delete");
+		for (auto& vd : tex_pcl->vertices())
+		{
+			if (!visited_vd[vd])
+			{
+				visited_vd[vd] = true;
+				std::vector<int> neighbors;
+				cloud_tree->find_points_in_radius(points[vd], std::pow(duplicates_precision, 2), neighbors);
+				for (int i = 0; i < neighbors.size(); ++i)
+				{
+					easy3d::PointCloud::Vertex v_nd(neighbors[i]);
+					if (v_nd.idx() != vd.idx() && !visited_vd[v_nd])
+					{
+						visited_vd[v_nd] = true;
+						delete_vd[v_nd] = true;
+					}
+				}
+			}
+		}
+
+		int del_count = 0;
+		for (auto& vd : tex_pcl->vertices())
+		{
+			if (delete_vd[vd])
+			{
+				tex_pcl->delete_vertex(vd);
+				++del_count;
+			}
+		}
+		tex_pcl->garbage_collection();
+		std::cout << "	- delete " << del_count <<" points." << std::endl;
+	}
+
 	void parsing_texture_color_to_sampled_pointcloud
 	(
 		PTCloud *cloud_3d,

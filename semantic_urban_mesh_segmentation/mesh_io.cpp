@@ -1621,7 +1621,11 @@ namespace semantic_mesh_segmentation
 						if (param_value != "default")
 							pcl_k_nn = std::stoi(param_value);
 					}
-
+					else if (param_name == "duplicates_precision")
+					{
+						if (param_value != "default")
+							duplicates_precision = std::stof(param_value);
+					}
 				}
 
 				++line_number;
