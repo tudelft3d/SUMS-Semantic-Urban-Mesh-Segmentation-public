@@ -389,7 +389,7 @@ namespace semantic_mesh_segmentation
 								std::abs(Bf_mask - 255.0f * tex_labels_color[tex_ci][2]) <= 1.0f)
 							{
 								get_pcl_color[cur_vd] = tex_labels_color[tex_ci];
-								get_pcl_label[cur_vd] = labels_color.size() + tex_ci;
+								get_pcl_label[cur_vd] = labels_color.size() + tex_ci + 1;
 							}
 						}
 					}
