@@ -266,7 +266,7 @@ namespace semantic_mesh_segmentation
 		std::vector<SFMesh::Face>&
 	);
 
-	std::string get_main_class(SFMesh* , std::vector<SFMesh::Face>&);
+	std::pair<std::string, int> get_main_class(SFMesh*, std::vector<SFMesh::Face>&, std::vector<int>&);
 
 	void processing_semantic_pcl_input
 	(

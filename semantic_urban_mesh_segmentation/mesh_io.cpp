@@ -886,6 +886,39 @@ namespace semantic_mesh_segmentation
 							}
 						}
 					}
+					else if (param_name == "merged_component_name")
+					{
+						if (param_value != "default")
+						{
+							std::vector<std::string> words = Split(param_value, ",", false);
+							if (words.size() > 0)
+							{
+								merged_component_name.resize(words.size());
+								for (int li = 0; li < merged_component_name.size(); ++li)
+								{
+									merged_component_name[li] = words[li];
+								}
+							}
+						}
+					}
+					else if (param_name == "allow_component_separation")
+					{
+						if (param_value != "default")
+						{
+							std::vector<std::string> words = Split(param_value, ";", false);
+							if (words.size() > 0)
+							{
+								allow_component_separation.resize(words.size());
+								for (int li = 0; li < allow_component_separation.size(); ++li)
+								{
+									if (words[li] == "true" || words[li] == "True" || words[li] == "TRUE")
+										allow_component_separation[li] = true;
+									else if (words[li] == "false" || words[li] == "False" || words[li] == "FALSE")
+										allow_component_separation[li] = false;
+								}
+							}
+						}
+					}
 					else if (param_name == "ignored_labels_name")
 					{
 						if (param_value != "default")

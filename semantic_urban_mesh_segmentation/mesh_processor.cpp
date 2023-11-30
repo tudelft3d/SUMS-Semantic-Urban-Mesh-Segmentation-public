@@ -2177,21 +2177,50 @@ namespace semantic_mesh_segmentation
 		return c_mesh;
 	}
 
-	std::string get_main_class(SFMesh* mesh_merged, std::vector<SFMesh::Face>& geo_component_face_i)
+	std::pair<std::string, int> get_main_class(SFMesh* mesh_merged, std::vector<SFMesh::Face>& geo_component_face_i, std::vector<int> &output_index)
 	{
-		std::string main_c_name;
-		auto fd0 = geo_component_face_i[0];
-		int f_li = mesh_merged->get_face_truth_label[fd0];
-		if (f_li == 3 || f_li == 7 || f_li == 8 || f_li == 9 || f_li == 10 || f_li == 11)
+		// count component labels
+		std::map<int, int> label_count;
+		for (auto fd : geo_component_face_i)
 		{
-			main_c_name = "building";
-		}
-		else
-		{
-			main_c_name = labels_name[f_li];
+			int f_li = mesh_merged->get_face_truth_label[fd] - 1;
+			if (label_count.find(f_li) == label_count.end())
+				label_count[f_li] = 1;
+			else
+				label_count[f_li] += 1;
 		}
 
-		return main_c_name;
+		// find max count label
+		std::pair<int, int> max_label_count(-1, -1);
+		for (auto l_pair : label_count)
+		{
+			if (l_pair.second > max_label_count.second)
+			{
+				max_label_count.first = l_pair.first;
+				max_label_count.second = l_pair.second;
+			}
+		}
+
+		// match component name
+		std::string cur_label_name = labels_name[max_label_count.first];
+		int used_name_i = -1;
+		for (int i = 0; i < component_label_name.size(); ++i)
+		{
+			for (int j = 0; j < component_label_name[i].size(); ++j)
+			{
+				int res = cur_label_name.compare(component_label_name[i][j]);
+				if (res == 0)
+				{
+					used_name_i = i;
+					break;
+				}
+			}
+		}
+
+		std::string main_c_name = merged_component_name[used_name_i];
+		output_index[used_name_i] += 1;
+		auto name_ind_pair = std::make_pair(main_c_name, output_index[used_name_i]);
+		return name_ind_pair;
 	}
 
 	void compute_feature_diversity

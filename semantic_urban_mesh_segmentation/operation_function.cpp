@@ -1101,25 +1101,33 @@ namespace semantic_mesh_segmentation
 			for (int i = 0; i < label_component_faces.size(); ++i)
 			{
 				std::cout << "i = " << i << " / " << label_component_faces.size() << std::endl;
-
-				easy3d::PointCloud* sampled_cloud = new easy3d::PointCloud;
-				random_sampling_pointcloud_on_selected_faces(mesh_merged, label_component_faces[i], sampled_cloud, component_area[i]);
-
+				
 				std::vector<std::vector<SFMesh::Face>> geo_component_faces;
-				extract_connected_component_from_sampled_cloud(mesh_merged, label_component_faces[i], sampled_cloud, geo_component_faces);
+				easy3d::PointCloud* sampled_cloud = new easy3d::PointCloud;
+				if (!allow_component_separation[i])
+				{
+					geo_component_faces.resize(1);
+					geo_component_faces[0].insert(geo_component_faces[0].end(), label_component_faces[i].begin(), label_component_faces[i].end());
+				}
+				else
+				{
+					random_sampling_pointcloud_on_selected_faces(mesh_merged, label_component_faces[i], sampled_cloud, component_area[i]);
+					extract_connected_component_from_sampled_cloud(mesh_merged, label_component_faces[i], sampled_cloud, geo_component_faces);
+				}
 
+				std::vector<int> output_index(merged_component_name.size(), 0);
 				for (int j = 0; j < geo_component_faces.size(); ++j)
 				{
-					std::string main_class_name = get_main_class(mesh_merged, geo_component_faces[j]);
+					auto main_class_name_ind = get_main_class(mesh_merged, geo_component_faces[j], output_index);
 					SFMesh* c_mesh = construct_component_mesh(mesh_merged, geo_component_faces[j]);
-					write_semantic_mesh_component(c_mesh, main_class_name, j);
+					write_semantic_mesh_component(c_mesh, main_class_name_ind.first, main_class_name_ind.second);
 					delete c_mesh;
 					if (save_texture_pcl)
 					{
 						easy3d::PointCloud* tex_pcl = new easy3d::PointCloud;
 						texture_point_cloud_generation(mesh_merged, geo_component_faces[j], tex_pcl, texture_maps, texture_mask_maps);
 						remove_duplicated_points(tex_pcl);
-						write_semantic_texture_pointcloud_data(tex_pcl, main_class_name, j);
+						write_semantic_texture_pointcloud_data(tex_pcl, main_class_name_ind.first, main_class_name_ind.second);
 						delete tex_pcl;
 					}
 				}

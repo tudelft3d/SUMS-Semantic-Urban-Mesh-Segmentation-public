@@ -61,7 +61,9 @@ namespace semantic_mesh_segmentation
 
 	std::vector<std::string> tex_labels_name;
 
-	std::vector< std::vector<std::string>> component_label_name;
+	std::vector<std::vector<std::string>> component_label_name;
+	std::vector<std::string> merged_component_name;
+	std::vector<bool> allow_component_separation;
 
 	std::vector<easy3d::vec3> labels_color
 	{
