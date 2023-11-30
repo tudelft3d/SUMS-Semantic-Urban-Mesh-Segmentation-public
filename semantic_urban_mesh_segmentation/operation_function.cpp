@@ -1092,6 +1092,13 @@ namespace semantic_mesh_segmentation
 				vert_size = mesh_merged->n_vertices();
 			}
 
+			if (save_merged_mesh)
+			{
+				SFMesh mesh_merged_cp;
+				mesh_merged_cp = *mesh_merged;
+				write_merged_mesh(&mesh_merged_cp);
+			}
+
 			//extract semantic mesh
 			std::vector<std::vector<SFMesh::Face>> label_component_faces;
 			std::vector<float> component_area;

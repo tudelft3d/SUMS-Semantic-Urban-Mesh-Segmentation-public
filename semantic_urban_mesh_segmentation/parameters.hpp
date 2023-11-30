@@ -216,6 +216,7 @@ namespace semantic_mesh_segmentation
 	extern std::vector< std::vector<std::string>> component_label_name;
 	extern std::vector<std::string> merged_component_name;
 	extern std::vector<bool> allow_component_separation;
+	extern bool save_merged_mesh;
 	extern std::vector<easy3d::vec3> labels_color, tex_labels_color;
 	typedef typename int label_type;//other: int; PointNet, PointNet2, ConvPoints: float
 	extern std::map<int, int> label_shiftdis, new_label_shiftback;

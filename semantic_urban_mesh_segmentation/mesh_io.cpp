@@ -919,6 +919,16 @@ namespace semantic_mesh_segmentation
 							}
 						}
 					}
+					else if (param_name == "save_merged_mesh")
+					{
+						if (param_value != "default")
+						{
+							if (param_value == "true" || param_value == "True" || param_value == "TRUE")
+								save_merged_mesh = true;
+							else if (param_value == "false" || param_value == "False" || param_value == "FALSE")
+								save_merged_mesh = false;
+						}
+					}
 					else if (param_name == "ignored_labels_name")
 					{
 						if (param_value != "default")
@@ -2099,6 +2109,59 @@ namespace semantic_mesh_segmentation
 		smesh_out->remove_common_non_used_properties();
 		smesh_out->remove_non_used_properties_for_semantic_mesh();
 		rply_output(smesh_out, meshPath_temp, comment);
+		std::cout << "	Done in (s): " << omp_get_wtime() - t_total << '\n' << std::endl;
+	}
+
+	void write_merged_mesh
+	(
+		SFMesh* smesh_out
+	)
+	{
+		const double t_total = omp_get_wtime();
+
+		std::string temp_str;
+		std::ostringstream str_ostemp;
+		str_ostemp
+			<< root_path
+			<< folder_names_level_0[10]
+			<< folder_names_level_1[train_test_predict_val]
+		    << "merged_mesh"
+			<< ".ply";
+
+		std::vector<std::string> comment;
+		comment = std::vector<std::string>(smesh_out->texture_names.size() + labels_name.size() + tex_labels_name.size() + 1, std::string());
+		for (int ti = 0; ti < smesh_out->texture_names.size(); ++ti)
+		{
+			comment[ti] = ply_comment_element[0] + " " + smesh_out->texture_names[ti];
+		}
+		comment[smesh_out->texture_names.size()] = ply_comment_element[1] + " 0 " + ply_comment_element[2];
+
+		for (int cmi = smesh_out->texture_names.size() + 1; cmi < smesh_out->texture_names.size() + labels_name.size() + 1; ++cmi)
+		{
+			comment[cmi] = ply_comment_element[1] + " " +
+				std::to_string(cmi - smesh_out->texture_names.size()) + " " +
+				labels_name[cmi - smesh_out->texture_names.size() - 1];
+		}
+
+		for (int cmi = smesh_out->texture_names.size() + labels_name.size() + 1; cmi < comment.size(); ++cmi)
+		{
+			comment[cmi] = ply_comment_element[4] + " " +
+				std::to_string(cmi - smesh_out->texture_names.size()) + " " +
+				tex_labels_name[cmi - smesh_out->texture_names.size() - labels_name.size() - 1] + " " +
+				std::to_string(int(tex_labels_color[cmi - smesh_out->texture_names.size() - labels_name.size() - 1][0] * 255.0f)) + " " +
+				std::to_string(int(tex_labels_color[cmi - smesh_out->texture_names.size() - labels_name.size() - 1][1] * 255.0f)) + " " +
+				std::to_string(int(tex_labels_color[cmi - smesh_out->texture_names.size() - labels_name.size() - 1][2] * 255.0f));
+		}
+
+		smesh_out->remove_common_non_used_properties();
+		smesh_out->remove_non_used_properties_for_semantic_mesh();
+		smesh_out->remove_face_property(smesh_out->get_face_tile_index);
+		smesh_out->remove_face_property(smesh_out->get_face_normals);
+		smesh_out->remove_face_property(smesh_out->get_face_predict_label);
+		smesh_out->remove_face_property(smesh_out->get_face_predict_prob);
+		std::string str_temp = str_ostemp.str().data();
+		char* Path_temp = (char*)str_temp.data();
+		rply_output(smesh_out, Path_temp, comment);
 		std::cout << "	Done in (s): " << omp_get_wtime() - t_total << '\n' << std::endl;
 	}
 

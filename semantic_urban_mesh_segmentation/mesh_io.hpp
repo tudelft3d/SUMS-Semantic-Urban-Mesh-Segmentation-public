@@ -175,6 +175,8 @@ namespace semantic_mesh_segmentation
 
 	void write_semantic_mesh_component(SFMesh*, const std::string, const int);
 
+	void write_merged_mesh(SFMesh*);
+
 	void write_error_mesh_data(SFMesh*, const int);
 
 	void save_txt_batches(std::vector<std::vector<std::pair<int, std::string>>> &);
