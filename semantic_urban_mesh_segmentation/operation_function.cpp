@@ -1097,6 +1097,14 @@ namespace semantic_mesh_segmentation
 				SFMesh mesh_merged_cp;
 				mesh_merged_cp = *mesh_merged;
 				write_merged_mesh(&mesh_merged_cp);
+				if (save_texture_pcl)
+				{
+					easy3d::PointCloud* tex_pcl_merged = new easy3d::PointCloud;
+					texture_point_cloud_generation(mesh_merged, tex_pcl_merged, texture_maps, texture_mask_maps);
+					remove_duplicated_points(tex_pcl_merged);
+					write_merged_pointcloud_data(tex_pcl_merged);
+					delete tex_pcl_merged;
+				}
 			}
 
 			//extract semantic mesh

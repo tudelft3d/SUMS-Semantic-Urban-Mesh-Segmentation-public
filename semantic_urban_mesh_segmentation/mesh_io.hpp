@@ -171,6 +171,8 @@ namespace semantic_mesh_segmentation
 
 	void write_feature_pointcloud_data(PTCloud*, const std::string);
 
+	void write_merged_pointcloud_data(easy3d::PointCloud*);
+
 	void write_semantic_mesh_data(SFMesh*, const int);
 
 	void write_semantic_mesh_component(SFMesh*, const std::string, const int);

@@ -1750,6 +1750,33 @@ namespace semantic_mesh_segmentation
 		std::cout << "	Done in (s): " << omp_get_wtime() - t_total << '\n' << std::endl;
 	}
 
+	void write_merged_pointcloud_data
+	(
+		easy3d::PointCloud* pcl_out
+	)
+	{
+		const double t_total = omp_get_wtime();
+		//pcl_out->remove_non_used_properties();
+
+		std::string temp_str;
+		std::ostringstream str_ostemp;
+		str_ostemp
+			<< root_path
+			<< folder_names_level_0[10]
+			<< folder_names_level_1[train_test_predict_val]
+			<< "merged_pcl"
+			<< ".ply";
+
+		std::string str_temp = str_ostemp.str().data();
+		char* Path_temp = (char*)str_temp.data();
+
+		bool success = easy3d::PointCloudIO::save(Path_temp, pcl_out, true);
+		if (success)
+			std::cout << "pointcloud saved" << std::endl;
+		else
+			std::cerr << "failed create the new file" << std::endl;
+		std::cout << "	Done in (s): " << omp_get_wtime() - t_total << '\n' << std::endl;
+	}
 
 	void write_pointcloud_data
 	(

@@ -572,6 +572,14 @@ namespace semantic_mesh_segmentation
 		const std::vector<cv::Mat>&
 	);
 
+	void texture_point_cloud_generation
+	(
+		SFMesh* ,
+		easy3d::PointCloud* ,
+		const std::vector<cv::Mat>& ,
+		const std::vector<cv::Mat>& 
+	);
+
 	void remove_duplicated_points(easy3d::PointCloud* );
 }
 
