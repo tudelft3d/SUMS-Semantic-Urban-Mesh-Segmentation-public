@@ -31,6 +31,14 @@
 
 
 #include <opencv2/opencv.hpp>
+
+#include <opencv2/ximgproc.hpp>
+#include <opencv2/imgcodecs.hpp>
+#include <opencv2/highgui.hpp>
+#include <opencv2/imgproc.hpp>
+#include <opencv2/core/utility.hpp>
+#include <opencv2/core/base.hpp>
+
 #include <easy3d/kdtree.h>
 #include <easy3d/point_cloud.h>
 
@@ -478,6 +486,59 @@ namespace semantic_mesh_segmentation
 		cloud_all->add_vertex_property<vec3>("v:color");
 		cloud_all->get_points_color = cloud_all->get_vertex_property<vec3>("v:color");
 	}
+
+	class Pixel
+	{
+	public:
+		int label_;
+		easy3d::vec3 ppos_, pcolor_, pnormal_;
+
+		Pixel(){}
+
+		Pixel(int label, easy3d::vec3 ppos, easy3d::vec3 pcolor, easy3d::vec3 pnormal) :
+			label_(label), ppos_(ppos), pcolor_(pcolor), pnormal_(pnormal) {};
+	};
+
+	class Superpixel
+	{
+	public:
+		int label_ = -1, index_ = -1, sp_id_ = -1;
+		easy3d::vec3 avg_center_, avg_color_, avg_normal_;
+		std::vector<Pixel> pixels_;
+
+		Superpixel() {}
+
+		Superpixel
+		(
+			int index,
+			int sp_id
+		) : index_(index), sp_id_(sp_id) {}
+
+		void compute_superpixel_center()
+		{
+			avg_center_ = easy3d::vec3(0.0f, 0.0f, 0.0f);
+			avg_color_ = easy3d::vec3(0.0f, 0.0f, 0.0f);
+			avg_normal_ = easy3d::vec3(0.0f, 0.0f, 0.0f);
+
+			std::vector<int> pix_label_votes;
+			pix_label_votes.resize(labels_name.size() + tex_labels_name.size() + 1, 0);
+			for (int i = 0; i < pixels_.size(); ++i)
+			{
+				pix_label_votes[pixels_[i].label_] += 1;
+				avg_center_ += pixels_[i].ppos_;
+				avg_color_ += pixels_[i].pcolor_;
+				avg_normal_ += pixels_[i].pnormal_;
+			}
+
+			avg_center_ /= float(pixels_.size());
+			avg_color_ /= float(pixels_.size());
+			avg_normal_ /= float(pixels_.size());
+			
+			auto max_element_iter = std::max_element(pix_label_votes.begin(), pix_label_votes.end());
+			label_ = std::distance(pix_label_votes.begin(), max_element_iter);
+		}
+	};
+
 	//functions declare
 	//------------------------------------------------ ------------------------------- ----------------------------------------------//
 	//------------------------------------------------ Surface mesh sampling functions ----------------------------------------------//
@@ -581,6 +642,30 @@ namespace semantic_mesh_segmentation
 	);
 
 	void remove_duplicated_points(easy3d::PointCloud* );
+
+	void get_superpixels_from_textures
+	(
+		std::vector<cv::Mat>&,
+		const std::vector<cv::Mat>
+	);
+
+	void texture_cluster_pcl_generation
+	(
+		SFMesh*,
+		easy3d::PointCloud*,
+		const std::vector<cv::Mat>,
+		const std::vector<cv::Mat>,
+		const std::vector<cv::Mat>
+	);
+
+	void texture_cluster_pcl_to_mesh_with_label_and_mask
+	(
+		SFMesh* ,
+		easy3d::PointCloud* ,
+		std::vector<cv::Mat>& ,
+		const std::vector<cv::Mat> ,
+		const std::vector<cv::Mat> 
+	);
 }
 
 #endif//MESH_SEGMENTATION__SEGMENT_FILE_HPP

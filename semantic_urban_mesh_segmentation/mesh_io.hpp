@@ -139,6 +139,24 @@ namespace semantic_mesh_segmentation
 
 	void read_test_mesh_data(SFMesh *, const int);
 
+	void read_mesh_with_texture_and_masks
+	(
+		SFMesh*,
+		std::vector<cv::Mat>&,
+		std::vector<cv::Mat>&,
+		const int
+	);
+
+	void read_texsp_bin
+	(
+		easy3d::SurfaceMesh* ,
+		std::vector<cv::Mat>& ,
+		std::vector<cv::Mat>& ,
+		const int 
+	);
+
+	easy3d::PointCloud* read_texsp_pointcloud_data(const int);
+
 	void read_labeled_mesh_data(SFMesh *, const int);
 
 	void read_txt_batches(std::vector<std::vector<std::pair<int, std::string>>> &);
@@ -173,7 +191,16 @@ namespace semantic_mesh_segmentation
 
 	void write_merged_pointcloud_data(easy3d::PointCloud*);
 
-	void write_semantic_mesh_data(SFMesh*, const int);
+	void write_texsp_pointcloud_data(easy3d::PointCloud*, const int);
+
+	void write_texsp_bin
+	(
+		easy3d::SurfaceMesh* ,
+		std::vector<cv::Mat> ,
+		const int 
+	);
+
+	void write_semantic_mesh_data(SFMesh*, const int, std::vector<cv::Mat>& texture_mask_maps = std::vector<cv::Mat>());
 
 	void write_semantic_mesh_component(SFMesh*, const std::string, const int);
 

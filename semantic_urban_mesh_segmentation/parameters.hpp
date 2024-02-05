@@ -59,7 +59,9 @@ namespace semantic_mesh_segmentation
 		Process_semantic_pcl,
 		Feature_diversity_meaure,
 		Compute_mesh_area,
-		Extract_semantic_component
+		Extract_semantic_component,
+		Extract_texture_cluster_pcl,
+		Convert_texture_cluster_pcl_to_mesh
 	};
 
 	//--- global variables for point cloud sampling ---
@@ -89,6 +91,7 @@ namespace semantic_mesh_segmentation
 	extern int local_ground_segs;
 	extern std::vector<int> hsv_bins;
 	extern double duplicates_precision;
+	extern int sp_size;
 
 	//cgal region growing parameters setting
 	extern float adjacent_radius;
@@ -213,10 +216,12 @@ namespace semantic_mesh_segmentation
 
 	//--- label names ---
 	extern std::vector<std::string> labels_name, ignored_labels_name, tex_labels_name;
+	extern std::vector<int> tex_fd_label;
 	extern std::vector< std::vector<std::string>> component_label_name;
 	extern std::vector<std::string> merged_component_name;
 	extern std::vector<bool> allow_component_separation;
 	extern bool save_merged_mesh;
+	extern bool add_unclassified;
 	extern std::vector<easy3d::vec3> labels_color, tex_labels_color;
 	typedef typename int label_type;//other: int; PointNet, PointNet2, ConvPoints: float
 	extern std::map<int, int> label_shiftdis, new_label_shiftback;

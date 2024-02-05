@@ -317,6 +317,27 @@ namespace semantic_mesh_segmentation
 		delete pcl_temp;
 	}
 
+
+	easy3d::PointCloud* read_texsp_pointcloud_data
+	(
+		const int mi
+	)
+	{
+		std::ostringstream str_ostemp;
+		str_ostemp
+			<< root_path
+			<< folder_names_level_0[11]
+			<< folder_names_level_1[train_test_predict_val]
+			<< base_names[mi]
+			<< "_texsp_pcl"
+			<< ".ply";
+
+		std::string str_temp = str_ostemp.str().data();
+		char* Path_temp = (char*)str_temp.data();
+
+		return easy3d::PointCloudIO::load(Path_temp);
+	}
+
 	easy3d::PointCloud* read_feature_pointcloud_data
 	(
 		const std::string s1_test
@@ -619,6 +640,87 @@ namespace semantic_mesh_segmentation
 		//std::cout << "  The total number of input texture image:  " << texture_maps_temp.size() << '\n' << std::endl;
 	}
 
+	void read_mesh_with_texture_and_masks
+	(
+		SFMesh* smesh_in,
+		std::vector<cv::Mat>& texture_maps,
+		std::vector<cv::Mat>& texture_mask_maps,
+		const int mi
+	)
+	{
+		std::cout << "Start to extract from mesh " << base_names[mi] << std::endl;
+		//read training mesh data
+		read_mesh_data(smesh_in, mi, texture_maps);
+
+		if (with_texture)
+		{
+			for (int ti = 0; ti < smesh_in->textures.size(); ++ti)
+			{
+				auto tex_i = smesh_in->textures[ti];
+				if (!tex_i.empty() && tex_i[tex_i.size() - 1] == '\r')
+					tex_i.erase(tex_i.size() - 1);
+
+				if (with_texture_mask)
+				{
+					std::ostringstream texture_mask_str_ostemp;
+					std::string mask_path_tmp;
+					std::vector<std::string> texture_name_splits = Split(tex_i, ".", false);
+					if (file_folders.size() > 1)
+						mask_path_tmp = file_folders[mi] + "mask_" + texture_name_splits[0] + ".png";
+					else
+						mask_path_tmp = file_folders[0] + "mask_" + texture_name_splits[0] + ".png";
+
+					texture_mask_str_ostemp << mask_path_tmp;
+					std::string texture_mask_str_temp = texture_mask_str_ostemp.str().data();
+					char* mask_texturePath_temp = (char*)texture_mask_str_temp.data();
+					cv::Mat mask_texture_map = cv::imread(mask_texturePath_temp);
+					if (mask_texture_map.empty())
+					{
+						std::cout << "read texture mask failure or no texture provide!" << std::endl;
+						cv::Mat dummy(128, 128, CV_8UC3, cv::Scalar(0, 255, 0));
+						mask_texture_map = dummy;
+					}
+					texture_mask_maps.emplace_back(mask_texture_map);
+				}
+			}
+		}
+	}
+
+	void read_texsp_bin
+	(
+		easy3d::SurfaceMesh* smesh_in,
+		std::vector<cv::Mat>& texture_maps,
+		std::vector<cv::Mat>& texture_sps,
+		const int mi
+	)
+	{
+		for (int ti = 0; ti < smesh_in->textures.size(); ++ti)
+		{
+			auto tex_i = smesh_in->textures[ti];
+			std::vector<std::string> texture_name_splits = Split(tex_i, ".", false);
+			std::ostringstream str_ostemp;
+			str_ostemp
+				<< root_path
+				<< folder_names_level_0[11]
+				<< folder_names_level_1[train_test_predict_val]
+				<< "texsp_"
+				<< texture_name_splits[0]
+				<< ".bin";
+
+			std::string str_temp = str_ostemp.str().data();
+			char* Path_temp = (char*)str_temp.data();
+
+			std::ifstream inFile(Path_temp, std::ios::binary);
+			cv::Mat sps_mat(texture_maps[ti].rows, texture_maps[ti].cols, CV_32SC1);
+			inFile.read(reinterpret_cast<char*>(sps_mat.data), sps_mat.total() * sps_mat.elemSize());
+
+			if (!inFile)
+				std::cerr << "Error reading file: " << str_temp << std::endl;
+
+			inFile.close();
+		}
+	}
+
 	//read batch names in *.txt
 	void read_txt_batches(std::vector<std::vector<std::pair<int, std::string>>> &all_batches_out)
 	{
@@ -759,6 +861,14 @@ namespace semantic_mesh_segmentation
 							else if (param_value == "Extract_semantic_component")
 							{
 								current_mode = operating_mode::Extract_semantic_component;
+							}
+							else if (param_value == "Extract_texture_cluster_pcl")
+							{
+								current_mode = operating_mode::Extract_texture_cluster_pcl;
+							}
+							else if (param_value == "Convert_texture_cluster_pcl_to_mesh")
+							{
+								current_mode = operating_mode::Convert_texture_cluster_pcl_to_mesh;
 							}
 						}
 					}
@@ -1144,6 +1254,20 @@ namespace semantic_mesh_segmentation
 							}
 						}
 					}
+					else if (param_name == "tex_fd_label")
+					{
+						if (param_value != "default")
+						{
+							std::vector<std::string> words = Split(param_value, ",", false);
+							tex_fd_label.resize(words.size());
+							int i = 0;
+							for (auto words2 : words)
+							{
+								tex_fd_label[i] = std::stoi(words2);
+								++i;
+							}
+						}
+					}
 					else if (param_name == "mat_delta_convergance")
 					{
 						if (param_value != "default")
@@ -1474,6 +1598,16 @@ namespace semantic_mesh_segmentation
 								add_point_color_for_dp_input = false;
 						}
 					}
+					else if (param_name == "add_unclassified")
+					{
+						if (param_value != "default")
+						{
+							if (param_value == "true" || param_value == "True" || param_value == "TRUE")
+								add_unclassified = true;
+							else if (param_value == "false" || param_value == "False" || param_value == "FALSE")
+								add_unclassified = false;
+						}
+					}
 					else if (param_name == "sota_folder_path")
 					{
 						if (param_value != "default")
@@ -1778,6 +1912,63 @@ namespace semantic_mesh_segmentation
 		std::cout << "	Done in (s): " << omp_get_wtime() - t_total << '\n' << std::endl;
 	}
 
+	void write_texsp_pointcloud_data
+	(
+		easy3d::PointCloud* pcl_out,
+		const int mi
+	)
+	{
+		const double t_total = omp_get_wtime();
+
+		std::ostringstream str_ostemp;
+		str_ostemp
+			<< root_path
+			<< folder_names_level_0[11]
+			<< folder_names_level_1[train_test_predict_val]
+			<< base_names[mi]
+			<< "_texsp_pcl"
+			<< ".ply";
+
+		std::string str_temp = str_ostemp.str().data();
+		char* Path_temp = (char*)str_temp.data();
+
+		bool success = easy3d::PointCloudIO::save(Path_temp, pcl_out, true);
+		if (success)
+			std::cout << "pointcloud saved" << std::endl;
+		else
+			std::cerr << "failed create the new file" << std::endl;
+		std::cout << "	Done in (s): " << omp_get_wtime() - t_total << '\n' << std::endl;
+	}
+
+	void write_texsp_bin
+	(
+		easy3d::SurfaceMesh* smesh_in,
+		std::vector<cv::Mat> texture_sps,
+		const int mi
+	)
+	{
+		for (int ti = 0; ti < smesh_in->textures.size(); ++ti)
+		{
+			auto tex_i = smesh_in->textures[ti];
+			std::vector<std::string> texture_name_splits = Split(tex_i, ".", false);
+			std::ostringstream str_ostemp;
+			str_ostemp
+				<< root_path
+				<< folder_names_level_0[11]
+				<< folder_names_level_1[train_test_predict_val]
+				<< "texsp_"
+				<< texture_name_splits[0]
+				<< ".bin";
+
+			std::string str_temp = str_ostemp.str().data();
+			char* Path_temp = (char*)str_temp.data();
+
+			std::ofstream outFile(Path_temp, std::ios::binary);
+			outFile.write(reinterpret_cast<const char*>(texture_sps[ti].data), texture_sps[ti].total() * texture_sps[ti].elemSize());
+			outFile.close();
+		}
+	}
+
 	void write_pointcloud_data
 	(
 		PTCloud* pcl_out,
@@ -2030,7 +2221,8 @@ namespace semantic_mesh_segmentation
 	void write_semantic_mesh_data
 	(
 		SFMesh* smesh_out,
-		const int mi
+		const int mi,
+		std::vector<cv::Mat>& texture_mask_maps
 	)
 	{
 		const double t_total = omp_get_wtime();
@@ -2136,6 +2328,24 @@ namespace semantic_mesh_segmentation
 		smesh_out->remove_common_non_used_properties();
 		smesh_out->remove_non_used_properties_for_semantic_mesh();
 		rply_output(smesh_out, meshPath_temp, comment);
+
+		if (!texture_mask_maps.empty())
+		{
+			for (int ti = 0; ti < smesh_out->textures.size(); ++ti)
+			{
+				auto tex_i = smesh_out->textures[ti];
+				if (!tex_i.empty() && tex_i[tex_i.size() - 1] == '\r')
+					tex_i.erase(tex_i.size() - 1);
+				std::vector<std::string> texture_name_splits = Split(tex_i, ".", false);
+				std::string mask_path_tmp = basic_write_path += "pred_mask_" + texture_name_splits[0] + ".png";
+
+				std::ostringstream texture_mask_str_ostemp;
+				texture_mask_str_ostemp << mask_path_tmp;
+				std::string texture_mask_str_temp = texture_mask_str_ostemp.str().data();
+				cv::imwrite(texture_mask_str_temp, texture_mask_maps[ti]);
+			}
+		}
+
 		std::cout << "	Done in (s): " << omp_get_wtime() - t_total << '\n' << std::endl;
 	}
 
@@ -2683,5 +2893,4 @@ namespace semantic_mesh_segmentation
 			}
 		}
 	}
-
 }

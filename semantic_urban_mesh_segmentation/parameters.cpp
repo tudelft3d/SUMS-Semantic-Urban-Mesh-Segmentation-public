@@ -60,11 +60,13 @@ namespace semantic_mesh_segmentation
 	};
 
 	std::vector<std::string> tex_labels_name;
+	std::vector<int> tex_fd_label;
 
 	std::vector<std::vector<std::string>> component_label_name;
 	std::vector<std::string> merged_component_name;
 	std::vector<bool> allow_component_separation;
 	bool save_merged_mesh = false;
+	bool add_unclassified = false;
 
 	std::vector<easy3d::vec3> labels_color
 	{
@@ -202,6 +204,7 @@ namespace semantic_mesh_segmentation
 	int train_test_predict_val = -1;
 	int sampling_strategy = -1;
 	double duplicates_precision = 1E-3;
+	int sp_size = 5;
 
 	//default bool switcher
 	bool use_batch_processing = false;  // depends on the read data
@@ -388,7 +391,8 @@ namespace semantic_mesh_segmentation
 		"visualization/",//7
 		"sota/",//8
 		"sampled_pointcloud/", //9
-		"semantic_components/" //10
+		"semantic_components/", //10
+		"texsp_point_cloud/" //11
 	};
 
 	std::vector<std::string> folder_names_level_1

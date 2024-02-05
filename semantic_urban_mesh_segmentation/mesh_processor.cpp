@@ -1802,17 +1802,7 @@ namespace semantic_mesh_segmentation
 		SFMesh* smesh_in = new SFMesh;
 		std::cout << "Start to extract from mesh " << base_names[mi] << std::endl;
 		//read training mesh data
-		read_mesh_data(smesh_in, mi);
-		if (with_texture)
-		{
-			if (!smesh_in->get_face_property<int>("f:texnumber"))
-				smesh_in->add_face_property<int>("f:texnumber", 0);
-			smesh_in->get_face_texnumber = smesh_in->get_face_property<int>("f:texnumber");
-
-			if (!smesh_in->get_face_property<std::vector<float>>("f:texcoord"))
-				smesh_in->add_face_property<std::vector<float>>("f:texcoord", std::vector<float>({ 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f }));
-			smesh_in->get_face_texcoord = smesh_in->get_face_property<std::vector<float>>("f:texcoord");
-		}
+		read_mesh_data(smesh_in, mi, texture_maps);
 
 		//add mesh
 		for (auto& vd : smesh_in->vertices())
@@ -1833,9 +1823,9 @@ namespace semantic_mesh_segmentation
 			auto cur_fd = mesh_merged->add_face(verts);
 
 			mesh_merged->get_face_truth_label[cur_fd] = smesh_in->get_face_truth_label[fd];
-			mesh_merged->get_face_area[cur_fd] = FaceArea(smesh_in, fd);
+			mesh_merged->get_face_area[cur_fd] = smesh_in->get_face_area[fd];
 			mesh_total_area += mesh_merged->get_face_area[cur_fd];
-			mesh_merged->get_face_normals[cur_fd] = smesh_in->compute_face_normal(fd);
+			mesh_merged->get_face_normals[cur_fd] = smesh_in->get_face_normals[fd];
 			mesh_merged->get_face_center[cur_fd] = fd_cen;
 			mesh_merged->get_face_segment_id[cur_fd] = smesh_in->get_face_segment_id[fd];
 			mesh_merged->get_face_color[cur_fd] = smesh_in->get_face_color[fd];
@@ -1857,25 +1847,6 @@ namespace semantic_mesh_segmentation
 				if (!tex_i.empty() && tex_i[tex_i.size() - 1] == '\r')
 					tex_i.erase(tex_i.size() - 1);
 				mesh_merged->texture_names.push_back(tex_i);
-
-				std::ostringstream texture_str_ostemp;
-				std::string path_tmp;
-				if (file_folders.size() > 1)
-					path_tmp = file_folders[mi] + tex_i;
-				else
-					path_tmp = file_folders[0] + tex_i;
-
-				texture_str_ostemp << path_tmp;
-				std::string texture_str_temp = texture_str_ostemp.str().data();
-				char* texturePath_temp = (char*)texture_str_temp.data();
-				cv::Mat texture_map = cv::imread(texturePath_temp);
-				if (texture_map.empty())
-				{
-					std::cout << "read texture failure or no texture provide!" << std::endl;
-					cv::Mat dummy(128, 128, CV_8UC3, cv::Scalar(0, 255, 0));
-					texture_map = dummy;
-				}
-				texture_maps.emplace_back(texture_map);
 
 				if (with_texture_mask)
 				{
@@ -1936,6 +1907,10 @@ namespace semantic_mesh_segmentation
 							break;
 						}
 					}
+				}
+				else if (add_unclassified)
+				{
+					is_match = true;
 				}
 
 				if (is_match)
