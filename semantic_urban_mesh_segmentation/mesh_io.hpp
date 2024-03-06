@@ -147,6 +147,13 @@ namespace semantic_mesh_segmentation
 		const int
 	);
 
+	void read_mesh_texture_masks
+	(
+		SFMesh* ,
+		std::vector<cv::Mat>& ,
+		const int 
+	);
+
 	void read_texsp_bin
 	(
 		easy3d::SurfaceMesh* ,

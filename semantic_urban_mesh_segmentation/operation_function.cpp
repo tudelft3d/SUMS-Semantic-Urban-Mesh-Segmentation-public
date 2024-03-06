@@ -922,6 +922,11 @@ namespace semantic_mesh_segmentation
 						//--- sampling point cloud on mesh data ---
 						sampling_point_cloud_on_mesh(smesh_out, texture_maps, cloud, mi);
 
+
+						// To do: add bool for face sampling or texture based sub-sampling 
+						// add random sampling, possion disk sampling, and texture sampling
+
+
 						//save sampled point cloud
 						cloud->remove_all_properties();
 						write_pointcloud_data(cloud, 0, mi);

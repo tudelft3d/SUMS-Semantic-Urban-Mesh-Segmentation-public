@@ -640,18 +640,13 @@ namespace semantic_mesh_segmentation
 		//std::cout << "  The total number of input texture image:  " << texture_maps_temp.size() << '\n' << std::endl;
 	}
 
-	void read_mesh_with_texture_and_masks
+	void read_mesh_texture_masks
 	(
 		SFMesh* smesh_in,
-		std::vector<cv::Mat>& texture_maps,
 		std::vector<cv::Mat>& texture_mask_maps,
 		const int mi
 	)
 	{
-		std::cout << "Start to extract from mesh " << base_names[mi] << std::endl;
-		//read training mesh data
-		read_mesh_data(smesh_in, mi, texture_maps);
-
 		if (with_texture)
 		{
 			for (int ti = 0; ti < smesh_in->textures.size(); ++ti)
@@ -684,6 +679,21 @@ namespace semantic_mesh_segmentation
 				}
 			}
 		}
+	}
+
+	void read_mesh_with_texture_and_masks
+	(
+		SFMesh* smesh_in,
+		std::vector<cv::Mat>& texture_maps,
+		std::vector<cv::Mat>& texture_mask_maps,
+		const int mi
+	)
+	{
+		std::cout << "Start to extract from mesh " << base_names[mi] << std::endl;
+		//read training mesh data
+		read_mesh_data(smesh_in, mi, texture_maps);
+
+		read_mesh_texture_masks(smesh_in, texture_mask_maps, mi);
 	}
 
 	void read_texsp_bin
@@ -1307,6 +1317,11 @@ namespace semantic_mesh_segmentation
 					{
 						if (param_value != "default")
 							ele_sampling_point_density = std::stof(param_value);
+					}
+					else if (param_name == "sp_size")
+					{
+						if (param_value != "default")
+							sp_size = std::stoi(param_value);
 					}
 					else if (param_name == "use_existing_mesh_segments_on_training")
 					{
