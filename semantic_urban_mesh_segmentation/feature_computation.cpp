@@ -1992,7 +1992,7 @@ namespace semantic_mesh_segmentation
 		}
 		else
 		{
-			//sampling_point_cloud_on_mesh(smesh_out, texture_maps, cloud_sampled, cloud_ele, face_center_cloud, ptidx_faceid_map, mi);
+			sampling_point_cloud_on_mesh(smesh_out, texture_maps, cloud_sampled, cloud_ele, face_center_cloud, ptidx_faceid_map, mi);
 		}
 
 		//--- get facet texture if do not use sampling
