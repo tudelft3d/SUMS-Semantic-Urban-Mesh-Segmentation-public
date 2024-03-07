@@ -197,7 +197,6 @@ namespace semantic_mesh_segmentation
 	float mesh_all_area = 0.0f;
 	float sampling_ratio = 20.0f; //Point cloud sampling ratio to total number of vertex
 	int sampling_points_number = 1000;//smallest sampling number, -1 for use the number of vertices
-	int bestSamplePoolSize = 10;
 	float texture_pointcloud_density = 10.0E3;//10.0E3 is full resolution
 	float training_mesh_area = 0.0f;
 	float test_mesh_area = 0.0f;

@@ -26,7 +26,7 @@
 */
 
 #include "sampling_function.hpp"
-
+#include <easy3d/point_cloud_io.h>
 using namespace easy3d;
 namespace semantic_mesh_segmentation
 {
@@ -34,18 +34,22 @@ namespace semantic_mesh_segmentation
 	(
 		easy3d::PointCloud* possion_cloud,
 		SFMesh *smesh_out,
-		const float point_density
+		const float point_density,
+		const float tolerance,
+		const int bestSamplePoolSize,
+		const int MontecarloRate
 	)
 	{
 		sampling_points_number = int(mesh_all_area * point_density);
 		sampling_points_number = sampling_points_number < 1 ? 1 : sampling_points_number;
 
-		easy3d::PointCloud* cloud_temp = new easy3d::PointCloud;
-		montecarlo_sampling(smesh_out, cloud_temp);
-
-		float radius_temp = ComputePoissonDiskRadius(mesh_all_area, sampling_points_number);
-		PoissonDiskPruning(possion_cloud, cloud_temp, radius_temp);
-		delete cloud_temp;
+		std::cout << "sampling_points_number = " << sampling_points_number << std::endl;
+		float diskRadius = ComputePoissonDiskRadius(mesh_all_area, sampling_points_number);
+		easy3d::PointCloud* montecarlo_cloud = new easy3d::PointCloud;
+		montecarlo_sampling(smesh_out, montecarlo_cloud, sampling_points_number * MontecarloRate);
+		PoissonDiskPruningByNumber(possion_cloud, montecarlo_cloud, smesh_out, sampling_points_number, diskRadius, 
+			tolerance, bestSamplePoolSize, MontecarloRate);
+		delete montecarlo_cloud;
 	}
 
 	void random_sampling_pointcloud_on_selected_faces

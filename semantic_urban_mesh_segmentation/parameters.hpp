@@ -70,7 +70,6 @@ namespace semantic_mesh_segmentation
 	extern float texture_pointcloud_density;
 	extern float sampling_ratio;
 	extern int sampling_points_number;
-	extern int bestSamplePoolSize;
 	extern float sampling_point_density;
 	extern float ele_sampling_point_density;
 	extern int processing_mode;

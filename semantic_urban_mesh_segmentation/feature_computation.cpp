@@ -46,6 +46,8 @@ namespace semantic_mesh_segmentation
 	)
 	{
 		int texture_id = smesh_in->get_face_texnumber[fd];
+		int width = texture_maps[texture_id].cols;
+		int height = texture_maps[texture_id].rows;
 		double a_g = 0.0;
 
 		vec3 p1, p2, p3;
@@ -72,7 +74,11 @@ namespace semantic_mesh_segmentation
 		}
 
 		std::vector<vec2> uv_triangle;
-		std::vector<float> U_vec, V_vec;
+		std::vector<double> U_vec, V_vec, UL_vec, VL_vec;
+		std::vector<vec3> coord3d_triangle;
+		coord3d_triangle.emplace_back(p1);
+		coord3d_triangle.emplace_back(p2);
+		coord3d_triangle.emplace_back(p3);
 
 		U_vec.push_back(smesh_in->get_face_texcoord[fd][0]);
 		U_vec.push_back(smesh_in->get_face_texcoord[fd][2]);
@@ -84,29 +90,24 @@ namespace semantic_mesh_segmentation
 		uv_triangle.emplace_back(U_vec[1], V_vec[1]);
 		uv_triangle.emplace_back(U_vec[2], V_vec[2]);
 
-		std::vector<vec3> coord3d_triangle;
-		coord3d_triangle.emplace_back(p1);
-		coord3d_triangle.emplace_back(p2);
-		coord3d_triangle.emplace_back(p3);
+		UL_vec.insert(UL_vec.end(), U_vec.begin(), U_vec.end());
+		VL_vec.insert(VL_vec.end(), V_vec.begin(), V_vec.end());
 
-		std::vector<float> x_vec; std::vector<float> y_vec;
-		std::copy(U_vec.begin(), U_vec.end(), std::back_inserter(x_vec));
-		std::copy(V_vec.begin(), V_vec.end(), std::back_inserter(y_vec));
-		std::sort(x_vec.begin(), x_vec.end(), smaller_coord);
-		std::sort(y_vec.begin(), y_vec.end(), smaller_coord);
-
-		int x_dis = (x_vec[2] - x_vec[0]) * texture_pointcloud_density;
-		int y_dis = (y_vec[2] - y_vec[0]) * texture_pointcloud_density;
+		std::pair<int, int> uv_dis;
+		std::pair<double, double> uv_min;
+		enlarge_uv_triangle(UL_vec, VL_vec, uv_dis, uv_min, width, height);
 
 		int count_pix = 0;
 		float Rf_sum = 0.0f, Gf_sum = 0.0f, Bf_sum = 0.0f, Hf_sum = 0.0f, Sf_sum = 0.0f, Vf_sum = 0.0f;
-		for (int xi = 0; xi < x_dis; ++xi)
+		for (int u_i = 0; u_i < uv_dis.first; ++u_i)
 		{
-			for (int yi = 0; yi < y_dis; ++yi)
+			for (int v_i = 0; v_i < uv_dis.second; ++v_i)
 			{
-				std::vector<float> P;
-				P.push_back(x_vec[0] + xi / texture_pointcloud_density);
-				P.push_back(y_vec[0] + yi / texture_pointcloud_density);
+				std::vector<double> P =
+				{
+					uv_min.first + double(u_i) / double(width),
+					uv_min.second + double(v_i) / double(height)
+				};
 
 				if (P[0] > 1.0f || P[0] < 0.0f || P[1] > 1.0f || P[1] < 0.0f)
 				{
@@ -117,7 +118,7 @@ namespace semantic_mesh_segmentation
 				if (PointinTriangle(U_vec, V_vec, P))
 				{
 					//get 3d coordinates
-					vec2 newcoord(x_vec[0] + xi / texture_pointcloud_density, y_vec[0] + yi / texture_pointcloud_density);
+					easy3d::vec2 newcoord(P[0], P[1]);
 					vec3 current_3d;
 					uv_to_3D_coordinates(uv_triangle, coord3d_triangle, newcoord, current_3d);
 
@@ -1991,7 +1992,7 @@ namespace semantic_mesh_segmentation
 		}
 		else
 		{
-			sampling_point_cloud_on_mesh(smesh_out, texture_maps, cloud_sampled, cloud_ele, face_center_cloud, ptidx_faceid_map, mi);
+			//sampling_point_cloud_on_mesh(smesh_out, texture_maps, cloud_sampled, cloud_ele, face_center_cloud, ptidx_faceid_map, mi);
 		}
 
 		//--- get facet texture if do not use sampling

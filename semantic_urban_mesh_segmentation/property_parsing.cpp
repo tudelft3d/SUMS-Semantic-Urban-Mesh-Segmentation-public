@@ -295,7 +295,7 @@ namespace semantic_mesh_segmentation
 		if (sampling_strategy == 0 || sampling_strategy == 3 || sampling_strategy == 4)
 			sampling_pointcloud_on_mesh(initial_sampled_point_cloud, smesh_in, sampling_point_density);//Require mesh area
 
-		//Adding color and sampled points
+		//Adding sampled points
 		finalization_sampling_point_cloud(cloud_3d, initial_sampled_point_cloud);
 
 		//build kdtrees for face center and texture cloud
@@ -316,7 +316,7 @@ namespace semantic_mesh_segmentation
 			}
 		}
 
-		//get sampled point cloud normals and face belong from mesh
+		//get sampled point cloud color and normals and face belong from mesh
 		get_sampling_cloud_normals_from_mesh_faces(smesh_in, cloud_3d, face_center_cloud, tex_cloud_temp, center_cloud_tree, tex_tree);
 
 		//delete temporary vertex property

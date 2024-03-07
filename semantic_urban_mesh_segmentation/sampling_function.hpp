@@ -62,6 +62,18 @@ namespace semantic_mesh_segmentation
 		return (SamplingRandomGenerator().generate(i));
 	}
 
+	class MarsenneTwisterURBG
+	{
+	public:
+		typedef unsigned int result_type;
+		MarsenneTwisterURBG(result_type max) { _max = max; }
+		static constexpr result_type min() { return 0; }
+		static constexpr result_type max() { return std::numeric_limits<result_type>::max(); }
+		result_type operator()() { return SamplingRandomGenerator().generate(_max); }
+	private:
+		result_type _max;
+	};
+
 	inline double RandomDouble01()
 	{
 		return SamplingRandomGenerator().generate01();
@@ -176,7 +188,8 @@ namespace semantic_mesh_segmentation
 	(
 		easy3d::Vec<3, int> &cell,
 		MontecarloSHT & samplepool,
-		const float &diskRadius
+		const float &diskRadius,
+		const int bestSamplePoolSize
 	)
 	{
 		MontecarloSHTIterator cellBegin, cellEnd;
@@ -203,7 +216,10 @@ namespace semantic_mesh_segmentation
 	(
 		easy3d::PointCloud* possion_pointcloud,
 		easy3d::PointCloud *sampling_pointcloud,
-		float diskRadius
+		easy3d::SurfaceMesh* smesh,
+		int& sampleNum,
+		float diskRadius,
+		const int bestSamplePoolSize
 	)
 	{
 		//*****************
@@ -214,21 +230,33 @@ namespace semantic_mesh_segmentation
 		// if we are doing variable density sampling we have to prepare the handle that keeps the the random samples expected radii.
 		// At this point we just assume that there is the quality values as sampled from the base mesh
 		// shuffle active cells
-		unsigned int(*p_myrandom)(unsigned int) = RandomInt;
-		std::shuffle(montecarloSHT.AllocatedCells.begin(), montecarloSHT.AllocatedCells.end(), std::mt19937(std::random_device()()));
+		//unsigned int(*p_myrandom)(unsigned int) = RandomInt;
+		//std::shuffle(montecarloSHT.AllocatedCells.begin(), montecarloSHT.AllocatedCells.end(), std::mt19937(std::random_device()()));
+		MarsenneTwisterURBG g(montecarloSHT.AllocatedCells.size());
+		std::shuffle(montecarloSHT.AllocatedCells.begin(), montecarloSHT.AllocatedCells.end(), g);
 
-		int montecarloSampleNum = sampling_points_number;
-		int sampleNum = 0;
+		int montecarloSampleNum = sampling_pointcloud->n_vertices();
+		sampleNum = 0;
 		int removedCnt = 0;
+
+		auto points_coord = smesh->get_vertex_property<easy3d::vec3>("v:point");
+		for (auto vi : smesh->vertices())
+		{
+			possion_pointcloud->add_vertex(points_coord[vi]);
+			sampleNum++;
+			removedCnt += montecarloSHT.RemoveInSphere(points_coord[vi], diskRadius);
+		}
+		montecarloSHT.UpdateAllocatedCells();
 
 		while (!montecarloSHT.AllocatedCells.empty())
 		{
 			removedCnt = 0;
 			for (size_t i = 0; i < montecarloSHT.AllocatedCells.size(); i++)
 			{
-				if (montecarloSHT.EmptyCell(montecarloSHT.AllocatedCells[i])) continue;
+				if (montecarloSHT.EmptyCell(montecarloSHT.AllocatedCells[i])) 
+					continue;
 				float currentRadius = diskRadius;
-				easy3d::vec3* sp = getBestPrecomputedMontecarloSample(montecarloSHT.AllocatedCells[i], montecarloSHT, diskRadius);
+				easy3d::vec3* sp = getBestPrecomputedMontecarloSample(montecarloSHT.AllocatedCells[i], montecarloSHT, diskRadius, bestSamplePoolSize);
 
 				possion_pointcloud->add_vertex(*sp);
 				sampleNum++;
@@ -238,19 +266,76 @@ namespace semantic_mesh_segmentation
 		}
 	}
 
+
+	inline void PoissonDiskPruningByNumber
+	(
+		easy3d::PointCloud* possion_cloud,
+		easy3d::PointCloud* montecarlo_cloud,
+		easy3d::SurfaceMesh* smesh,
+		const int sampling_points_number,
+		float& diskRadius,
+		const float tolerance,
+		const int bestSamplePoolSize,
+		const int maxIter
+	)
+	{
+		size_t sampleNumMin = int(float(sampling_points_number) * (1.0f - tolerance));
+		size_t sampleNumMax = int(float(sampling_points_number) * (1.0f + tolerance));
+		float RangeMinRad = mesh_bounding_box.diagonal() / 50.0;
+		float RangeMaxRad = mesh_bounding_box.diagonal() / 50.0;
+		size_t RangeMinRadNum;
+		size_t RangeMaxRadNum;
+		int pp_sampleNum = 0;
+		// Note     RangeMinRad          <       RangeMaxRad
+	   //  but      RangeMinRadNum > sampleNum > RangeMaxRadNum
+		do {
+			possion_cloud->clear();
+			RangeMinRad /= 2.0f;
+			PoissonDiskPruning(possion_cloud, montecarlo_cloud, smesh, pp_sampleNum, RangeMinRad, bestSamplePoolSize);
+			RangeMinRadNum = pp_sampleNum;
+		} while (RangeMinRadNum < sampling_points_number); // if the number of sample is still smaller you have to make radius larger.
+
+		do {
+			possion_cloud->clear();
+			RangeMaxRad *= 2.0f;
+			PoissonDiskPruning(possion_cloud, montecarlo_cloud, smesh, pp_sampleNum, RangeMaxRad, bestSamplePoolSize);
+			RangeMaxRadNum = pp_sampleNum;
+		} while (RangeMaxRadNum > sampling_points_number);
+
+
+		float curRadius = RangeMaxRad;
+		int iterCnt = 0;
+		while (iterCnt < maxIter &&
+			(pp_sampleNum < sampleNumMin || pp_sampleNum  > sampleNumMax))
+		{
+			iterCnt++;
+			possion_cloud->clear();
+			curRadius = (RangeMaxRad + RangeMinRad) / 2.0f;
+			PoissonDiskPruning(possion_cloud, montecarlo_cloud, smesh, pp_sampleNum, curRadius, bestSamplePoolSize);
+			//    qDebug("PoissonDiskPruning Iteratin (%6.3f:%5lu %6.3f:%5lu) Cur Radius %f -> %lu sample instead of %lu",RangeMinRad,RangeMinRadNum,RangeMaxRad,RangeMaxRadNum,curRadius,pp.pds.sampleNum,sampleNum);
+			if (pp_sampleNum > sampling_points_number)
+			{
+				RangeMinRad = curRadius;
+				RangeMinRadNum = pp_sampleNum;
+			}
+			if (pp_sampleNum < sampling_points_number)
+			{
+				RangeMaxRad = curRadius;
+				RangeMaxRadNum = pp_sampleNum;
+			}
+		}
+		diskRadius = curRadius;
+	}
+
 	//Montecarlo point set sampling from the mesh
 	inline void montecarlo_sampling
 	(
 		SFMesh *smesh_out,
-		easy3d::PointCloud* sampling_pointcloud
+		easy3d::PointCloud* sampling_pointcloud,
+		int used_sampling_points_number
 	)
 	{
 		smesh_out->get_points_coord = smesh_out->get_vertex_property<vec3>("v:point");
-		//Montecarlo
-		if (sampling_points_number == -1)
-			sampling_points_number = smesh_out->vertices_size();
-		int sampleNum = sampling_ratio * sampling_points_number;
-
 		typedef  std::pair<float, SFMesh::Face> IntervalType;
 		std::vector< IntervalType > intervals(smesh_out->faces_size() + 1);
 		int i = 0;
@@ -264,7 +349,7 @@ namespace semantic_mesh_segmentation
 
 		float meshArea = intervals.back().first;
 
-		for (i = 0; i < sampleNum; ++i)
+		for (i = 0; i < used_sampling_points_number; ++i)
 		{
 			float val = meshArea * RandomDouble01();
 			// lower_bound returns the furthermost iterator i in [first, last) such that, for every iterator j in [first, i), *j < value.
@@ -293,7 +378,15 @@ namespace semantic_mesh_segmentation
 		}
 	}
 
-	void sampling_pointcloud_on_mesh(easy3d::PointCloud*, SFMesh *, const float);
+	void sampling_pointcloud_on_mesh
+	(
+		easy3d::PointCloud*, 
+		SFMesh *, 
+		const float,
+		const float tolerance = 0.005,
+		const int bestSamplePoolSize = 10,
+		const int MontecarloRate = 20
+	);
 
 	void random_sampling_pointcloud_on_selected_faces
 	(
