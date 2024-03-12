@@ -193,8 +193,7 @@ namespace semantic_mesh_segmentation
 	//****************** Default parameters ******************
 	//initialized values
 	std::pair<float, float> default_feature_value_minmax(0.000001f, 0.999999f);
-	easy3d::Box3 mesh_bounding_box = easy3d::Box3();
-	float mesh_all_area = 0.0f;
+
 	float sampling_ratio = 20.0f; //Point cloud sampling ratio to total number of vertex
 	int sampling_points_number = 1000;//smallest sampling number, -1 for use the number of vertices
 	float texture_pointcloud_density = 10.0E3;//10.0E3 is full resolution
@@ -391,7 +390,17 @@ namespace semantic_mesh_segmentation
 		"sota/",//8
 		"sampled_pointcloud/", //9
 		"semantic_components/", //10
-		"texsp_point_cloud/" //11
+		"sampled_pcl_v2/" //11
+	};
+
+	std::vector<std::string> pcl_folder_names
+	{
+		"triangle_based/", //0
+		"texture_based/",  //1
+		"face_cen_pcl/",   //2
+		"random_pcl/",     //3
+		"possion_pcl/",    //4
+		"texsp_pcl/"       //5
 	};
 
 	std::vector<std::string> folder_names_level_1
@@ -419,7 +428,11 @@ namespace semantic_mesh_segmentation
 		"tex",//11
 		"_class_statistics",//12
 		"feature_bank_importance",//13
-		"_aug"//14
+		"_aug",//14
+		"_fdcen_pcl",//15
+	    "_rand_pcl",//16
+		"_poisson_pcl",//17
+		"_texsp_pcl"//18
 	};
 
 	std::vector<std::string> data_types

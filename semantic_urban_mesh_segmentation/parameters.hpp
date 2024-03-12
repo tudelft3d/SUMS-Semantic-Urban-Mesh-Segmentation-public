@@ -61,12 +61,11 @@ namespace semantic_mesh_segmentation
 		Compute_mesh_area,
 		Extract_semantic_component,
 		Extract_texture_cluster_pcl,
-		Convert_texture_cluster_pcl_to_mesh
+		Convert_texture_cluster_pcl_to_mesh,
+		Generate_semantic_sampled_points_v2
 	};
 
 	//--- global variables for point cloud sampling ---
-	extern easy3d::Box3 mesh_bounding_box;
-	extern float mesh_all_area;
 	extern float texture_pointcloud_density;
 	extern float sampling_ratio;
 	extern int sampling_points_number;
@@ -199,7 +198,7 @@ namespace semantic_mesh_segmentation
 	extern bool equal_cloud;
 
 	//--- input file names ---
-	extern std::vector<std::string> folder_names_level_0, folder_names_level_1;
+	extern std::vector<std::string> folder_names_level_0, folder_names_level_1, pcl_folder_names;
 	extern std::vector<std::string>
 		base_names, ply_files, file_folders, txt_files, file_formats, prefixs, ply_comment_element,
 		training_base_names, testing_base_names, predicting_base_names, validation_base_names,

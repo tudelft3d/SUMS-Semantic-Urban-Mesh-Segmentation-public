@@ -234,6 +234,7 @@ namespace semantic_mesh_segmentation
 		);
 
 		float mesh_area = 0.0f;
+		easy3d::Box3 mesh_bbox = easy3d::Box3();
 		std::vector<float> class_area = std::vector<float>(0, 0.0f);
 
 		~SFMesh()

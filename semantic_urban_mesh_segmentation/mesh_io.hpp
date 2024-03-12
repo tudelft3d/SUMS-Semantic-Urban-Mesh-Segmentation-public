@@ -198,7 +198,7 @@ namespace semantic_mesh_segmentation
 
 	void write_merged_pointcloud_data(easy3d::PointCloud*);
 
-	void write_texsp_pointcloud_data(easy3d::PointCloud*, const int);
+	void write_sampled_pointcloud_data(easy3d::PointCloud*, const int, const int);
 
 	void write_texsp_bin
 	(
@@ -226,6 +226,8 @@ namespace semantic_mesh_segmentation
 	void save_txt_feature_divergence(std::vector<std::string> &, std::vector<float> &);
 
 	void save_txt_evaluation(CGAL::Classification::Label_set &, CGAL::Classification::Evaluation &, std::ostringstream &, const int);
+	
+	void save_txt_sampling_time_cost(std::vector<float>&);
 
 	void get_mesh_labels(SFMesh *, std::vector<int> &, std::vector< std::vector<int>> &);
 }

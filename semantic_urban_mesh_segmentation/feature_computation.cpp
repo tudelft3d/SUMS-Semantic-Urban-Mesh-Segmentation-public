@@ -404,7 +404,8 @@ namespace semantic_mesh_segmentation
 		SFMesh* mesh_in,
 		easy3d::PointCloud* tex_pcl,
 		const std::vector<cv::Mat>& texture_maps,
-		const std::vector<cv::Mat>& texture_mask_maps
+		const std::vector<cv::Mat>& texture_mask_maps,
+		bool use_label_color
 	)
 	{
 		if (!tex_pcl->get_vertex_property<easy3d::vec3>("v:normal"))
@@ -476,28 +477,38 @@ namespace semantic_mesh_segmentation
 						int x_coord = std::round(P[0] * double(width - 1)); //x is horizontal axis in Qt, origin is up-left corner 
 						int y_coord = std::round(P[1] * double(height - 1));
 
-						//float Rf = (float)texture_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * texture_maps[texture_id].rows - 1, newcoord[0] * texture_maps[texture_id].cols)[2];
-						//float Gf = (float)texture_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * texture_maps[texture_id].rows - 1, newcoord[0] * texture_maps[texture_id].cols)[1];
-						//float Bf = (float)texture_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * texture_maps[texture_id].rows - 1, newcoord[0] * texture_maps[texture_id].cols)[0];
-
-						//get_pcl_color[*(--tex_pcl->vertices_end())] = easy3d::vec3(Rf, Gf, Bf);
-						if (mesh_in->get_face_truth_label[fd] < 0)
-							get_pcl_color[cur_vd] = easy3d::vec3(0.0f, 0.0f, 0.0f);
-						else
-							get_pcl_color[cur_vd] = labels_color[mesh_in->get_face_truth_label[fd] - 1];
-
-						float Rf_mask = (float)texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * texture_mask_maps[texture_id].rows - 1, newcoord[0] * texture_mask_maps[texture_id].cols)[2];
-						float Gf_mask = (float)texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * texture_mask_maps[texture_id].rows - 1, newcoord[0] * texture_mask_maps[texture_id].cols)[1];
-						float Bf_mask = (float)texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * texture_mask_maps[texture_id].rows - 1, newcoord[0] * texture_mask_maps[texture_id].cols)[0];
-
-						for (int tex_ci = 0; tex_ci < tex_labels_color.size(); ++tex_ci)
+						if (use_label_color)
 						{
-							if (std::abs(Rf_mask - 255.0f * tex_labels_color[tex_ci][0]) <= 1.0f &&
-								std::abs(Gf_mask - 255.0f * tex_labels_color[tex_ci][1]) <= 1.0f &&
-								std::abs(Bf_mask - 255.0f * tex_labels_color[tex_ci][2]) <= 1.0f)
+							if (mesh_in->get_face_truth_label[fd] < 0)
+								get_pcl_color[cur_vd] = easy3d::vec3(0.0f, 0.0f, 0.0f);
+							else
+								get_pcl_color[cur_vd] = labels_color[mesh_in->get_face_truth_label[fd] - 1];
+						}
+						else
+						{
+							float Rf = (float)texture_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * texture_maps[texture_id].rows - 1, newcoord[0] * texture_maps[texture_id].cols)[2];
+							float Gf = (float)texture_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * texture_maps[texture_id].rows - 1, newcoord[0] * texture_maps[texture_id].cols)[1];
+							float Bf = (float)texture_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * texture_maps[texture_id].rows - 1, newcoord[0] * texture_maps[texture_id].cols)[0];
+
+							get_pcl_color[*(--tex_pcl->vertices_end())] = easy3d::vec3(Rf / 255.0f, Gf / 255.0f, Bf / 255.0f);
+						}
+
+						if (with_texture_mask && !texture_mask_maps.empty())
+						{
+							float Rf_mask = (float)texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * texture_mask_maps[texture_id].rows - 1, newcoord[0] * texture_mask_maps[texture_id].cols)[2];
+							float Gf_mask = (float)texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * texture_mask_maps[texture_id].rows - 1, newcoord[0] * texture_mask_maps[texture_id].cols)[1];
+							float Bf_mask = (float)texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * texture_mask_maps[texture_id].rows - 1, newcoord[0] * texture_mask_maps[texture_id].cols)[0];
+
+							for (int tex_ci = 0; tex_ci < tex_labels_color.size(); ++tex_ci)
 							{
-								get_pcl_color[cur_vd] = tex_labels_color[tex_ci];
-								get_pcl_label[cur_vd] = labels_color.size() + tex_ci + 1;
+								if (std::abs(Rf_mask - 255.0f * tex_labels_color[tex_ci][0]) <= 1.0f &&
+									std::abs(Gf_mask - 255.0f * tex_labels_color[tex_ci][1]) <= 1.0f &&
+									std::abs(Bf_mask - 255.0f * tex_labels_color[tex_ci][2]) <= 1.0f)
+								{
+									get_pcl_label[cur_vd] = labels_color.size() + tex_ci + 1;
+									if (use_label_color)
+										get_pcl_color[cur_vd] = tex_labels_color[tex_ci];
+								}
 							}
 						}
 					}
@@ -547,7 +558,7 @@ namespace semantic_mesh_segmentation
 			std::pair<int, int> uv_dis;
 			std::pair<double, double> uv_min;
 			enlarge_uv_triangle(UL_vec, VL_vec, uv_dis, uv_min, width, height);
-
+			int count_pix = 0;
 			for (int u_i = 0; u_i < uv_dis.first; ++u_i)
 			{
 				for (int v_i = 0; v_i < uv_dis.second; ++v_i)
@@ -577,18 +588,23 @@ namespace semantic_mesh_segmentation
 						Rf /= 255.0f;
 						Gf /= 255.0f;
 						Bf /= 255.0f;
+						mesh_in->get_face_color[fd] += vec3(Rf, Gf, Bf);
+						++count_pix;
 
 						int fdtex_label = mesh_in->get_face_truth_label[fd];
-						float Rf_mask = (float)texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * texture_mask_maps[texture_id].rows - 1, newcoord[0] * texture_mask_maps[texture_id].cols)[2];
-						float Gf_mask = (float)texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * texture_mask_maps[texture_id].rows - 1, newcoord[0] * texture_mask_maps[texture_id].cols)[1];
-						float Bf_mask = (float)texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * texture_mask_maps[texture_id].rows - 1, newcoord[0] * texture_mask_maps[texture_id].cols)[0];
-						for (int tex_ci = 0; tex_ci < tex_labels_color.size(); ++tex_ci)
+						if (with_texture_mask && !texture_mask_maps.empty())
 						{
-							if (std::abs(Rf_mask - 255.0f * tex_labels_color[tex_ci][0]) <= 1.0f &&
-								std::abs(Gf_mask - 255.0f * tex_labels_color[tex_ci][1]) <= 1.0f &&
-								std::abs(Bf_mask - 255.0f * tex_labels_color[tex_ci][2]) <= 1.0f)
+							float Rf_mask = (float)texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * texture_mask_maps[texture_id].rows - 1, newcoord[0] * texture_mask_maps[texture_id].cols)[2];
+							float Gf_mask = (float)texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * texture_mask_maps[texture_id].rows - 1, newcoord[0] * texture_mask_maps[texture_id].cols)[1];
+							float Bf_mask = (float)texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * texture_mask_maps[texture_id].rows - 1, newcoord[0] * texture_mask_maps[texture_id].cols)[0];
+							for (int tex_ci = 0; tex_ci < tex_labels_color.size(); ++tex_ci)
 							{
-								fdtex_label = labels_color.size() + tex_ci + 1;
+								if (std::abs(Rf_mask - 255.0f * tex_labels_color[tex_ci][0]) <= 1.0f &&
+									std::abs(Gf_mask - 255.0f * tex_labels_color[tex_ci][1]) <= 1.0f &&
+									std::abs(Bf_mask - 255.0f * tex_labels_color[tex_ci][2]) <= 1.0f)
+								{
+									fdtex_label = labels_color.size() + tex_ci + 1;
+								}
 							}
 						}
 
@@ -607,6 +623,11 @@ namespace semantic_mesh_segmentation
 					}
 				}
 			}
+
+			if (count_pix == 0)
+				mesh_in->get_face_color[fd] = vec3();
+			else
+				mesh_in->get_face_color[fd] /= float(count_pix);
 		}
 
 		//compute center of all superpixels
@@ -641,6 +662,9 @@ namespace semantic_mesh_segmentation
 			get_pcl_color[cur_vd] = superpixel_vec[spi].avg_color_;
 			get_pcl_label[cur_vd] = superpixel_vec[spi].label_;
 			get_pcl_sp_id[cur_vd] = superpixel_vec[spi].sp_id_;
+
+			if (with_texture_mask && get_pcl_label[cur_vd] > 0)
+				get_pcl_label[cur_vd] = get_pcl_label[cur_vd] - 1;// remove terrian label
 		}
 	}
 

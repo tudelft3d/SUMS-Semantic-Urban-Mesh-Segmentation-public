@@ -25,6 +25,7 @@ set(${PROJECT_NAME}_HEADERS
     ./transform.h
     ./types.h
     ./vec.h
+    ./point_cloud_simplification.h
     )
 
 set(${PROJECT_NAME}_SOURCES
@@ -51,6 +52,7 @@ set(${PROJECT_NAME}_SOURCES
     ./surface_mesh_io_off.cpp
     ./surface_mesh_io_ply.cpp
     ./transform.cpp
+    ./point_cloud_simplification.cpp
     )
 
 	

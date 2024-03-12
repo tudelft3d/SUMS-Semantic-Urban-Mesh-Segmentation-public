@@ -728,6 +728,8 @@ namespace semantic_mesh_segmentation
 				std::cerr << "Error reading file: " << str_temp << std::endl;
 
 			inFile.close();
+
+			texture_sps.push_back(sps_mat);
 		}
 	}
 
@@ -879,6 +881,10 @@ namespace semantic_mesh_segmentation
 							else if (param_value == "Convert_texture_cluster_pcl_to_mesh")
 							{
 								current_mode = operating_mode::Convert_texture_cluster_pcl_to_mesh;
+							}
+							else if (param_value == "Generate_semantic_sampled_points_v2")
+							{
+								current_mode = operating_mode::Generate_semantic_sampled_points_v2;
 							}
 						}
 					}
@@ -1927,21 +1933,29 @@ namespace semantic_mesh_segmentation
 		std::cout << "	Done in (s): " << omp_get_wtime() - t_total << '\n' << std::endl;
 	}
 
-	void write_texsp_pointcloud_data
+	void write_sampled_pointcloud_data
 	(
 		easy3d::PointCloud* pcl_out,
+		const int pcl_type, //0: face center; 1: random pcl; 2: possion pcl; 3: texsp_pcl
 		const int mi
 	)
 	{
 		const double t_total = omp_get_wtime();
 
+		int pcl_label_folder = 0;
+		if (with_texture_mask)
+			pcl_label_folder = 1;
+
 		std::ostringstream str_ostemp;
 		str_ostemp
 			<< root_path
+			<< folder_names_level_0[8]
 			<< folder_names_level_0[11]
+			<< pcl_folder_names[pcl_label_folder]
+			<< pcl_folder_names[pcl_type + 2]
 			<< folder_names_level_1[train_test_predict_val]
 			<< base_names[mi]
-			<< "_texsp_pcl"
+			<< prefixs[15 + pcl_type]
 			<< ".ply";
 
 		std::string str_temp = str_ostemp.str().data();
@@ -1962,6 +1976,11 @@ namespace semantic_mesh_segmentation
 		const int mi
 	)
 	{
+
+		int pcl_label_folder = 0;
+		if (with_texture_mask)
+			pcl_label_folder = 1;
+
 		for (int ti = 0; ti < smesh_in->textures.size(); ++ti)
 		{
 			auto tex_i = smesh_in->textures[ti];
@@ -1969,7 +1988,10 @@ namespace semantic_mesh_segmentation
 			std::ostringstream str_ostemp;
 			str_ostemp
 				<< root_path
+				<< folder_names_level_0[8]
 				<< folder_names_level_0[11]
+				<< pcl_folder_names[pcl_label_folder]
+				<< pcl_folder_names[5]
 				<< folder_names_level_1[train_test_predict_val]
 				<< "texsp_"
 				<< texture_name_splits[0]
@@ -2845,6 +2867,40 @@ namespace semantic_mesh_segmentation
 		fout << std::fixed << std::showpoint << std::setprecision(6) << evaluation.mean_f1_score() << "\n";
 		fout << "Mean_IoU" << "\t";
 		fout << std::fixed << std::showpoint << std::setprecision(6) << evaluation.mean_intersection_over_union() << "\n";
+		fout.close();
+	}
+
+	void save_txt_sampling_time_cost
+	(
+		std::vector<float>& sampling_time_costs
+	)
+	{
+		int pcl_label_folder = 0;
+		if (with_texture_mask)
+			pcl_label_folder = 1;
+
+		std::ostringstream area_out;
+		area_out
+			<< root_path
+			<< folder_names_level_0[8]
+			<< folder_names_level_0[11]
+			<< pcl_folder_names[pcl_label_folder]
+			<< "sampling_time_costs.txt";
+
+		std::string str_temp = area_out.str().data();
+
+		std::ofstream fout;
+		fout.open(str_temp.c_str());
+		fout << "Method" << "\t" << "face_center" << "\t" << "random_pcl" << "\t" << "possion_pcl" << "\t" << "texsp_pcl" << "\t" << "sp_gen" << "\n";
+
+		for (std::size_t i = 0; i < sampling_time_costs.size(); ++i)
+		{
+			fout << std::fixed << std::showpoint << std::setprecision(6) << sampling_time_costs[i];
+			if (i == sampling_time_costs.size() - 1)
+				fout << "\n";
+			else
+				fout << "\t";
+		}
 		fout.close();
 	}
 

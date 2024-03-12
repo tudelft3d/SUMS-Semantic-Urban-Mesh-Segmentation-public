@@ -39,9 +39,6 @@
 #include <opencv2/core/utility.hpp>
 #include <opencv2/core/base.hpp>
 
-#include <easy3d/kdtree.h>
-#include <easy3d/point_cloud.h>
-
 #include <omp.h>
 #include <easy3d/kdtree.h>
 #include <easy3d/point_cloud.h>
@@ -637,13 +634,14 @@ namespace semantic_mesh_segmentation
 
 	void texture_point_cloud_generation
 	(
-		SFMesh* ,
-		easy3d::PointCloud* ,
-		const std::vector<cv::Mat>& ,
-		const std::vector<cv::Mat>& 
+		SFMesh*,
+		easy3d::PointCloud*,
+		const std::vector<cv::Mat>&,
+		const std::vector<cv::Mat>&,
+		bool use_label_color = true
 	);
 
-	void remove_duplicated_points(easy3d::PointCloud* );
+	void remove_duplicated_points(easy3d::PointCloud*);
 
 	void get_superpixels_from_textures
 	(

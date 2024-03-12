@@ -66,10 +66,6 @@ namespace semantic_mesh_segmentation
 		smesh_in->add_vertex_property<bool>("v:vertex_visited", false);
 		auto get_vert_visited = smesh_in->get_vertex_property<bool>("v:vertex_visited");
 
-		//reset global properties
-		mesh_bounding_box = easy3d::Box3();
-		mesh_all_area = 0.0f;
-
 		//temporary point cloud for assisting sampling process
 		PTCloud* tex_cloud_temp = new PTCloud;
 		tex_cloud_temp->get_points_color = tex_cloud_temp->add_vertex_property<vec3>("v:color");
@@ -86,7 +82,6 @@ namespace semantic_mesh_segmentation
 			hsv_maps.emplace_back(hsv_temp);
 		}
 		//parsing face properties: face center, texture color
-		//parsing global properties: mesh_bounding_box, mesh_all_area 
 		for (auto fi : smesh_in->faces())
 		{
 			for (auto vi : smesh_in->vertices(fi))
@@ -94,7 +89,6 @@ namespace semantic_mesh_segmentation
 				if (!get_vert_visited[vi])
 				{
 					get_vert_visited[vi] = true;
-					mesh_bounding_box.add_point(smesh_in->get_points_coord[vi]);
 					face_center_vertices_cloud->add_vertex(smesh_in->get_points_coord[vi]);
 					if (sampling_strategy == 2 || sampling_strategy == 4)
 						initial_sampled_sampled_point_cloud->add_vertex(smesh_in->get_points_coord[vi]);
@@ -110,7 +104,6 @@ namespace semantic_mesh_segmentation
 			smesh_in->get_face_center[fi] /= 3.0f;
 			smesh_in->get_face_area[fi] = FaceArea(smesh_in, fi);
 			smesh_in->get_face_normals[fi] = smesh_in->compute_face_normal(fi);
-			mesh_all_area += smesh_in->get_face_area[fi];
 
 			//get color for sampled point cloud
 			if (with_texture && add_point_color)
@@ -223,10 +216,6 @@ namespace semantic_mesh_segmentation
 		smesh_in->add_vertex_property<bool>("v:vertex_visited", false);
 		auto get_vert_visited = smesh_in->get_vertex_property<bool>("v:vertex_visited");
 
-		//reset global properties
-		mesh_bounding_box = easy3d::Box3();
-		mesh_all_area = 0.0f;
-
 		//temporary point cloud for assisting sampling process
 		PTCloud* tex_cloud_temp = new PTCloud;
 		tex_cloud_temp->get_points_color = tex_cloud_temp->add_vertex_property<vec3>("v:color");
@@ -248,7 +237,7 @@ namespace semantic_mesh_segmentation
 			lab_maps.emplace_back(lab_temp);
 		}
 		//parsing face properties: face center, texture color
-		//parsing global properties: mesh_bounding_box, mesh_all_area 
+		//parsing global properties
 		for (auto fi : smesh_in->faces())
 		{
 			for (auto vi : smesh_in->vertices(fi))
@@ -256,7 +245,6 @@ namespace semantic_mesh_segmentation
 				if (!get_vert_visited[vi])
 				{
 					get_vert_visited[vi] = true;
-					mesh_bounding_box.add_point(smesh_in->get_points_coord[vi]);
 					face_center_vertices_cloud->add_vertex(smesh_in->get_points_coord[vi]);
 					if (sampling_strategy == 2 || sampling_strategy == 4)
 						initial_sampled_point_cloud->add_vertex(smesh_in->get_points_coord[vi]);
@@ -272,7 +260,6 @@ namespace semantic_mesh_segmentation
 			smesh_in->get_face_center[fi] /= 3.0f;
 			smesh_in->get_face_area[fi] = FaceArea(smesh_in, fi);
 			smesh_in->get_face_normals[fi] = smesh_in->compute_face_normal(fi);
-			mesh_all_area += smesh_in->get_face_area[fi];
 
 			//get color for sampled point cloud
 			if (with_texture && (add_point_color_for_dp_input || save_tex_cloud))
@@ -291,7 +278,7 @@ namespace semantic_mesh_segmentation
 				initial_sampled_point_cloud->add_vertex(smesh_in->get_face_center[fi]);
 		}
 
-		//point cloud sampling initialization, require mesh_bounding_box and mesh_all_area
+		//point cloud sampling initialization
 		if (sampling_strategy == 0 || sampling_strategy == 3 || sampling_strategy == 4)
 			sampling_pointcloud_on_mesh(initial_sampled_point_cloud, smesh_in, sampling_point_density);//Require mesh area
 
@@ -664,6 +651,9 @@ namespace semantic_mesh_segmentation
 			if (use_existing_mesh_segments)
 				smesh->get_face_segment_id[fi] = smesh_seg->get_face_segment_id[fi];
 		}
+
+		for (auto p : smesh->points())
+			smesh->mesh_bbox.add_point(p);
 	}
 
 	//--- add feature information on mesh faces for visualization ---

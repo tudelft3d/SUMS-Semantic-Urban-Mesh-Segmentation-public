@@ -31,6 +31,8 @@
 #include <algorithm>
 #include <random>
 #include <easy3d/point_cloud.h>
+#include <easy3d/kdtree.h>
+#include <easy3d/point_cloud_simplification.h>
 #include "super_segment.hpp"
 #include "math_base.hpp"
 #include "random_generator.hpp"
@@ -147,6 +149,7 @@ namespace semantic_mesh_segmentation
 	static void InitSpatialHashTable
 	(
 		easy3d::PointCloud *montecarloMesh,
+		SFMesh* smesh,
 		MontecarloSHT &montecarloSHT,
 		float diskRadius
 	)
@@ -157,7 +160,7 @@ namespace semantic_mesh_segmentation
 		do
 		{
 			// inflating
-			easy3d::Box3 extend_box = mesh_bounding_box;
+			easy3d::Box3 extend_box = smesh->mesh_bbox;
 			extend_box.Offset(cellsize);
 
 			int sizeX = 1.0f > (extend_box.x_range() / cellsize) ? 1.0f : (extend_box.x_range() / cellsize);
@@ -216,7 +219,7 @@ namespace semantic_mesh_segmentation
 	(
 		easy3d::PointCloud* possion_pointcloud,
 		easy3d::PointCloud *sampling_pointcloud,
-		easy3d::SurfaceMesh* smesh,
+		SFMesh* smesh,
 		int& sampleNum,
 		float diskRadius,
 		const int bestSamplePoolSize
@@ -225,7 +228,7 @@ namespace semantic_mesh_segmentation
 		//*****************
 		//easy3d::PointCloud* possion_pointcloud = new easy3d::PointCloud;
 		MontecarloSHT montecarloSHT;
-		InitSpatialHashTable(sampling_pointcloud, montecarloSHT, diskRadius);
+		InitSpatialHashTable(sampling_pointcloud, smesh, montecarloSHT, diskRadius);
 
 		// if we are doing variable density sampling we have to prepare the handle that keeps the the random samples expected radii.
 		// At this point we just assume that there is the quality values as sampled from the base mesh
@@ -271,7 +274,7 @@ namespace semantic_mesh_segmentation
 	(
 		easy3d::PointCloud* possion_cloud,
 		easy3d::PointCloud* montecarlo_cloud,
-		easy3d::SurfaceMesh* smesh,
+		SFMesh* smesh,
 		const int sampling_points_number,
 		float& diskRadius,
 		const float tolerance,
@@ -281,8 +284,8 @@ namespace semantic_mesh_segmentation
 	{
 		size_t sampleNumMin = int(float(sampling_points_number) * (1.0f - tolerance));
 		size_t sampleNumMax = int(float(sampling_points_number) * (1.0f + tolerance));
-		float RangeMinRad = mesh_bounding_box.diagonal() / 50.0;
-		float RangeMaxRad = mesh_bounding_box.diagonal() / 50.0;
+		float RangeMinRad = smesh->mesh_bbox.diagonal() / 50.0;
+		float RangeMaxRad = smesh->mesh_bbox.diagonal() / 50.0;
 		size_t RangeMinRadNum;
 		size_t RangeMaxRadNum;
 		int pp_sampleNum = 0;
@@ -394,6 +397,45 @@ namespace semantic_mesh_segmentation
 		std::vector<SFMesh::Face>& ,
 		easy3d::PointCloud* ,
 		const float 
+	);
+
+	void face_center_point_cloud
+	(
+		SFMesh* ,
+		easy3d::PointCloud* 
+	);
+
+	void assign_texpcl_properties
+	(
+		easy3d::PointCloud*,
+		easy3d::PointCloud*
+	);
+
+	void face_random_sampling
+	(
+		SFMesh*,
+		easy3d::SurfaceMesh::Face&,
+		easy3d::PointCloud*,
+		const int
+	);
+
+	void mesh_random_sampling
+	(
+		SFMesh*,
+		easy3d::PointCloud*,
+		const int
+	);
+
+	void perform_uniform_sampling(easy3d::PointCloud*, const int);
+
+	void poission_sampling_with_fixed_number
+	(
+		SFMesh*,
+		easy3d::PointCloud*,
+		const int,
+		const float tolerance = 0.005,
+		const int bestSamplePoolSize = 10,
+		const int MontecarloRate = 20
 	);
 }
 

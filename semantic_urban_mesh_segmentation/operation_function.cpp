@@ -1211,7 +1211,7 @@ namespace semantic_mesh_segmentation
 						texture_cluster_pcl_generation(smesh, tex_sp_pcl, texture_maps, texture_mask_maps, texture_sps);
 
 						//--- save files ---
-						write_texsp_pointcloud_data(tex_sp_pcl, pi);
+						write_sampled_pointcloud_data(tex_sp_pcl, 3, pi);
 						write_texsp_bin(smesh, texture_sps, pi);
 
 						delete smesh;
@@ -1275,6 +1275,105 @@ namespace semantic_mesh_segmentation
 
 			break;
 		}
+
+
+		case operating_mode::Generate_semantic_sampled_points_v2:
+		{
+			current_mode = operating_mode::Generate_semantic_sampled_points_v2;
+			std::cout << "--------------------- Generate_semantic_sampled_points_v2 ---------------------" << std::endl;
+
+			std::vector<bool> train_predict
+			{
+				process_data_selection["train"],
+				process_data_selection["test"],
+				process_data_selection["predict"],
+				process_data_selection["validate"]
+			};
+			std::vector<std::string> type_used_name = { "train" ,"test", "predict", "validate" };
+			std::vector<float> all_time_cost(5, 0.0f);//0: face center; 1: random pcl; 2: possion pcl; 3: texsp_pcl; 4: sp_gen
+			for (int tr_pr_i = 0; tr_pr_i < train_predict.size(); ++tr_pr_i)
+			{
+				if (train_predict[tr_pr_i])
+				{
+					std::cout << "Process data in " << type_used_name[tr_pr_i] << std::endl;
+					changing_to_test_or_predict(tr_pr_i);
+
+					for (std::size_t pi = 0; pi < base_names.size(); ++pi)
+					{
+						std::cout << "	- Process " << base_names[pi] << std::endl;
+						SFMesh* smesh = new SFMesh;
+						std::vector<cv::Mat> texture_maps, texture_mask_maps, texture_sps;
+
+						//--- read mesh *.ply data ---
+						read_mesh_with_texture_and_masks(smesh, texture_maps, texture_mask_maps, pi);
+
+						//--- get superpixels from textures ---
+						std::cout << "		- generate superpixels from textures " << std::endl;
+						const double sp_gen_start = omp_get_wtime();
+						get_superpixels_from_textures(texture_sps, texture_maps);
+						all_time_cost[4] += omp_get_wtime() - sp_gen_start;
+
+						//--- generate texture cluster cloud ---
+						std::cout << "		- generate texture cluster cloud " << std::endl;
+						easy3d::PointCloud* tex_sp_pcl = new easy3d::PointCloud;
+						const double tex_sp_start = omp_get_wtime();
+						texture_cluster_pcl_generation(smesh, tex_sp_pcl, texture_maps, texture_mask_maps, texture_sps);
+						const int fixed_sampling_num = tex_sp_pcl->n_vertices();
+						all_time_cost[3] += omp_get_wtime() - tex_sp_start;
+
+						//--- generate face center cloud ---
+						easy3d::PointCloud* fd_cen_pcl = new easy3d::PointCloud;
+						if (!with_texture_mask)
+						{
+							std::cout << "		- generate texture cluster cloud " << std::endl;
+							const double fd_cen_pcl_start = omp_get_wtime();
+							face_center_point_cloud(smesh, fd_cen_pcl);
+							all_time_cost[0] += omp_get_wtime() - fd_cen_pcl_start;
+						}
+						
+						//--- generate textured sampled cloud ---
+						std::cout << "		- generate texture cloud " << std::endl;
+						easy3d::PointCloud* tex_pcl = new easy3d::PointCloud;
+						texture_point_cloud_generation(smesh, tex_pcl, texture_maps, texture_mask_maps, false);
+
+						//--- generate random sampled cloud ---
+						std::cout << "		- generate random cloud : " << fixed_sampling_num << std::endl;
+						const double random_pcl_start = omp_get_wtime();
+						easy3d::PointCloud* random_pcl = new easy3d::PointCloud;
+						mesh_random_sampling(smesh, random_pcl, fixed_sampling_num);
+						all_time_cost[1] += omp_get_wtime() - random_pcl_start;
+						assign_texpcl_properties(random_pcl, tex_pcl);
+		
+						//--- generate possion sampled cloud ---
+						std::cout << "		- generate possion cloud : " << fixed_sampling_num << std::endl;
+						const double possion_pcl_start = omp_get_wtime();
+						easy3d::PointCloud* possion_pcl = new easy3d::PointCloud;
+						poission_sampling_with_fixed_number(smesh, possion_pcl, fixed_sampling_num);
+						all_time_cost[2] += omp_get_wtime() - possion_pcl_start;
+						assign_texpcl_properties(possion_pcl, tex_pcl);
+
+						//--- save files ---
+						if (!with_texture_mask)
+							write_sampled_pointcloud_data(fd_cen_pcl, 0, pi);
+						write_sampled_pointcloud_data(random_pcl, 1, pi);
+						write_sampled_pointcloud_data(possion_pcl, 2, pi);
+						write_sampled_pointcloud_data(tex_sp_pcl, 3, pi);
+						write_texsp_bin(smesh, texture_sps, pi);
+
+						delete smesh;
+						delete tex_sp_pcl;
+						delete fd_cen_pcl;
+						delete tex_pcl;
+						delete random_pcl;
+						delete possion_pcl;
+					}
+				}
+			}
+
+			save_txt_sampling_time_cost(all_time_cost);
+			break;
+		}
+
 
 		// to do: evaluate texture mesh
 
