@@ -582,6 +582,9 @@ namespace semantic_mesh_segmentation
 
 						uv_to_3D_coordinates(uv_triangle, coord3d_triangle, newcoord, current_3d);
 
+						if (std::isnan(current_3d.x) || std::isnan(current_3d.y) || std::isnan(current_3d.z))
+							continue;
+
 						float Rf = (float)texture_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * texture_maps[texture_id].rows - 1, newcoord[0] * texture_maps[texture_id].cols)[2];
 						float Gf = (float)texture_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * texture_maps[texture_id].rows - 1, newcoord[0] * texture_maps[texture_id].cols)[1];
 						float Bf = (float)texture_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * texture_maps[texture_id].rows - 1, newcoord[0] * texture_maps[texture_id].cols)[0];
@@ -657,6 +660,8 @@ namespace semantic_mesh_segmentation
 		auto get_pcl_sp_id = tex_sp_pcl->get_vertex_property<int>("v:sp_id");
 		for (int spi = 0; spi < superpixel_vec.size(); ++spi)
 		{
+			if (std::isnan(superpixel_vec[spi].avg_center_.x) || std::isnan(superpixel_vec[spi].avg_center_.y) || std::isnan(superpixel_vec[spi].avg_center_.z))
+				continue;
 			auto cur_vd = tex_sp_pcl->add_vertex(superpixel_vec[spi].avg_center_);
 			get_pcl_normal[cur_vd] = superpixel_vec[spi].avg_normal_;
 			get_pcl_color[cur_vd] = superpixel_vec[spi].avg_color_;

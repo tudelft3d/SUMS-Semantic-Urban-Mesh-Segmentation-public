@@ -1325,7 +1325,7 @@ namespace semantic_mesh_segmentation
 						easy3d::PointCloud* fd_cen_pcl = new easy3d::PointCloud;
 						if (!with_texture_mask)
 						{
-							std::cout << "		- generate texture cluster cloud " << std::endl;
+							std::cout << "		- generate face center cloud " << std::endl;
 							const double fd_cen_pcl_start = omp_get_wtime();
 							face_center_point_cloud(smesh, fd_cen_pcl);
 							all_time_cost[0] += omp_get_wtime() - fd_cen_pcl_start;
