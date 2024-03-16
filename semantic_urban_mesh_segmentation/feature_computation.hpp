@@ -638,7 +638,9 @@ namespace semantic_mesh_segmentation
 		easy3d::PointCloud*,
 		const std::vector<cv::Mat>&,
 		const std::vector<cv::Mat>&,
-		bool use_label_color = true
+		bool use_label_color = true,
+		std::vector<float>& tri_label_statistics = std::vector<float>(),
+		std::vector<int>& tex_label_statistics = std::vector<int>()
 	);
 
 	void remove_duplicated_points(easy3d::PointCloud*);

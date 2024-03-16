@@ -405,7 +405,9 @@ namespace semantic_mesh_segmentation
 		easy3d::PointCloud* tex_pcl,
 		const std::vector<cv::Mat>& texture_maps,
 		const std::vector<cv::Mat>& texture_mask_maps,
-		bool use_label_color
+		bool use_label_color,
+		std::vector<float>& tri_label_statistics,
+		std::vector<int>& tex_label_statistics
 	)
 	{
 		if (!tex_pcl->get_vertex_property<easy3d::vec3>("v:normal"))
@@ -423,6 +425,7 @@ namespace semantic_mesh_segmentation
 			int width = texture_maps[texture_id].cols;
 			int height = texture_maps[texture_id].rows;
 
+			tri_label_statistics[mesh_in->get_face_truth_label[fd]] += mesh_in->get_face_area[fd];
 			std::vector<easy3d::vec2> uv_triangle;
 			std::vector<double> U_vec, V_vec, UL_vec, VL_vec;
 			std::vector<easy3d::vec3> coord3d_triangle;
@@ -446,7 +449,6 @@ namespace semantic_mesh_segmentation
 			std::pair<int, int> uv_dis;
 			std::pair<double, double> uv_min;
 			enlarge_uv_triangle(UL_vec, VL_vec, uv_dis, uv_min, width, height);
-
 			for (int u_i = 0; u_i < uv_dis.first; ++u_i)
 			{
 				for (int v_i = 0; v_i < uv_dis.second; ++v_i)
@@ -498,7 +500,7 @@ namespace semantic_mesh_segmentation
 							float Rf_mask = (float)texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * texture_mask_maps[texture_id].rows - 1, newcoord[0] * texture_mask_maps[texture_id].cols)[2];
 							float Gf_mask = (float)texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * texture_mask_maps[texture_id].rows - 1, newcoord[0] * texture_mask_maps[texture_id].cols)[1];
 							float Bf_mask = (float)texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * texture_mask_maps[texture_id].rows - 1, newcoord[0] * texture_mask_maps[texture_id].cols)[0];
-
+							bool matched_with_tex_label = false;
 							for (int tex_ci = 0; tex_ci < tex_labels_color.size(); ++tex_ci)
 							{
 								if (std::abs(Rf_mask - 255.0f * tex_labels_color[tex_ci][0]) <= 1.0f &&
@@ -506,9 +508,21 @@ namespace semantic_mesh_segmentation
 									std::abs(Bf_mask - 255.0f * tex_labels_color[tex_ci][2]) <= 1.0f)
 								{
 									get_pcl_label[cur_vd] = labels_color.size() + tex_ci + 1;
+									tex_label_statistics[get_pcl_label[cur_vd] - 1] += 1;
 									if (use_label_color)
 										get_pcl_color[cur_vd] = tex_labels_color[tex_ci];
+
+									matched_with_tex_label = true;
+									break;
 								}
+							}
+
+							if (!matched_with_tex_label)
+							{
+								if (mesh_in->get_face_truth_label[fd] > 1)
+									tex_label_statistics[mesh_in->get_face_truth_label[fd] - 1] += 1;
+								else if (mesh_in->get_face_truth_label[fd] == 0)
+									tex_label_statistics[mesh_in->get_face_truth_label[fd]] += 1;
 							}
 						}
 					}

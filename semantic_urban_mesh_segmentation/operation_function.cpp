@@ -1289,8 +1289,12 @@ namespace semantic_mesh_segmentation
 				process_data_selection["predict"],
 				process_data_selection["validate"]
 			};
+
+			double sum_area = 0.0f;
 			std::vector<std::string> type_used_name = { "train" ,"test", "predict", "validate" };
 			std::vector<float> all_time_cost(5, 0.0f);//0: face center; 1: random pcl; 2: possion pcl; 3: texsp_pcl; 4: sp_gen
+			std::vector<float> tri_label_statistics(labels_name.size() + 1, 0);
+			std::vector<int> tex_label_statistics(labels_name.size() + tex_labels_name.size(), 0);
 			for (int tr_pr_i = 0; tr_pr_i < train_predict.size(); ++tr_pr_i)
 			{
 				if (train_predict[tr_pr_i])
@@ -1306,6 +1310,7 @@ namespace semantic_mesh_segmentation
 
 						//--- read mesh *.ply data ---
 						read_mesh_with_texture_and_masks(smesh, texture_maps, texture_mask_maps, pi);
+						sum_area += smesh->mesh_area;
 
 						//--- get superpixels from textures ---
 						std::cout << "		- generate superpixels from textures " << std::endl;
@@ -1334,7 +1339,8 @@ namespace semantic_mesh_segmentation
 						//--- generate textured sampled cloud ---
 						std::cout << "		- generate texture cloud " << std::endl;
 						easy3d::PointCloud* tex_pcl = new easy3d::PointCloud;
-						texture_point_cloud_generation(smesh, tex_pcl, texture_maps, texture_mask_maps, false);
+						texture_point_cloud_generation(smesh, tex_pcl, texture_maps, texture_mask_maps, false, 
+							tri_label_statistics, tex_label_statistics);
 
 						//--- generate random sampled cloud ---
 						std::cout << "		- generate random cloud : " << fixed_sampling_num << std::endl;
@@ -1369,7 +1375,8 @@ namespace semantic_mesh_segmentation
 					}
 				}
 			}
-
+			if (with_texture_mask)
+				save_txt_statistics(tri_label_statistics, tex_label_statistics, sum_area);
 			save_txt_sampling_time_cost(all_time_cost);
 			break;
 		}

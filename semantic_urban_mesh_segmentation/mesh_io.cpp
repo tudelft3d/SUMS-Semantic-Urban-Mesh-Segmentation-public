@@ -2723,6 +2723,182 @@ namespace semantic_mesh_segmentation
 		std::cout << "	Done in (s): " << omp_get_wtime() - t_total << '\n' << std::endl;
 	}
 
+	//save prior in txt
+	void save_txt_statistics
+	(
+		std::vector<float>& tri_label_statistics,
+		std::vector<int>& tex_label_statistics,
+		const double sum_area
+	)
+	{
+		const double t_total = omp_get_wtime();
+		std::cout << "	Saving class statistics." << std::endl;
+
+		// save triangle area class statistics
+		std::ostringstream tri_out;
+		tri_out
+			<< root_path
+			<< folder_names_level_0[8]
+			<< folder_names_level_0[11]
+			<< pcl_folder_names[0]
+			<< "tri_class_statistics.txt";
+
+		std::string tri_str_temp = tri_out.str().data();
+		std::ofstream tri_fout;
+		tri_fout.open(tri_str_temp.c_str());
+		tri_fout << "class" << "\t";
+		std::cout << "class" << "\t";
+		tri_fout << "unclassified" << "\t";
+		std::cout << "unclassified" << "\t";
+		for (int li = 0; li < labels_name.size(); ++li)
+		{
+			tri_fout << labels_name[li];
+			std::cout << labels_name[li];
+			if (li != labels_name.size() - 1)
+			{
+				tri_fout << "\t";
+				std::cout << "\t";
+			}
+			else
+			{
+				tri_fout << "\n";
+				std::cout << "\n";
+			}
+		}
+
+		tri_fout << "area" << "\t";
+		std::cout << "area" << "\t";
+		for (int li = 0; li < tri_label_statistics.size(); ++li)
+		{
+			tri_fout << std::fixed << std::showpoint << std::setprecision(2) << tri_label_statistics[li];
+			std::cout << std::fixed << std::showpoint << std::setprecision(2) << tri_label_statistics[li];
+			if (li != tri_label_statistics.size() - 1)
+			{
+				tri_fout << "\t";
+				std::cout << "\t";
+			}
+			else
+			{
+				tri_fout << "\n";
+				std::cout << "\n";
+			}
+		}
+
+		tri_fout << "percentage" << "\t";
+		std::cout << "percentage" << "\t";
+		for (int li = 0; li < tri_label_statistics.size(); ++li)
+		{
+			tri_fout << std::fixed << std::showpoint << std::setprecision(4) << float(tri_label_statistics[li] / sum_area);
+			std::cout << std::fixed << std::showpoint << std::setprecision(4) << float(tri_label_statistics[li] / sum_area);
+			if (li != tri_label_statistics.size() - 1)
+			{
+				tri_fout << "\t";
+				std::cout << "\t";
+			}
+			else
+			{
+				tri_fout << "\n";
+				std::cout << "\n";
+			}
+
+		}
+
+		tri_fout << "total area" <<"\t" << std::fixed << std::showpoint << std::setprecision(4)<< sum_area <<"\n";
+		std::cout << "total area" << "\t" << std::fixed << std::showpoint << std::setprecision(4) << sum_area << "\n";
+
+		tri_fout.close();
+
+		// save texture area class statistics
+		std::ostringstream tex_out;
+		tex_out
+			<< root_path
+			<< folder_names_level_0[8]
+			<< folder_names_level_0[11]
+			<< pcl_folder_names[1]
+			<< "tex_class_statistics.txt";
+
+		int sum_pixels = std::accumulate(tex_label_statistics.begin(), tex_label_statistics.end(), 0);
+		
+		//double pixel_area = double(sum_area) / double(sum_pixels);
+		//std::cout << "sum_area = " << sum_area << "; pix number = " << sum_pixels <<"; ratio = "
+		//	<< std::fixed << std::showpoint << std::setprecision(6) << pixel_area << std::endl;
+
+		std::string tex_str_temp = tex_out.str().data();
+		std::ofstream tex_fout;
+		tex_fout.open(tex_str_temp.c_str());
+		tex_fout << "class" << "\t";
+		std::cout << "class" << "\t";
+		tex_fout << "unclassified" << "\t";
+		std::cout << "unclassified" << "\t";
+		for (int li = 1; li < labels_name.size() + tex_labels_name.size(); ++li)
+		{
+			if (li < labels_name.size())
+			{
+				tex_fout << labels_name[li];
+				std::cout << labels_name[li];
+			}
+			else
+			{
+				tex_fout << tex_labels_name[li - labels_name.size()];
+				std::cout << tex_labels_name[li - labels_name.size()];
+			}
+
+			if (li != labels_name.size() + tex_labels_name.size() - 1)
+			{
+				tex_fout << "\t";
+				std::cout << "\t";
+			}
+			else
+			{
+				tex_fout << "\n";
+				std::cout << "\n";
+			}
+		}
+
+		tex_fout << "pixel numbers" << "\t";
+		std::cout << "pixel numbers" << "\t";
+		for (int li = 0; li < tex_label_statistics.size(); ++li)
+		{
+			tex_fout << tex_label_statistics[li] ;
+			std::cout << tex_label_statistics[li];
+			if (li != tex_label_statistics.size() - 1)
+			{
+				tex_fout << "\t";
+				std::cout << "\t";
+			}
+			else
+			{
+				tex_fout << "\n";
+				std::cout << "\n";
+			}
+		}
+
+		tex_fout << "percentage" << "\t";
+		std::cout << "percentage" << "\t";
+		for (int li = 0; li < tex_label_statistics.size(); ++li)
+		{
+			tex_fout << std::fixed << std::showpoint << std::setprecision(4) << float(tex_label_statistics[li]) / float(sum_pixels);
+			std::cout << std::fixed << std::showpoint << std::setprecision(4) << float(tex_label_statistics[li]) / float(sum_pixels);
+			if (li != tex_label_statistics.size() - 1)
+			{
+				tex_fout << "\t";
+				std::cout << "\t";
+			}
+			else
+			{
+				tex_fout << "\n";
+				std::cout << "\n";
+			}
+		}
+
+		tri_fout << "total pixel" << "\t" << sum_pixels << "\n";
+		std::cout << "total pixel" << "\t" << sum_pixels << "\n";
+
+		tex_fout.close();
+
+		std::cout << "	Done in (s): " << omp_get_wtime() - t_total << '\n' << std::endl;
+	}
+
 	void save_txt_feature_importance
 	(
 		std::vector<std::string> &feature_bank,

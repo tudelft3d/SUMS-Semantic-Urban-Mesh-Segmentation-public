@@ -219,6 +219,8 @@ namespace semantic_mesh_segmentation
 
 	void save_txt_statistics(std::vector<float> &, std::vector<float> &);
 
+	void save_txt_statistics(std::vector<float>&, std::vector<int>&, const double);
+
 	void save_txt_feature_importance(std::vector<std::string> &, std::vector<std::pair<int, int>> &, const int);
 
 	void save_txt_mesh_areas(std::vector<std::pair<std::string, float>> &, std::vector<std::pair<std::string, std::vector<float>>> &);
