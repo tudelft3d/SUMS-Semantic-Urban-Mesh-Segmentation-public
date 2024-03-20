@@ -727,9 +727,14 @@ namespace semantic_mesh_segmentation
 	void construct_superfacet_neighbors
 	(
 		SFMesh* smesh_in,
-		std::map<std::pair<int, int>, std::pair<float, bool>> &spf_edges_maps // key: seg id pairs; value: common length, visited flag
+		std::map<std::pair<int, int>, std::pair<float, bool>> &spf_edges_maps, // key: seg id pairs; value: common length, visited flag
+		std::vector<int> seg_ids
 	)
 	{
+		std::map<int, int> segid_ind;
+		for (int i = 0; i < seg_ids.size(); ++i)
+			segid_ind[seg_ids[i]] = i;
+
 		//ccv
 		int component_num = 0, largest_component = -1;
 		largest_component = separate_connected_components(smesh_in, component_num);
@@ -745,14 +750,14 @@ namespace semantic_mesh_segmentation
 			SFMesh::Halfedge h0 = smesh_in->halfedge(ei, 0);
 			if (!smesh_in->is_boundary(h0))
 			{
-				id_1 = smesh_in->get_face_segment_id[smesh_in->face(h0)];
+				id_1 = segid_ind[smesh_in->get_face_segment_id[smesh_in->face(h0)]];
 				cmp_id_1 = smesh_in->get_face_component_id[smesh_in->face(h0)];
 			}
 
 			SFMesh::Halfedge h1 = smesh_in->halfedge(ei, 1);
 			if (!smesh_in->is_boundary(h1))
 			{
-				id_2 = smesh_in->get_face_segment_id[smesh_in->face(h1)];
+				id_2 = segid_ind[smesh_in->get_face_segment_id[smesh_in->face(h1)]];
 				cmp_id_2 = smesh_in->get_face_component_id[smesh_in->face(h1)];
 			}
 
@@ -885,7 +890,7 @@ namespace semantic_mesh_segmentation
 		if (enable_joint_labeling)
 		{
 			std::map<std::pair<int, int>, std::pair<float, bool>> spf_edges_maps;
-			construct_superfacet_neighbors(tmp_mesh, spf_edges_maps);
+			construct_superfacet_neighbors(tmp_mesh, spf_edges_maps, seg_ids);
 
 			//concatenate features
 			joint_labels_feature_concatenation
@@ -1241,7 +1246,7 @@ namespace semantic_mesh_segmentation
 		if (enable_joint_labeling)
 		{
 			//construct superfacet neighbors
-			construct_superfacet_neighbors(tmp_mesh, spf_edges_maps);
+			construct_superfacet_neighbors(tmp_mesh, spf_edges_maps, seg_ids);
 
 			//concatenate features
 			//To do: check if superfacet id and centers are corresponding!

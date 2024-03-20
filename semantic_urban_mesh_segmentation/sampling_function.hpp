@@ -381,7 +381,7 @@ namespace semantic_mesh_segmentation
 		}
 	}
 
-	void sampling_pointcloud_on_mesh
+	void mesh_poisson_sampling
 	(
 		easy3d::PointCloud*, 
 		SFMesh *, 
@@ -426,6 +426,13 @@ namespace semantic_mesh_segmentation
 		const int
 	);
 
+	void mesh_random_sampling
+	(
+		SFMesh*,
+		easy3d::PointCloud*,
+		const float
+	);
+
 	void perform_uniform_sampling(easy3d::PointCloud*, const int);
 
 	void poission_sampling_with_fixed_number
@@ -437,6 +444,7 @@ namespace semantic_mesh_segmentation
 		const int bestSamplePoolSize = 10,
 		const int MontecarloRate = 20
 	);
+
 }
 
 #endif

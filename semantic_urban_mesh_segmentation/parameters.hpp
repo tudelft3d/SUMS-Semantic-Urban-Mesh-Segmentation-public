@@ -119,6 +119,7 @@ namespace semantic_mesh_segmentation
 	extern operating_mode current_mode;
 
 	//--- sampling parameters ---
+	extern int sampling_method;
 	extern int sampling_strategy;
 	extern int sampling_strategy_training;
 	extern int sampling_strategy_testing;

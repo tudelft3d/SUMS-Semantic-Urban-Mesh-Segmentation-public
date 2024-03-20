@@ -200,6 +200,7 @@ namespace semantic_mesh_segmentation
 	float training_mesh_area = 0.0f;
 	float test_mesh_area = 0.0f;
 	int train_test_predict_val = -1;
+	int sampling_method = 0;//0: randomg sampling; 1: poisson-disk sampling
 	int sampling_strategy = -1;
 	double duplicates_precision = 1E-3;
 	int sp_size = 5;

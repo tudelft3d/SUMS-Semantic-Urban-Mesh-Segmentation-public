@@ -1729,6 +1729,11 @@ namespace semantic_mesh_segmentation
 						if (param_value != "default")
 							sub_batch_size = std::stoi(param_value);
 					}
+					else if (param_name == "sampling_method")
+					{
+						if (param_value != "default")
+							sampling_method = std::stoi(param_value);
+					}
 					else if (param_name == "sampling_strategy_training")
 					{
 						if (param_value != "default")

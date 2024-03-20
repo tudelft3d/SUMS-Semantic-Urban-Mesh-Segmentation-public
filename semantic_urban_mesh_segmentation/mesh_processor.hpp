@@ -130,7 +130,8 @@ namespace semantic_mesh_segmentation
 	void construct_superfacet_neighbors
 	(
 		SFMesh*,
-		std::map<std::pair<int, int>, std::pair<float, bool>> & 
+		std::map<std::pair<int, int>, std::pair<float, bool>> & ,
+		std::vector<int>
 	);
 
 	void training_feature_process_single_tiles

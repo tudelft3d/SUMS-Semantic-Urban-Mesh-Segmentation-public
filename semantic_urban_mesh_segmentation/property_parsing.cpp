@@ -72,7 +72,7 @@ namespace semantic_mesh_segmentation
 		face_center_cloud->add_vertex_property<vec3>("v:normal");
 		face_center_cloud->get_points_normals = face_center_cloud->get_vertex_property<vec3>("v:normal");
 		PTCloud *face_center_vertices_cloud = new PTCloud;
-		easy3d::PointCloud *initial_sampled_sampled_point_cloud = new easy3d::PointCloud;
+		easy3d::PointCloud *initial_sampled_point_cloud = new easy3d::PointCloud;
 		//Pre-processing color information with different color spaces
 		std::vector<cv::Mat> hsv_maps;
 		for (int i = 0; i < texture_maps_in.size(); i++)
@@ -91,7 +91,7 @@ namespace semantic_mesh_segmentation
 					get_vert_visited[vi] = true;
 					face_center_vertices_cloud->add_vertex(smesh_in->get_points_coord[vi]);
 					if (sampling_strategy == 2 || sampling_strategy == 4)
-						initial_sampled_sampled_point_cloud->add_vertex(smesh_in->get_points_coord[vi]);
+						initial_sampled_point_cloud->add_vertex(smesh_in->get_points_coord[vi]);
 
 					for (auto f_neg : smesh_in->faces(vi))
 					{
@@ -120,18 +120,27 @@ namespace semantic_mesh_segmentation
 			face_center_vertices_cloud->get_points_face_belong_ids[*(--face_center_vertices_cloud->vertices_end())].push_back(fi.idx());
 
 			if (sampling_strategy == 1 || sampling_strategy == 2 || sampling_strategy == 3 || sampling_strategy == 4)
-				initial_sampled_sampled_point_cloud->add_vertex(smesh_in->get_face_center[fi]);
+				initial_sampled_point_cloud->add_vertex(smesh_in->get_face_center[fi]);
 		}
 
 		//point cloud sampling initialization
 		if (sampling_strategy == 0 || sampling_strategy == 3 || sampling_strategy == 4)
-			sampling_pointcloud_on_mesh(initial_sampled_sampled_point_cloud, smesh_in, sampling_point_density);//Require mesh area
+		{
+			if (sampling_method == 1)
+				mesh_poisson_sampling(initial_sampled_point_cloud, smesh_in, sampling_point_density);//Require mesh area
+			else
+				mesh_random_sampling(smesh_in, initial_sampled_point_cloud, sampling_point_density);
+		}
+
 
 		easy3d::PointCloud *initial_ele_sampled_point_cloud = new easy3d::PointCloud;
-		sampling_pointcloud_on_mesh(initial_ele_sampled_point_cloud, smesh_in, ele_sampling_point_density);//Require mesh area
+		if (sampling_method == 1)
+			mesh_poisson_sampling(initial_ele_sampled_point_cloud, smesh_in, ele_sampling_point_density);//Require mesh area
+		else
+			mesh_random_sampling(smesh_in, initial_ele_sampled_point_cloud, ele_sampling_point_density);
 
 		//Adding color and sampled points
-		finalization_sampling_point_cloud(cloud_3d_sampled, cloud_ele, initial_sampled_sampled_point_cloud, initial_ele_sampled_point_cloud);
+		finalization_sampling_point_cloud(cloud_3d_sampled, cloud_ele, initial_sampled_point_cloud, initial_ele_sampled_point_cloud);
 
 		//build kdtrees for face center and texture cloud
 		easy3d::KdTree *tex_tree = new easy3d::KdTree;
@@ -168,7 +177,7 @@ namespace semantic_mesh_segmentation
 
 		delete tex_cloud_temp;
 		delete face_center_vertices_cloud;
-		delete initial_sampled_sampled_point_cloud;
+		delete initial_sampled_point_cloud;
 		delete initial_ele_sampled_point_cloud;
 		delete tex_tree;
 		delete center_cloud_tree;
@@ -280,8 +289,13 @@ namespace semantic_mesh_segmentation
 
 		//point cloud sampling initialization
 		if (sampling_strategy == 0 || sampling_strategy == 3 || sampling_strategy == 4)
-			sampling_pointcloud_on_mesh(initial_sampled_point_cloud, smesh_in, sampling_point_density);//Require mesh area
-
+		{
+			if (sampling_method == 1)
+				mesh_poisson_sampling(initial_sampled_point_cloud, smesh_in, sampling_point_density);//Require mesh area
+			else
+				mesh_random_sampling(smesh_in, initial_sampled_point_cloud, sampling_point_density);
+		}
+			
 		//Adding sampled points
 		finalization_sampling_point_cloud(cloud_3d, initial_sampled_point_cloud);
 

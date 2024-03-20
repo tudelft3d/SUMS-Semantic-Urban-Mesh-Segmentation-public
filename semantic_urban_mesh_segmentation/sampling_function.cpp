@@ -30,7 +30,7 @@
 using namespace easy3d;
 namespace semantic_mesh_segmentation
 {
-	void sampling_pointcloud_on_mesh
+	void mesh_poisson_sampling
 	(
 		easy3d::PointCloud* possion_cloud,
 		SFMesh *smesh_out,
@@ -234,6 +234,28 @@ namespace semantic_mesh_segmentation
 		int expected_number = sampling_points_number;
 		if (mesh_sampling_points_number > 0)
 			expected_number = mesh_sampling_points_number;
+		int new_sampling_point_number = std::ceil(float(expected_number) * (1.0f + 10.0f * 0.02));
+		for (auto& fd : mesh->faces())
+		{
+			int fd_sampling_points_number = new_sampling_point_number * (mesh->get_face_area[fd] / mesh->mesh_area);
+			fd_sampling_points_number = fd_sampling_points_number < 1 ? 1 : fd_sampling_points_number;
+			face_random_sampling(mesh, fd, sampled_cloud, fd_sampling_points_number);
+		}
+
+		perform_uniform_sampling(sampled_cloud, mesh_sampling_points_number);
+	}
+
+	void mesh_random_sampling
+	(
+		SFMesh* mesh,
+		easy3d::PointCloud* sampled_cloud,
+		const float point_density
+	)
+	{
+		int mesh_sampling_points_number = int(mesh->mesh_area * point_density);
+		std::cout << "sampling_points_number = " << mesh_sampling_points_number << std::endl;
+
+		int expected_number = mesh_sampling_points_number;
 		int new_sampling_point_number = std::ceil(float(expected_number) * (1.0f + 10.0f * 0.02));
 		for (auto& fd : mesh->faces())
 		{
