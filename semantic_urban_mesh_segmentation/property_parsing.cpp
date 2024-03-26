@@ -510,12 +510,12 @@ namespace semantic_mesh_segmentation
 			smesh->get_face_truth_label = smesh->get_face_property<int>("f:" + label_definition);
 		}
 
-		if (smesh->get_face_property<int>("f:face_predict"))
-			smesh->get_face_predict_label = smesh->get_face_property<int>("f:face_predict");
+		if (smesh->get_face_property<int>("f:label_predict"))
+			smesh->get_face_predict_label = smesh->get_face_property<int>("f:label_predict");
 		else
 		{
-			smesh->add_face_property<int>("f:face_predict", -1);
-			smesh->get_face_predict_label = smesh->get_face_property<int>("f:face_predict");
+			smesh->add_face_property<int>("f:label_predict", -1);
+			smesh->get_face_predict_label = smesh->get_face_property<int>("f:label_predict");
 		}
 
 		if (smesh->get_face_property<int>("f:face_segment_id"))

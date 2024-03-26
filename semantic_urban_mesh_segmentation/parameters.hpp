@@ -62,7 +62,11 @@ namespace semantic_mesh_segmentation
 		Extract_semantic_component,
 		Extract_texture_cluster_pcl,
 		Convert_texture_cluster_pcl_to_mesh,
-		Generate_semantic_sampled_points_v2
+		Generate_semantic_sampled_points_v2,
+		Evaluation_SOTA_v2,
+		Process_semantic_pcl_v2,
+		Data_evaluation_for_all_tiles_config_v2,
+		Data_evaluation_for_all_tiles_v2
 	};
 
 	//--- global variables for point cloud sampling ---
@@ -71,6 +75,9 @@ namespace semantic_mesh_segmentation
 	extern int sampling_points_number;
 	extern float sampling_point_density;
 	extern float ele_sampling_point_density;
+	extern int sampling_eval;
+	extern bool filter_unknow;
+	extern int translation_strategy;
 	extern int processing_mode;
 	extern std::string label_definition;
 	extern bool use_binary;

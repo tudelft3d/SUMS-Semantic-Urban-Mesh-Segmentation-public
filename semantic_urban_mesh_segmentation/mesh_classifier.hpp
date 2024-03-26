@@ -196,6 +196,14 @@ namespace semantic_mesh_segmentation
 		const int m = -1
 	);
 
+	void evaluation_all_test_data
+	(
+		Label_set&,
+		std::vector<int>&,
+		std::vector<int>&,
+		const int m = -1
+	);
+
 	void joint_labeling_energy
 	(
 		std::map<std::pair<int, int>, std::pair<float, bool>> &,

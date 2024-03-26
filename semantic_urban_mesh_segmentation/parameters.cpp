@@ -110,6 +110,9 @@ namespace semantic_mesh_segmentation
 	//settings for sampled point clouds
 	float sampling_point_density = 0.5f; //0.1f, 0.25f (faster, lower accuracy), 0.5f/3.0f (2 times slower, higher accuracy)
 	float ele_sampling_point_density = 0.1f; //0.1f (faster, lower accuracy), 0.5f (2 times slower, higher accuracy)
+	int sampling_eval = 0;
+	bool filter_unknow = true;
+	int translation_strategy = 0;
 
 	//settings for over-segmentation
 	bool use_existing_mesh_segments_on_training = false; //control to use region growing or (other mesh segments or facets)
@@ -391,7 +394,8 @@ namespace semantic_mesh_segmentation
 		"sota/",//8
 		"sampled_pointcloud/", //9
 		"semantic_components/", //10
-		"sampled_pcl_v2/" //11
+		"sampled_pcl_v2/", //11
+		"semantic_pointcloud/" //12
 	};
 
 	std::vector<std::string> pcl_folder_names
@@ -400,7 +404,7 @@ namespace semantic_mesh_segmentation
 		"texture_based/",  //1
 		"face_cen_pcl/",   //2
 		"random_pcl/",     //3
-		"possion_pcl/",    //4
+		"poisson_pcl/",    //4
 		"texsp_pcl/"       //5
 	};
 

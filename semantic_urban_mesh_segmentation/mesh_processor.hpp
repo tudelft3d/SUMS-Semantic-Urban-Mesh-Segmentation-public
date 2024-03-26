@@ -202,6 +202,22 @@ namespace semantic_mesh_segmentation
 		PTCloud *
 	);
 
+	void face_labels_assign_based_on_radius_votes_and_knn
+	(
+		SFMesh* ,
+		PointCloud* 
+	);
+
+	void filter_unclassified_points
+	(
+		PointCloud* 
+	);
+
+	void translate_point_clouds
+	(
+		PointCloud* semantic_pcl
+	);
+
 	void parsing_semantics_from_labelstring
 	(
 		SFMesh*,
@@ -231,6 +247,11 @@ namespace semantic_mesh_segmentation
 	);
 
 	void semantic_pcl_process_single_tiles
+	(
+		const int
+	);
+
+	void semantic_pcl_process_single_tiles_v2
 	(
 		const int
 	);
@@ -274,6 +295,45 @@ namespace semantic_mesh_segmentation
 		SFMesh*,
 		PointCloud*,
 		PTCloud* = nullptr
+	);
+
+	void face_labels_assign_based_on_radius_votes_and_knn
+	(
+		SFMesh*,
+		PointCloud*
+	);
+
+	void processing_semantic_pcl_with_texture_masks
+	(
+		SFMesh* ,
+		PointCloud* ,
+		std::vector<cv::Mat>&,
+		const std::vector<cv::Mat>& 
+	);
+
+	void processing_semantic_pcl_with_texture_sp
+	(
+		SFMesh* ,
+		PointCloud* ,
+		easy3d::PointCloud* ,
+		std::vector<cv::Mat>&,
+		const std::vector<cv::Mat>& ,
+		const std::vector<cv::Mat>& 
+	);
+
+	void collect_semantic_labels
+	(
+		std::vector<int>& ,
+		std::vector<int>& ,
+		std::vector<float>& ,
+		const int 
+	);
+
+	void collect_semantic_labels_with_texture_mask
+	(
+		std::vector<int>& ,
+		std::vector<int>& ,
+		const int 
 	);
 
 	void compute_feature_diversity

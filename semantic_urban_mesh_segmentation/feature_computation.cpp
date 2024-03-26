@@ -707,7 +707,7 @@ namespace semantic_mesh_segmentation
 		std::map<int, int> spid_vd_map;
 		for (auto vd : tex_sp_pcl->vertices())
 		{
-			spid_vd_map[get_pcl_sp_id[vd]] =vd.idx();
+			spid_vd_map[get_pcl_sp_id[vd]] = vd.idx();
 		}
 
 		// initialize texture mask

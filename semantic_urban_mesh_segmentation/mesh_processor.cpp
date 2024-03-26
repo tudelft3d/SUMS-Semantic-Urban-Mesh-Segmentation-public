@@ -1516,6 +1516,173 @@ namespace semantic_mesh_segmentation
 		delete tree_3d;
 	}
 
+	void filter_unclassified_points
+	(
+		PointCloud* semantic_pcl
+	)
+	{
+		std::string label_s = "v:" + label_string;
+		auto get_pcl_labels = semantic_pcl->get_vertex_property<int>(label_s);
+		auto get_pcl_coord = semantic_pcl->get_vertex_property<easy3d::vec3>("v:point");
+		auto get_pcl_color = semantic_pcl->get_vertex_property<easy3d::vec3>("v:color");
+
+		PointCloud* semantic_pcl_cp = new PointCloud;
+		semantic_pcl_cp->add_vertex_property<int>("v:label", -1);
+		auto get_cp_pcl_labels = semantic_pcl_cp->get_vertex_property<int>("v:label");
+		semantic_pcl_cp->add_vertex_property<easy3d::vec3>("v:color", easy3d::vec3());
+		auto get_cp_pcl_color = semantic_pcl_cp->get_vertex_property<easy3d::vec3>("v:color");
+		for (auto vd : semantic_pcl->vertices())
+		{
+			if (get_pcl_labels[vd] > 0)
+			{
+				auto cur_vd = semantic_pcl_cp->add_vertex(get_pcl_coord[vd]);
+				get_cp_pcl_labels[cur_vd] = get_pcl_labels[vd];
+				get_cp_pcl_color[cur_vd] = get_pcl_color[vd];
+			}
+		}
+
+		easy3d::KdTree* tree_cp = new easy3d::KdTree;
+		Build_kdtree(semantic_pcl_cp, tree_cp);
+
+		for (auto vd : semantic_pcl->vertices())
+		{
+			if (get_pcl_labels[vd] == 0)
+			{
+				auto vd_nearest_i = tree_cp->find_closest_point(get_pcl_coord[vd]);
+				easy3d::PointCloud::Vertex vd_nearest(vd_nearest_i);
+				get_pcl_labels[vd] = get_cp_pcl_labels[vd_nearest];
+				get_pcl_color[vd] = get_cp_pcl_color[vd_nearest];
+			}
+		}
+
+		delete tree_cp;
+		delete semantic_pcl_cp;
+	}
+
+	void translate_point_clouds
+	(
+		PointCloud* semantic_pcl,
+		PointCloud* sampled_pcl
+	)
+	{
+		auto get_sampled_pcl_coord = sampled_pcl->get_vertex_property<easy3d::vec3>("v:point");
+		easy3d::vec3 trans_pt = sampled_pcl->points()[0];
+		if (translation_strategy == 2)
+		{
+			easy3d::vec3 min_coord(FLT_MAX, FLT_MAX, FLT_MAX);
+			for (auto vd : sampled_pcl->vertices())
+			{
+				min_coord.x = min_coord.x < get_sampled_pcl_coord[vd].x ? min_coord.x : get_sampled_pcl_coord[vd].x;
+				min_coord.y = min_coord.y < get_sampled_pcl_coord[vd].y ? min_coord.y : get_sampled_pcl_coord[vd].y;
+				min_coord.z = min_coord.z < get_sampled_pcl_coord[vd].z ? min_coord.z : get_sampled_pcl_coord[vd].z;
+			}
+			trans_pt.x = min_coord.x;
+			trans_pt.y = min_coord.y;
+			trans_pt.z = min_coord.z;
+		}
+		std::string label_s = "v:" + label_string;
+		auto get_pcl_labels = semantic_pcl->get_vertex_property<int>(label_s);
+		auto get_pcl_coord = semantic_pcl->get_vertex_property<easy3d::vec3>("v:point");
+		auto get_pcl_color = semantic_pcl->get_vertex_property<easy3d::vec3>("v:color");
+
+		PointCloud* semantic_pcl_trans = new PointCloud;
+		semantic_pcl_trans->add_vertex_property<int>("v:label", -1);
+		auto get_trans_pcl_labels = semantic_pcl_trans->get_vertex_property<int>("v:label");
+		semantic_pcl_trans->add_vertex_property<easy3d::vec3>("v:color", easy3d::vec3());
+		auto get_trans_pcl_color = semantic_pcl_trans->get_vertex_property<easy3d::vec3>("v:color");
+		for (auto vd : semantic_pcl->vertices())
+		{
+			auto cur_vd = semantic_pcl_trans->add_vertex(get_pcl_coord[vd] + trans_pt);
+			get_trans_pcl_labels[cur_vd] = get_pcl_labels[vd];
+			get_trans_pcl_color[cur_vd] = get_pcl_color[vd];
+		}
+
+		auto get_trans_pcl_coord = semantic_pcl_trans->get_vertex_property<easy3d::vec3>("v:point");
+		semantic_pcl->clear();
+		for (auto vd : semantic_pcl_trans->vertices())
+		{
+			auto cur_vd = semantic_pcl->add_vertex(get_trans_pcl_coord[vd]);
+			get_pcl_labels[cur_vd] = get_trans_pcl_labels[vd];
+			get_pcl_color[cur_vd] = get_trans_pcl_color[vd];
+		}
+
+		delete semantic_pcl_trans;
+	}
+
+	void face_labels_assign_based_on_radius_votes_and_knn
+	(
+		SFMesh* smesh_in,
+		PointCloud* semantic_pcl
+	)
+	{
+		std::string label_s = "v:" + label_string;
+		auto get_pcl_coord = semantic_pcl->get_vertex_property<easy3d::vec3>("v:point");
+		auto get_pcl_labels = semantic_pcl->get_vertex_property<int>(label_s);
+
+		easy3d::KdTree* tree_3d = new easy3d::KdTree;
+		Build_kdtree(semantic_pcl, tree_3d);
+
+		//get predict information from SOTA point cloud
+		bool has_pt_in_triangle = false;
+		for (auto fdx : smesh_in->faces())
+		{
+			std::vector<int> fd_label_votes;
+			fd_label_votes.resize(labels_name.size() + 1, 0);
+
+			easy3d::vec3 fd_cen(0.0f, 0.0f, 0.0f);
+			for (auto vd : smesh_in->vertices(fdx))
+				fd_cen += smesh_in->get_points_coord[vd];
+			fd_cen /= 3.0f;
+			
+			if (sampling_eval != 0)
+			{
+				Plane plane_tri = Plane(Point_3(fd_cen.x, fd_cen.y, fd_cen.z),
+					Vector_3(smesh_in->get_face_normals[fdx].x, smesh_in->get_face_normals[fdx].y, smesh_in->get_face_normals[fdx].z));
+				double max_radius = 0.0f;
+				std::vector<double> U_vec, V_vec;
+				for (auto vd : smesh_in->vertices(fdx))
+				{
+					double dis_tmp = easy3d::distance2(smesh_in->get_points_coord[vd], fd_cen);
+					max_radius = max_radius > dis_tmp ? max_radius : dis_tmp;
+					Point_2 p_proj_cgal = plane_tri.to_2d(Point_3(smesh_in->get_points_coord[vd].x, smesh_in->get_points_coord[vd].y, smesh_in->get_points_coord[vd].z));
+					U_vec.push_back(p_proj_cgal.x());
+					V_vec.push_back(p_proj_cgal.y());
+				}
+
+				std::vector<int> neighbors;
+				tree_3d->find_points_in_radius(fd_cen, max_radius, neighbors);
+				if (!neighbors.empty())
+				{
+					for (int ni = 0; ni < neighbors.size(); ++ni)
+					{
+						easy3d::PointCloud::Vertex vd_nearst(neighbors[ni]);
+						easy3d::vec3 p_nearest = get_pcl_coord[vd_nearst];
+						Point_2 p_proj_cgal = plane_tri.to_2d(Point_3(p_nearest.x, p_nearest.y, p_nearest.z));
+						std::vector<double> P = { p_proj_cgal.x(), p_proj_cgal.y() };
+						if (PointinTriangle(U_vec, V_vec, P))
+						{
+							has_pt_in_triangle = true;
+							fd_label_votes[get_pcl_labels[vd_nearst]] += 1;
+						}
+					}
+				}
+			}
+						
+			if (!has_pt_in_triangle)
+			{
+				auto vd_nearest_i = tree_3d->find_closest_point(fd_cen);
+				easy3d::PointCloud::Vertex vd_nearest(vd_nearest_i);
+				fd_label_votes[get_pcl_labels[vd_nearest]] += 1;
+			}
+
+			auto max_element_iter = std::max_element(fd_label_votes.begin(), fd_label_votes.end());
+			smesh_in->get_face_predict_label[fdx] = std::distance(fd_label_votes.begin(), max_element_iter);
+			smesh_in->get_face_color[fdx] = labels_color[smesh_in->get_face_predict_label[fdx] - 1];
+		}
+
+		delete tree_3d;
+	}
+
 	void parsing_semantics_from_labelstring
 	(
 		SFMesh* smesh_in,
@@ -1706,6 +1873,221 @@ namespace semantic_mesh_segmentation
 		}
 	}
 
+	void processing_semantic_pcl_with_texture_masks
+	(
+		SFMesh* mesh_in,
+		PointCloud* semantic_pcl,
+		std::vector<cv::Mat>& texture_mask_maps_pred,
+		const std::vector<cv::Mat>& texture_maps
+	)
+	{
+		auto get_pcl_label = semantic_pcl->get_vertex_property<int>("v:label");
+		easy3d::KdTree* tree_3d = new easy3d::KdTree;
+		Build_kdtree(semantic_pcl, tree_3d);
+
+		// initialize texture mask
+		for (int ti = 0; ti < texture_maps.size(); ++ti)
+		{
+			cv::Mat ti_mask = cv::Mat::zeros(texture_maps[ti].rows, texture_maps[ti].cols, texture_maps[ti].type());
+			ti_mask.setTo(cv::Scalar(255, 255, 255));
+			texture_mask_maps_pred.push_back(ti_mask);
+		}
+
+		// paring labels
+		for (auto& fd : mesh_in->faces())
+		{
+			mesh_in->get_face_property<easy3d::vec3>("f:color")[fd] = easy3d::vec3();
+			int texture_id = mesh_in->get_face_texnumber[fd];
+			int width = texture_maps[texture_id].cols;
+			int height = texture_maps[texture_id].rows;
+
+			std::vector<easy3d::vec2> uv_triangle;
+			std::vector<double> U_vec, V_vec, UL_vec, VL_vec;
+			std::vector<easy3d::vec3> coord3d_triangle;
+			for (auto& vd : mesh_in->vertices(fd))
+				coord3d_triangle.push_back(mesh_in->get_points_coord[vd]);
+
+			U_vec.push_back(mesh_in->get_face_texcoord[fd][0]);
+			U_vec.push_back(mesh_in->get_face_texcoord[fd][2]);
+			U_vec.push_back(mesh_in->get_face_texcoord[fd][4]);
+			V_vec.push_back(mesh_in->get_face_texcoord[fd][1]);
+			V_vec.push_back(mesh_in->get_face_texcoord[fd][3]);
+			V_vec.push_back(mesh_in->get_face_texcoord[fd][5]);
+
+			uv_triangle.emplace_back(U_vec[0], V_vec[0]);
+			uv_triangle.emplace_back(U_vec[1], V_vec[1]);
+			uv_triangle.emplace_back(U_vec[2], V_vec[2]);
+
+			UL_vec.insert(UL_vec.end(), U_vec.begin(), U_vec.end());
+			VL_vec.insert(VL_vec.end(), V_vec.begin(), V_vec.end());
+
+			std::pair<int, int> uv_dis;
+			std::pair<double, double> uv_min;
+			enlarge_uv_triangle(UL_vec, VL_vec, uv_dis, uv_min, width, height);
+			std::vector<int> fd_label_votes;
+			fd_label_votes.resize(labels_name.size() + 1, 0);
+
+			for (int u_i = 0; u_i < uv_dis.first; ++u_i)
+			{
+				for (int v_i = 0; v_i < uv_dis.second; ++v_i)
+				{
+					std::vector<double> P =
+					{
+						uv_min.first + double(u_i) / double(width),
+						uv_min.second + double(v_i) / double(height)
+					};
+
+					if (P[0] > 1.0f || P[0] < 0.0f || P[1] > 1.0f || P[1] < 0.0f)
+					{
+						P.clear();
+						continue;
+					}
+
+					if (PointinTriangle(UL_vec, VL_vec, P))
+					{
+						easy3d::vec2 newcoord(P[0], P[1]);
+						easy3d::vec3 current_3d;
+
+						uv_to_3D_coordinates(uv_triangle, coord3d_triangle, newcoord, current_3d);
+						int vnearst_i = tree_3d->find_closest_point(current_3d);
+						easy3d::PointCloud::Vertex vd_nearst(vnearst_i);
+						int cur_label = get_pcl_label[vd_nearst];
+						if (cur_label < labels_name.size() + 1)
+						{
+							fd_label_votes[cur_label] += 1;
+						}
+						else
+						{
+							easy3d::vec3 tex_label_color = 255.0f * tex_labels_color[cur_label - labels_color.size() - 1];
+
+							texture_mask_maps_pred[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * texture_mask_maps_pred[texture_id].rows - 1, newcoord[0] * texture_mask_maps_pred[texture_id].cols) =
+								cv::Vec3b(int(tex_label_color.z), int(tex_label_color.y), int(tex_label_color.x));
+
+							fd_label_votes[tex_fd_label[cur_label - labels_color.size() - 1]] += 1;
+							//easy3d::vec3 fd_label_color = labels_color[tex_fd_label[cur_label - labels_color.size() - 1]];
+							//mesh_in->get_face_color[fd] = fd_label_color;
+						}
+					}
+				}
+			}
+
+			auto max_element_iter = std::max_element(fd_label_votes.begin(), fd_label_votes.end());
+			mesh_in->get_face_property<int>("f:label_predict")[fd] = std::distance(fd_label_votes.begin(), max_element_iter);
+			mesh_in->get_face_property<easy3d::vec3>("f:color")[fd] = labels_color[mesh_in->get_face_property<int>("f:label_predict")[fd] - 1];
+		}
+
+		delete tree_3d;
+	}
+
+	void processing_semantic_pcl_with_texture_sp
+	(
+		SFMesh* mesh_in,
+		PointCloud* semantic_pcl,
+		easy3d::PointCloud* tex_sp_pcl,
+		std::vector<cv::Mat>& texture_mask_maps_pred,
+		const std::vector<cv::Mat>& texture_maps,
+		const std::vector<cv::Mat>& texture_sps
+	)
+	{
+		// build map
+		auto get_pcl_sp_id = tex_sp_pcl->get_vertex_property<int>("v:sp_id");
+		auto get_pcl_label = semantic_pcl->get_vertex_property<int>("v:label");
+		std::map<int, int> spid_vd_map;
+		for (auto vd : tex_sp_pcl->vertices())
+			spid_vd_map[get_pcl_sp_id[vd]] = vd.idx();
+
+		// initialize texture mask
+		for (int ti = 0; ti < texture_maps.size(); ++ti)
+		{
+			cv::Mat ti_mask = cv::Mat::zeros(texture_maps[ti].rows, texture_maps[ti].cols, texture_maps[ti].type());
+			ti_mask.setTo(cv::Scalar(255, 255, 255));
+			texture_mask_maps_pred.push_back(ti_mask);
+		}
+
+		// paring labels
+		for (auto& fd : mesh_in->faces())
+		{
+			mesh_in->get_face_property<easy3d::vec3>("f:color")[fd] = easy3d::vec3();
+			int texture_id = mesh_in->get_face_texnumber[fd];
+			int width = texture_maps[texture_id].cols;
+			int height = texture_maps[texture_id].rows;
+
+			std::vector<easy3d::vec2> uv_triangle;
+			std::vector<double> U_vec, V_vec, UL_vec, VL_vec;
+			std::vector<easy3d::vec3> coord3d_triangle;
+			for (auto& vd : mesh_in->vertices(fd))
+				coord3d_triangle.push_back(mesh_in->get_points_coord[vd]);
+
+			U_vec.push_back(mesh_in->get_face_texcoord[fd][0]);
+			U_vec.push_back(mesh_in->get_face_texcoord[fd][2]);
+			U_vec.push_back(mesh_in->get_face_texcoord[fd][4]);
+			V_vec.push_back(mesh_in->get_face_texcoord[fd][1]);
+			V_vec.push_back(mesh_in->get_face_texcoord[fd][3]);
+			V_vec.push_back(mesh_in->get_face_texcoord[fd][5]);
+
+			uv_triangle.emplace_back(U_vec[0], V_vec[0]);
+			uv_triangle.emplace_back(U_vec[1], V_vec[1]);
+			uv_triangle.emplace_back(U_vec[2], V_vec[2]);
+
+			UL_vec.insert(UL_vec.end(), U_vec.begin(), U_vec.end());
+			VL_vec.insert(VL_vec.end(), V_vec.begin(), V_vec.end());
+
+			std::pair<int, int> uv_dis;
+			std::pair<double, double> uv_min;
+			enlarge_uv_triangle(UL_vec, VL_vec, uv_dis, uv_min, width, height);
+			std::vector<int> fd_label_votes;
+			fd_label_votes.resize(labels_name.size() + 1, 0);
+
+			for (int u_i = 0; u_i < uv_dis.first; ++u_i)
+			{
+				for (int v_i = 0; v_i < uv_dis.second; ++v_i)
+				{
+					std::vector<double> P =
+					{
+						uv_min.first + double(u_i) / double(width),
+						uv_min.second + double(v_i) / double(height)
+					};
+
+					if (P[0] > 1.0f || P[0] < 0.0f || P[1] > 1.0f || P[1] < 0.0f)
+					{
+						P.clear();
+						continue;
+					}
+
+					if (PointinTriangle(UL_vec, VL_vec, P))
+					{
+						easy3d::vec2 newcoord(P[0], P[1]);
+						easy3d::vec3 current_3d;
+
+						uv_to_3D_coordinates(uv_triangle, coord3d_triangle, newcoord, current_3d);
+
+						int current_spid = (int)texture_sps[texture_id].at<int>((1 - newcoord[1]) * texture_maps[texture_id].rows - 1, newcoord[0] * texture_maps[texture_id].cols);
+						easy3d::PointCloud::Vertex current_spvd(spid_vd_map[current_spid]);
+						int cur_label = get_pcl_label[current_spvd];
+
+						if (cur_label < labels_name.size() + 1)
+						{
+							fd_label_votes[cur_label] += 1;
+						}
+						else
+						{
+							easy3d::vec3 tex_label_color = 255.0f * tex_labels_color[cur_label - labels_color.size() - 1];
+							texture_mask_maps_pred[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * texture_mask_maps_pred[texture_id].rows - 1, newcoord[0] * texture_mask_maps_pred[texture_id].cols) =
+								cv::Vec3b(int(tex_label_color.z), int(tex_label_color.y), int(tex_label_color.x));
+							fd_label_votes[tex_fd_label[cur_label - labels_color.size() - 1]] += 1;
+							//easy3d::vec3 fd_label_color = labels_color[tex_fd_label[cur_label - labels_color.size() - 1]];
+							//mesh_in->get_face_color[fd] = fd_label_color;
+						}
+					}
+				}
+			}
+
+			auto max_element_iter = std::max_element(fd_label_votes.begin(), fd_label_votes.end());
+			mesh_in->get_face_property<int>("f:label_predict")[fd] = std::distance(fd_label_votes.begin(), max_element_iter);
+			mesh_in->get_face_property<easy3d::vec3>("f:color")[fd] = labels_color[mesh_in->get_face_property<int>("f:label_predict")[fd] - 1];
+		}
+	}
+
 	//--- processing semantic pcl batch tiles ---
 	void semantic_pcl_process_batch_tiles
 	(
@@ -1792,6 +2174,257 @@ namespace semantic_mesh_segmentation
 		delete smesh_in;
 		delete tmp_pcl;
 		delete spg_semantic_pcl;
+	}
+
+
+	//--- processing semantic pcl single tiles ---
+	void semantic_pcl_process_single_tiles_v2
+	(
+		const int mi
+	)
+	{
+		SFMesh* smesh_in = new SFMesh;
+		std::vector<cv::Mat> texture_maps, 
+			texture_mask_maps_pred, texture_sps;
+		std::cout << "Start to extract from mesh " << base_names[mi] << std::endl;
+
+		//read .ply semantic point cloud
+		PointCloud* semantic_pcl = read_semantic_pointcloud_data(mi);
+		if (semantic_pcl == nullptr)
+		{
+			std::cerr << "File loading failed" << std::endl;
+			throw std::exception();
+		}
+		easy3d::PointCloud* sampled_pcl = read_sampled_pointcloud_data(mi);
+		//translate point clouds
+		if (translation_strategy > 0)
+		{
+			translate_point_clouds(semantic_pcl, sampled_pcl);
+			write_semantic_pointcloud_data(semantic_pcl, "_trans", mi);
+		}
+
+		//filter unclassified if there are any
+		if (filter_unknow)
+			filter_unclassified_points(semantic_pcl);
+
+		if (with_texture_mask)
+		{
+			read_mesh_data(smesh_in, mi, texture_maps);
+
+			if (sampling_eval == 3)
+			{
+				read_texsp_bin(smesh_in, texture_maps, texture_sps, mi);
+				processing_semantic_pcl_with_texture_sp(smesh_in, semantic_pcl, sampled_pcl, texture_mask_maps_pred, texture_maps, texture_sps);
+			}
+			else
+			{
+				processing_semantic_pcl_with_texture_masks(smesh_in, semantic_pcl, texture_mask_maps_pred, texture_maps);
+			}
+
+			write_semantic_mesh_data(smesh_in, mi, texture_mask_maps_pred);
+		}
+		else
+		{
+			read_mesh_data(smesh_in, mi);
+			face_labels_assign_based_on_radius_votes_and_knn(smesh_in, semantic_pcl);
+			write_semantic_mesh_data(smesh_in, mi);
+		}
+
+		delete smesh_in;
+		delete semantic_pcl;
+		delete sampled_pcl;
+	}
+
+	void collect_semantic_labels
+	(
+		std::vector<int>& face_truth_label,
+		std::vector<int>& face_test_label,
+		std::vector<float>& face_area_weighted,
+		const int mi
+	)
+	{
+		//read original mesh
+		SFMesh* smesh_test = new SFMesh;
+		read_test_mesh_data(smesh_test, mi);
+
+		for (auto fd : smesh_test->faces())
+		{
+			if (smesh_test->get_face_truth_label[fd] != 0 && smesh_test->get_face_truth_label[fd] != -1)
+			{
+				if (!ignored_labels_name.empty())
+				{
+					if (!label_ignore[smesh_test->get_face_truth_label[fd] - 1])
+					{
+						int new_pred_label = smesh_test->get_face_predict_label[fd] - 1 - label_shiftdis[smesh_test->get_face_predict_label[fd] - 1];
+						int new_truth_label = smesh_test->get_face_truth_label[fd] - 1 - label_shiftdis[smesh_test->get_face_truth_label[fd] - 1];
+
+						face_truth_label.push_back(new_truth_label);
+						face_test_label.push_back(new_pred_label);
+						face_area_weighted.push_back(FaceArea(smesh_test, fd));
+					}
+				}
+				else
+				{
+					face_truth_label.push_back(smesh_test->get_face_truth_label[fd] - 1);
+					face_test_label.push_back(smesh_test->get_face_predict_label[fd] - 1);
+					face_area_weighted.push_back(FaceArea(smesh_test, fd));
+				}
+			}
+		}
+
+		//output error map
+		if (save_error_map)
+			error_map(smesh_test, mi);
+
+		delete smesh_test;
+	}
+
+	void collect_semantic_labels_with_texture_mask
+	(
+		std::vector<int>& pix_truth_label,
+		std::vector<int>& pix_test_label,
+		const int mi
+	)
+	{
+		SFMesh* mesh_in = new SFMesh;
+		read_test_mesh_data(mesh_in, mi);
+
+		std::vector<cv::Mat> gt_texture_mask_maps, pred_texture_mask_maps;
+		read_mesh_texture_masks(mesh_in, gt_texture_mask_maps, mi);
+		read_mesh_texture_masks(mesh_in, pred_texture_mask_maps, mi, true);
+
+		// initialize texture mask
+		std::vector<cv::Mat> texture_mask_error_map;
+		if (save_error_map) 
+		{
+			for (int ti = 0; ti < pred_texture_mask_maps.size(); ++ti)
+			{
+				cv::Mat ti_mask = cv::Mat::zeros(texture_mask_error_map[ti].rows, texture_mask_error_map[ti].cols, texture_mask_error_map[ti].type());
+				ti_mask.setTo(cv::Scalar(0, 255, 0));
+				texture_mask_error_map.push_back(ti_mask);
+			}
+		}
+
+		// paring labels
+		for (auto& fd : mesh_in->faces())
+		{
+			if (mesh_in->get_face_truth_label[fd] != 0 && mesh_in->get_face_truth_label[fd] != -1)
+			{
+				mesh_in->get_face_property<easy3d::vec3>("f:color")[fd] = easy3d::vec3();
+				int texture_id = mesh_in->get_face_texnumber[fd];
+				int width = gt_texture_mask_maps[texture_id].cols;
+				int height = gt_texture_mask_maps[texture_id].rows;
+
+				std::vector<easy3d::vec2> uv_triangle;
+				std::vector<double> U_vec, V_vec, UL_vec, VL_vec;
+				std::vector<easy3d::vec3> coord3d_triangle;
+				for (auto& vd : mesh_in->vertices(fd))
+					coord3d_triangle.push_back(mesh_in->get_points_coord[vd]);
+
+				U_vec.push_back(mesh_in->get_face_texcoord[fd][0]);
+				U_vec.push_back(mesh_in->get_face_texcoord[fd][2]);
+				U_vec.push_back(mesh_in->get_face_texcoord[fd][4]);
+				V_vec.push_back(mesh_in->get_face_texcoord[fd][1]);
+				V_vec.push_back(mesh_in->get_face_texcoord[fd][3]);
+				V_vec.push_back(mesh_in->get_face_texcoord[fd][5]);
+
+				uv_triangle.emplace_back(U_vec[0], V_vec[0]);
+				uv_triangle.emplace_back(U_vec[1], V_vec[1]);
+				uv_triangle.emplace_back(U_vec[2], V_vec[2]);
+
+				UL_vec.insert(UL_vec.end(), U_vec.begin(), U_vec.end());
+				VL_vec.insert(VL_vec.end(), V_vec.begin(), V_vec.end());
+
+				std::pair<int, int> uv_dis;
+				std::pair<double, double> uv_min;
+				enlarge_uv_triangle(UL_vec, VL_vec, uv_dis, uv_min, width, height);
+
+
+				for (int u_i = 0; u_i < uv_dis.first; ++u_i)
+				{
+					for (int v_i = 0; v_i < uv_dis.second; ++v_i)
+					{
+						std::vector<double> P =
+						{
+							uv_min.first + double(u_i) / double(width),
+							uv_min.second + double(v_i) / double(height)
+						};
+
+						if (P[0] > 1.0f || P[0] < 0.0f || P[1] > 1.0f || P[1] < 0.0f)
+						{
+							P.clear();
+							continue;
+						}
+
+						if (PointinTriangle(UL_vec, VL_vec, P))
+						{
+							easy3d::vec2 newcoord(P[0], P[1]);
+							easy3d::vec3 current_3d;
+
+							uv_to_3D_coordinates(uv_triangle, coord3d_triangle, newcoord, current_3d);
+
+							if (std::isnan(current_3d.x) || std::isnan(current_3d.y) || std::isnan(current_3d.z))
+								continue;
+
+							float Rf = (float)gt_texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * gt_texture_mask_maps[texture_id].rows - 1, newcoord[0] * gt_texture_mask_maps[texture_id].cols)[2];
+							float Gf = (float)gt_texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * gt_texture_mask_maps[texture_id].rows - 1, newcoord[0] * gt_texture_mask_maps[texture_id].cols)[1];
+							float Bf = (float)gt_texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * gt_texture_mask_maps[texture_id].rows - 1, newcoord[0] * gt_texture_mask_maps[texture_id].cols)[0];
+
+							int cur_label = mesh_in->get_face_truth_label[fd];
+							int gt_pix_label = mesh_in->get_face_truth_label[fd], pred_pix_label = mesh_in->get_face_predict_label[fd];
+							if (cur_label < labels_name.size())
+							{
+								pix_truth_label.push_back(gt_pix_label - 1);
+								pix_test_label.push_back(pred_pix_label - 1);
+							}
+							else
+							{
+
+								float gt_Rf_mask = (float)gt_texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * gt_texture_mask_maps[texture_id].rows - 1, newcoord[0] * gt_texture_mask_maps[texture_id].cols)[2];
+								float gt_Gf_mask = (float)gt_texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * gt_texture_mask_maps[texture_id].rows - 1, newcoord[0] * gt_texture_mask_maps[texture_id].cols)[1];
+								float gt_Bf_mask = (float)gt_texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * gt_texture_mask_maps[texture_id].rows - 1, newcoord[0] * gt_texture_mask_maps[texture_id].cols)[0];
+								for (int tex_ci = 0; tex_ci < tex_labels_color.size(); ++tex_ci)
+								{
+									if (std::abs(gt_Rf_mask - 255.0f * tex_labels_color[tex_ci][0]) <= 1.0f &&
+										std::abs(gt_Gf_mask - 255.0f * tex_labels_color[tex_ci][1]) <= 1.0f &&
+										std::abs(gt_Bf_mask - 255.0f * tex_labels_color[tex_ci][2]) <= 1.0f)
+									{
+										gt_pix_label = labels_color.size() + tex_ci + 1;
+									}
+								}
+
+								float pred_Rf_mask = (float)pred_texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * pred_texture_mask_maps[texture_id].rows - 1, newcoord[0] * pred_texture_mask_maps[texture_id].cols)[2];
+								float pred_Gf_mask = (float)pred_texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * pred_texture_mask_maps[texture_id].rows - 1, newcoord[0] * pred_texture_mask_maps[texture_id].cols)[1];
+								float pred_Bf_mask = (float)pred_texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * pred_texture_mask_maps[texture_id].rows - 1, newcoord[0] * pred_texture_mask_maps[texture_id].cols)[0];
+								for (int tex_ci = 0; tex_ci < tex_labels_color.size(); ++tex_ci)
+								{
+									if (std::abs(pred_Rf_mask - 255.0f * tex_labels_color[tex_ci][0]) <= 1.0f &&
+										std::abs(pred_Gf_mask - 255.0f * tex_labels_color[tex_ci][1]) <= 1.0f &&
+										std::abs(pred_Bf_mask - 255.0f * tex_labels_color[tex_ci][2]) <= 1.0f)
+									{
+										pred_pix_label = labels_color.size() + tex_ci + 1;
+									}
+								}
+
+								pix_truth_label.push_back(gt_pix_label - 1);
+								pix_test_label.push_back(pred_pix_label - 1);
+							}
+
+							if (gt_pix_label == pred_pix_label || gt_pix_label == 0 || gt_pix_label == 1)
+								;
+							else
+								texture_mask_error_map[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * texture_mask_error_map[texture_id].rows - 1, newcoord[0] * texture_mask_error_map[texture_id].cols) =
+								cv::Vec3b(int(0), int(0), int(255));
+						}
+					}
+				}
+			}
+		}
+
+		if (save_error_map)
+			write_error_mesh_texture_masks(mesh_in, texture_mask_error_map, mi);
+
+		delete mesh_in;
 	}
 
 	//--- collect input meshes ---//

@@ -1073,6 +1073,17 @@ namespace semantic_mesh_segmentation
 			break;
 		}
 
+		//Evaluation on SOTA method
+		case operating_mode::Evaluation_SOTA_v2:
+		{
+			current_mode = operating_mode::Evaluation_SOTA_v2;
+			processing_mode = 1;
+
+			run(operating_mode::Process_semantic_pcl_v2);
+			run(operating_mode::Data_evaluation_for_all_tiles_config_v2);
+			break;
+		}
+
 		case operating_mode::Extract_semantic_component:
 		{
 			current_mode = operating_mode::Extract_semantic_component;
@@ -1255,7 +1266,7 @@ namespace semantic_mesh_segmentation
 
 						//--- read predict point cloud ---
 
-						easy3d::PointCloud* tex_sp_pcl = read_texsp_pointcloud_data(pi);
+						easy3d::PointCloud* tex_sp_pcl = read_sampled_pointcloud_data(pi);
 
 						//--- get superpixels from textures ---
 						read_texsp_bin(smesh, texture_maps, texture_sps, pi);
@@ -1381,8 +1392,142 @@ namespace semantic_mesh_segmentation
 			break;
 		}
 
+		case operating_mode::Process_semantic_pcl_v2:
+		{
+			current_mode = operating_mode::Process_semantic_pcl_v2;
+			std::cout << "--------------------- Parsing semantics from point cloud to mesh ---------------------" << std::endl;
+			if (process_data_selection["test"])
+			{
+				std::cout << "--------------------- Testing Mode ---------------------" << std::endl;
+				train_test_predict_val = 1;
+				get_testing_data();
+				data_path = testing_data_path;
+				base_names = testing_base_names;
+				ply_files = testing_ply_files;
+				file_folders = testing_file_folders;
+				sampling_strategy = sampling_strategy_testing;
 
-		// to do: evaluate texture mesh
+				for (std::size_t pi = 0; pi < base_names.size(); ++pi)
+				{
+					semantic_pcl_process_single_tiles_v2(pi);
+				}
+			}
+
+			if (process_data_selection["predict"])
+			{
+				std::cout << "--------------------- Predicting Mode ---------------------" << std::endl;
+				process_data_selection["test"] = false;
+				train_test_predict_val = 2;
+				get_predicting_data();
+				data_path = predicting_data_path;
+				base_names = predicting_base_names;
+				ply_files = predicting_ply_files;
+				file_folders = predicting_file_folders;
+				sampling_strategy = sampling_strategy_predicting;
+				use_batch_processing = use_batch_processing_on_predicting;
+
+				for (std::size_t pi = 0; pi < base_names.size(); ++pi)
+				{
+					semantic_pcl_process_single_tiles_v2(pi);
+				}
+			}
+
+			if (process_data_selection["validate"])
+			{
+				std::cout << "--------------------- validation Mode ---------------------" << std::endl;
+				train_test_predict_val = 3;
+				get_validation_data();
+				data_path = validation_data_path;
+				base_names = validation_base_names;
+				ply_files = validation_ply_files;
+				file_folders = validation_file_folders;
+				sampling_strategy = sampling_strategy_validation;
+
+				for (std::size_t pi = 0; pi < base_names.size(); ++pi)
+				{
+					semantic_pcl_process_single_tiles_v2(pi);
+				}
+			}
+			break;
+		}
+
+		case operating_mode::Data_evaluation_for_all_tiles_config_v2:
+		{
+			current_mode = operating_mode::Data_evaluation_for_all_tiles_config_v2;
+
+			if (process_data_selection["test"])
+			{
+				std::cout << "--------------------- SOTA Test data evaluation on SUMV2 ---------------------" << std::endl;
+
+				train_test_predict_val = 1;
+				get_testing_data();
+				data_path = testing_data_path;
+				base_names = testing_base_names;
+				ply_files = testing_ply_files;
+				file_folders = testing_file_folders;
+				file_ind_map = testing_file_ind_map;
+				use_batch_processing = use_batch_processing_on_testing;
+
+				run(operating_mode::Data_evaluation_for_all_tiles_v2);
+			}
+
+			if (process_data_selection["validate"])
+			{
+				std::cout << "--------------------- SOTA Validation data evaluation on SUMV2 ---------------------" << std::endl;
+
+				train_test_predict_val = 3;
+				get_validation_data();
+				data_path = validation_data_path;
+				base_names = validation_base_names;
+				ply_files = validation_ply_files;
+				file_folders = validation_file_folders;
+				file_ind_map = validation_file_ind_map;
+				use_batch_processing = use_batch_processing_on_validation;
+				run(operating_mode::Data_evaluation_for_all_tiles_v2);
+			}
+
+			break;
+		}
+
+		case operating_mode::Data_evaluation_for_all_tiles_v2:
+		{
+			current_mode = operating_mode::Data_evaluation_for_all_tiles_v2;
+			//add labels
+			Label_set labels;
+			add_labels(labels);
+
+			//add test data 
+			std::vector<int> num_truth_label, num_test_label;
+			std::vector<float> face_area_weighted;
+			if (!ignored_labels_name.empty())
+				check_ignored_truth_labels();
+
+			for (std::size_t mi = 0; mi < base_names.size(); ++mi)
+			{
+				if (with_texture_mask)
+					collect_semantic_labels_with_texture_mask(num_truth_label, num_test_label, mi);
+				else
+					collect_semantic_labels(num_truth_label, num_test_label, face_area_weighted, mi);
+			}
+
+			if (with_texture_mask)
+				evaluation_all_test_data
+				(
+					labels,
+					num_truth_label,
+					num_test_label
+				);
+			else
+				evaluation_all_test_data
+				(
+					labels,
+					num_truth_label,
+					num_test_label,
+					face_area_weighted
+				);
+
+			break;
+		}
 
 		default:
 		{

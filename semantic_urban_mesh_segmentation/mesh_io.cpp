@@ -318,18 +318,25 @@ namespace semantic_mesh_segmentation
 	}
 
 
-	easy3d::PointCloud* read_texsp_pointcloud_data
+	easy3d::PointCloud* read_sampled_pointcloud_data
 	(
 		const int mi
 	)
 	{
+		int pcl_label_folder = 0;
+		if (with_texture_mask)
+			pcl_label_folder = 1;
+
 		std::ostringstream str_ostemp;
 		str_ostemp
 			<< root_path
+			<< folder_names_level_0[8]
 			<< folder_names_level_0[11]
+			<< pcl_folder_names[pcl_label_folder]
+			<< pcl_folder_names[sampling_eval + 2]
 			<< folder_names_level_1[train_test_predict_val]
 			<< base_names[mi]
-			<< "_texsp_pcl"
+			<< prefixs[sampling_eval + 15]
 			<< ".ply";
 
 		std::string str_temp = str_ostemp.str().data();
@@ -530,7 +537,7 @@ namespace semantic_mesh_segmentation
 			<< root_path
 			<< folder_names_level_0[8]
 			<< sota_folder_path
-			<< folder_names_level_0[10]
+			<< folder_names_level_0[12]
 			<< folder_names_level_1[train_test_predict_val]
 			<< base_names[pi]
 			<< sota_prefixs
@@ -600,12 +607,12 @@ namespace semantic_mesh_segmentation
 			smesh_out->get_face_truth_label = smesh_out->get_face_property<int>("f:" + label_definition);
 		}
 
-		if (smesh_out->get_face_property<int>("f:face_predict"))
-			smesh_out->get_face_predict_label = smesh_out->get_face_property<int>("f:face_predict");
+		if (smesh_out->get_face_property<int>("f:label_predict"))
+			smesh_out->get_face_predict_label = smesh_out->get_face_property<int>("f:label_predict");
 		else
 		{
-			smesh_out->add_face_property<int>("f:face_predict", -1);
-			smesh_out->get_face_predict_label = smesh_out->get_face_property<int>("f:face_predict");
+			smesh_out->add_face_property<int>("f:label_predict", -1);
+			smesh_out->get_face_predict_label = smesh_out->get_face_property<int>("f:label_predict");
 		}
 
 		if (smesh_out->get_face_property<vec3>("f:color"))
@@ -644,7 +651,8 @@ namespace semantic_mesh_segmentation
 	(
 		SFMesh* smesh_in,
 		std::vector<cv::Mat>& texture_mask_maps,
-		const int mi
+		const int mi,
+		bool read_sota
 	)
 	{
 		if (with_texture)
@@ -660,10 +668,20 @@ namespace semantic_mesh_segmentation
 					std::ostringstream texture_mask_str_ostemp;
 					std::string mask_path_tmp;
 					std::vector<std::string> texture_name_splits = Split(tex_i, ".", false);
-					if (file_folders.size() > 1)
-						mask_path_tmp = file_folders[mi] + "mask_" + texture_name_splits[0] + ".png";
+
+					if (read_sota) //SOTA
+					{
+						std::cout << "	Reading SOTA test masks : " << base_names[mi] << std::endl;
+						std::string basic_write_path = root_path + folder_names_level_0[8] + sota_folder_path + folder_names_level_0[4] + folder_names_level_1[train_test_predict_val];
+						mask_path_tmp = basic_write_path + "pred_mask_" + texture_name_splits[0] + ".png";
+					}
 					else
-						mask_path_tmp = file_folders[0] + "mask_" + texture_name_splits[0] + ".png";
+					{
+						if (file_folders.size() > 1)
+							mask_path_tmp = file_folders[mi] + "mask_" + texture_name_splits[0] + ".png";
+						else
+							mask_path_tmp = file_folders[0] + "mask_" + texture_name_splits[0] + ".png";
+					}
 
 					texture_mask_str_ostemp << mask_path_tmp;
 					std::string texture_mask_str_temp = texture_mask_str_ostemp.str().data();
@@ -704,14 +722,22 @@ namespace semantic_mesh_segmentation
 		const int mi
 	)
 	{
+		int pcl_label_folder = 0;
+		if (with_texture_mask)
+			pcl_label_folder = 1;
+
 		for (int ti = 0; ti < smesh_in->textures.size(); ++ti)
 		{
 			auto tex_i = smesh_in->textures[ti];
 			std::vector<std::string> texture_name_splits = Split(tex_i, ".", false);
 			std::ostringstream str_ostemp;
+
 			str_ostemp
 				<< root_path
+				<< folder_names_level_0[8]
 				<< folder_names_level_0[11]
+				<< pcl_folder_names[pcl_label_folder]
+				<< pcl_folder_names[5]
 				<< folder_names_level_1[train_test_predict_val]
 				<< "texsp_"
 				<< texture_name_splits[0]
@@ -885,6 +911,18 @@ namespace semantic_mesh_segmentation
 							else if (param_value == "Generate_semantic_sampled_points_v2")
 							{
 								current_mode = operating_mode::Generate_semantic_sampled_points_v2;
+							}
+							else if (param_value == "Evaluation_SOTA_v2")
+							{
+								current_mode = operating_mode::Evaluation_SOTA_v2;
+							}
+							else if (param_value == "Process_semantic_pcl_v2")
+							{
+								current_mode = operating_mode::Process_semantic_pcl_v2;
+							}
+							else if (param_value == "Data_evaluation_for_all_tiles_config_v2")
+							{
+								current_mode = operating_mode::Data_evaluation_for_all_tiles_config_v2;
 							}
 						}
 					}
@@ -1829,6 +1867,26 @@ namespace semantic_mesh_segmentation
 						if (param_value != "default")
 							duplicates_precision = std::stof(param_value);
 					}
+					else if (param_name == "sampling_eval")
+					{
+						if (param_value != "default")
+							sampling_eval = std::stoi(param_value);
+					}
+					else if (param_name == "filter_unknow")
+					{
+						if (param_value != "default")
+						{
+							if (param_value == "true" || param_value == "True" || param_value == "TRUE")
+								filter_unknow = true;
+							else if (param_value == "false" || param_value == "False" || param_value == "FALSE")
+								filter_unknow = false;
+						}
+					}
+					else if (param_name == "translation_strategy")
+					{
+						if (param_value != "default")
+							translation_strategy = std::stoi(param_value);
+					}
 				}
 
 				++line_number;
@@ -2070,6 +2128,30 @@ namespace semantic_mesh_segmentation
 		std::cout << "	Done in (s): " << omp_get_wtime() - t_total << '\n' << std::endl;
 	}
 
+	void write_semantic_pointcloud_data
+	(
+		easy3d::PointCloud* pcl_in,
+		std::string add_postfix,
+		const int pi
+	)
+	{
+		std::cout << "Start to reading semantic point cloud " << base_names[pi] << std::endl;
+		std::ostringstream str_ostemp;
+		str_ostemp
+			<< root_path
+			<< folder_names_level_0[8]
+			<< sota_folder_path
+			<< folder_names_level_0[12]
+			<< folder_names_level_1[train_test_predict_val]
+			<< base_names[pi]
+			<< sota_prefixs
+			<< add_postfix
+			<< ".ply";
+
+		std::string str_temp = str_ostemp.str().data();
+		char* Path_temp = (char*)str_temp.data();
+		easy3d::PointCloudIO::save(Path_temp, pcl_in, true);
+	}
 	void write_tex_pointcloud_data
 	(
 		PTCloud* pcl_out,
@@ -2379,7 +2461,7 @@ namespace semantic_mesh_segmentation
 				if (!tex_i.empty() && tex_i[tex_i.size() - 1] == '\r')
 					tex_i.erase(tex_i.size() - 1);
 				std::vector<std::string> texture_name_splits = Split(tex_i, ".", false);
-				std::string mask_path_tmp = basic_write_path += "pred_mask_" + texture_name_splits[0] + ".png";
+				std::string mask_path_tmp = basic_write_path + "pred_mask_" + texture_name_splits[0] + ".png";
 
 				std::ostringstream texture_mask_str_ostemp;
 				texture_mask_str_ostemp << mask_path_tmp;
@@ -2389,6 +2471,33 @@ namespace semantic_mesh_segmentation
 		}
 
 		std::cout << "	Done in (s): " << omp_get_wtime() - t_total << '\n' << std::endl;
+	}
+
+	void write_error_mesh_texture_masks
+	(
+		SFMesh* smesh_in,
+		std::vector<cv::Mat>& error_texture_mask_maps,
+		const int mi
+	)
+	{
+		for (int ti = 0; ti < smesh_in->textures.size(); ++ti)
+		{
+			auto tex_i = smesh_in->textures[ti];
+			if (!tex_i.empty() && tex_i[tex_i.size() - 1] == '\r')
+				tex_i.erase(tex_i.size() - 1);
+
+			std::ostringstream texture_mask_str_ostemp;
+			std::string mask_path_tmp;
+			std::vector<std::string> texture_name_splits = Split(tex_i, ".", false);
+
+			std::cout << "	Writing error-map masks : " << base_names[mi] << std::endl;
+			std::string basic_write_path = root_path + folder_names_level_0[8] + sota_folder_path + folder_names_level_0[4] + folder_names_level_1[train_test_predict_val];
+			mask_path_tmp = basic_write_path + "error_mask_" + texture_name_splits[0] + ".png";
+
+			texture_mask_str_ostemp << mask_path_tmp;
+			std::string texture_mask_str_temp = texture_mask_str_ostemp.str().data();
+			cv::imwrite(texture_mask_str_temp, error_texture_mask_maps[ti]);
+		}
 	}
 
 	void write_merged_mesh

@@ -59,6 +59,31 @@ namespace semantic_mesh_segmentation
 			}
 		}
 
+		if (with_texture_mask)
+		{
+			for (size_t li = 0; li < tex_labels_name.size(); ++li)
+			{
+				if (!ignored_labels_name.empty())
+				{
+					bool is_ignore = false;
+					for (int ig_i = 0; ig_i < ignored_labels_name.size(); ++ig_i)
+					{
+						if (ignored_labels_name[ig_i] == tex_labels_name[li])
+						{
+							is_ignore = true;
+							break;
+						}
+					}
+					if (!is_ignore)
+						labels.add(tex_labels_name[li].c_str());
+				}
+				else
+				{
+					labels.add(tex_labels_name[li].c_str());
+				}
+			}
+		}
+
 		if (enable_double_lables)
 		{
 			for (size_t li2 = 0; li2 < labels_name.size(); ++li2)
@@ -731,6 +756,76 @@ namespace semantic_mesh_segmentation
 		save_txt_evaluation(labels, evaluation, evaluation_out, -1);
 	}
 	
+
+	void evaluation_all_test_data
+	(
+		Label_set& labels,
+		std::vector<int>& face_truth_label,
+		std::vector<int>& face_test_label,
+		const int m
+	)
+	{
+		//Evaluation based on each face, not on segment!!!
+		std::cerr << "Precision, recall, F1 scores and IoU:" << std::endl;
+		CGAL::Classification::Evaluation evaluation(labels, face_truth_label, face_test_label);
+		for (std::size_t i = 0; i < labels.size(); ++i)
+		{
+			std::cerr << " * " << labels[i]->name() << ": "
+				<< evaluation.precision(labels[i]) << " ; "
+				<< evaluation.recall(labels[i]) << " ; "
+				<< evaluation.f1_score(labels[i]) << " ; "
+				<< evaluation.intersection_over_union(labels[i]) << std::endl;
+		}
+		std::cerr << "Mean Accuracy = " << evaluation.mean_accuracy() << std::endl
+			<< "Overall Accuracy = " << evaluation.accuracy() << std::endl
+			<< "mean F1 score = " << evaluation.mean_f1_score() << std::endl
+			<< "mean IoU = " << evaluation.mean_intersection_over_union() << std::endl;
+
+		std::ostringstream evaluation_out;
+		std::string basic_write_path, pref_tmp;
+		if (processing_mode == 0) //RF
+		{
+			std::cout << "writing RF test evaluation " << std::endl;
+			basic_write_path = root_path + folder_names_level_0[0] + folder_names_level_1[train_test_predict_val];
+			pref_tmp = "evaluation";
+		}
+		else if (processing_mode == 1) //sota
+		{
+			std::cout << "writing SOTA test evaluation " << std::endl;
+			basic_write_path = root_path + folder_names_level_0[8] + sota_folder_path + folder_names_level_0[0] + folder_names_level_1[train_test_predict_val];
+			pref_tmp = "evaluation";
+		}
+
+		if (use_batch_processing)
+		{
+			evaluation_out
+				<< basic_write_path
+				<< prefixs[9]
+				<< pref_tmp
+				<< "_all_test.txt";
+		}
+		else
+		{
+			if (m > -1)
+			{
+				evaluation_out
+					<< basic_write_path
+					<< base_names[m]
+					<< pref_tmp
+					<< ".txt";
+			}
+			else
+			{
+				evaluation_out
+					<< basic_write_path
+					<< pref_tmp
+					<< "_all_test.txt";
+			}
+		}
+
+		save_txt_evaluation(labels, evaluation, evaluation_out, -1);
+	}
+
 	//----------------------------------------------- Joint energy computation -----------------------------------------//
 	void joint_labeling_energy //for test data only
 	(
