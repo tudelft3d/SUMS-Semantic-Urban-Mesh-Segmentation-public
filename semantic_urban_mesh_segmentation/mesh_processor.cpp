@@ -2065,16 +2065,16 @@ namespace semantic_mesh_segmentation
 						easy3d::PointCloud::Vertex current_spvd(spid_vd_map[current_spid]);
 						int cur_label = get_pcl_label[current_spvd];
 
-						if (cur_label < labels_name.size() + 1)
+						if (cur_label < labels_name.size())
 						{
 							fd_label_votes[cur_label] += 1;
 						}
 						else
 						{
-							easy3d::vec3 tex_label_color = 255.0f * tex_labels_color[cur_label - labels_color.size() - 1];
+							easy3d::vec3 tex_label_color = 255.0f * tex_labels_color[cur_label - labels_color.size()];
 							texture_mask_maps_pred[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * texture_mask_maps_pred[texture_id].rows - 1, newcoord[0] * texture_mask_maps_pred[texture_id].cols) =
 								cv::Vec3b(int(tex_label_color.z), int(tex_label_color.y), int(tex_label_color.x));
-							fd_label_votes[tex_fd_label[cur_label - labels_color.size() - 1]] += 1;
+							fd_label_votes[tex_fd_label[cur_label - labels_color.size()]] += 1;
 							//easy3d::vec3 fd_label_color = labels_color[tex_fd_label[cur_label - labels_color.size() - 1]];
 							//mesh_in->get_face_color[fd] = fd_label_color;
 						}
@@ -2084,7 +2084,7 @@ namespace semantic_mesh_segmentation
 
 			auto max_element_iter = std::max_element(fd_label_votes.begin(), fd_label_votes.end());
 			mesh_in->get_face_property<int>("f:label_predict")[fd] = std::distance(fd_label_votes.begin(), max_element_iter);
-			mesh_in->get_face_property<easy3d::vec3>("f:color")[fd] = labels_color[mesh_in->get_face_property<int>("f:label_predict")[fd] - 1];
+			mesh_in->get_face_property<easy3d::vec3>("f:color")[fd] = labels_color[mesh_in->get_face_property<int>("f:label_predict")[fd]];
 		}
 	}
 
@@ -2299,7 +2299,7 @@ namespace semantic_mesh_segmentation
 		{
 			for (int ti = 0; ti < pred_texture_mask_maps.size(); ++ti)
 			{
-				cv::Mat ti_mask = cv::Mat::zeros(texture_mask_error_map[ti].rows, texture_mask_error_map[ti].cols, texture_mask_error_map[ti].type());
+				cv::Mat ti_mask = cv::Mat::zeros(pred_texture_mask_maps[ti].rows, pred_texture_mask_maps[ti].cols, pred_texture_mask_maps[ti].type());
 				ti_mask.setTo(cv::Scalar(0, 255, 0));
 				texture_mask_error_map.push_back(ti_mask);
 			}
@@ -2339,7 +2339,6 @@ namespace semantic_mesh_segmentation
 				std::pair<double, double> uv_min;
 				enlarge_uv_triangle(UL_vec, VL_vec, uv_dis, uv_min, width, height);
 
-
 				for (int u_i = 0; u_i < uv_dis.first; ++u_i)
 				{
 					for (int v_i = 0; v_i < uv_dis.second; ++v_i)
@@ -2370,29 +2369,34 @@ namespace semantic_mesh_segmentation
 							float Gf = (float)gt_texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * gt_texture_mask_maps[texture_id].rows - 1, newcoord[0] * gt_texture_mask_maps[texture_id].cols)[1];
 							float Bf = (float)gt_texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * gt_texture_mask_maps[texture_id].rows - 1, newcoord[0] * gt_texture_mask_maps[texture_id].cols)[0];
 
-							int cur_label = mesh_in->get_face_truth_label[fd];
+							bool label_equal = false, has_tex_label = false;
 							int gt_pix_label = mesh_in->get_face_truth_label[fd], pred_pix_label = mesh_in->get_face_predict_label[fd];
-							if (cur_label < labels_name.size())
+
+							float gt_Rf_mask = (float)gt_texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * gt_texture_mask_maps[texture_id].rows - 1, newcoord[0] * gt_texture_mask_maps[texture_id].cols)[2];
+							float gt_Gf_mask = (float)gt_texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * gt_texture_mask_maps[texture_id].rows - 1, newcoord[0] * gt_texture_mask_maps[texture_id].cols)[1];
+							float gt_Bf_mask = (float)gt_texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * gt_texture_mask_maps[texture_id].rows - 1, newcoord[0] * gt_texture_mask_maps[texture_id].cols)[0];
+							
+							for (int tex_ci = 0; tex_ci < tex_labels_color.size(); ++tex_ci)
+							{
+								if (std::abs(gt_Rf_mask - 255.0f * tex_labels_color[tex_ci][0]) <= 1.0f &&
+									std::abs(gt_Gf_mask - 255.0f * tex_labels_color[tex_ci][1]) <= 1.0f &&
+									std::abs(gt_Bf_mask - 255.0f * tex_labels_color[tex_ci][2]) <= 1.0f)
+								{
+									gt_pix_label = labels_color.size() + tex_ci;
+									has_tex_label = true;
+								}
+							}
+
+							if (!has_tex_label)
 							{
 								pix_truth_label.push_back(gt_pix_label - 1);
-								pix_test_label.push_back(pred_pix_label - 1);
+								pix_test_label.push_back(pred_pix_label - label_minus);
+
+								if (gt_pix_label - 1 == pred_pix_label - label_minus)
+									label_equal = true;
 							}
 							else
 							{
-
-								float gt_Rf_mask = (float)gt_texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * gt_texture_mask_maps[texture_id].rows - 1, newcoord[0] * gt_texture_mask_maps[texture_id].cols)[2];
-								float gt_Gf_mask = (float)gt_texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * gt_texture_mask_maps[texture_id].rows - 1, newcoord[0] * gt_texture_mask_maps[texture_id].cols)[1];
-								float gt_Bf_mask = (float)gt_texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * gt_texture_mask_maps[texture_id].rows - 1, newcoord[0] * gt_texture_mask_maps[texture_id].cols)[0];
-								for (int tex_ci = 0; tex_ci < tex_labels_color.size(); ++tex_ci)
-								{
-									if (std::abs(gt_Rf_mask - 255.0f * tex_labels_color[tex_ci][0]) <= 1.0f &&
-										std::abs(gt_Gf_mask - 255.0f * tex_labels_color[tex_ci][1]) <= 1.0f &&
-										std::abs(gt_Bf_mask - 255.0f * tex_labels_color[tex_ci][2]) <= 1.0f)
-									{
-										gt_pix_label = labels_color.size() + tex_ci + 1;
-									}
-								}
-
 								float pred_Rf_mask = (float)pred_texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * pred_texture_mask_maps[texture_id].rows - 1, newcoord[0] * pred_texture_mask_maps[texture_id].cols)[2];
 								float pred_Gf_mask = (float)pred_texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * pred_texture_mask_maps[texture_id].rows - 1, newcoord[0] * pred_texture_mask_maps[texture_id].cols)[1];
 								float pred_Bf_mask = (float)pred_texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * pred_texture_mask_maps[texture_id].rows - 1, newcoord[0] * pred_texture_mask_maps[texture_id].cols)[0];
@@ -2402,17 +2406,17 @@ namespace semantic_mesh_segmentation
 										std::abs(pred_Gf_mask - 255.0f * tex_labels_color[tex_ci][1]) <= 1.0f &&
 										std::abs(pred_Bf_mask - 255.0f * tex_labels_color[tex_ci][2]) <= 1.0f)
 									{
-										pred_pix_label = labels_color.size() + tex_ci + 1;
+										pred_pix_label = labels_color.size() + tex_ci;
 									}
 								}
 
-								pix_truth_label.push_back(gt_pix_label - 1);
-								pix_test_label.push_back(pred_pix_label - 1);
+								pix_truth_label.push_back(gt_pix_label);
+								pix_test_label.push_back(pred_pix_label);
+								if (gt_pix_label == pred_pix_label)
+									label_equal = true;
 							}
 
-							if (gt_pix_label == pred_pix_label || gt_pix_label == 0 || gt_pix_label == 1)
-								;
-							else
+							if (!label_equal)
 								texture_mask_error_map[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * texture_mask_error_map[texture_id].rows - 1, newcoord[0] * texture_mask_error_map[texture_id].cols) =
 								cv::Vec3b(int(0), int(0), int(255));
 						}
