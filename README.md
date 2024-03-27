@@ -58,7 +58,7 @@ You can refer to the [demo data](https://3d.bk.tudelft.nl/opendata/sum/1.0/data_
 Besides, you need to install [`Python (>=3.7)`](https://www.python.org/), [`imbalanced-learn`](https://imbalanced-learn.org/), and [`numpy`](https://numpy.org/), and replace the `..\Python\Python37\Lib\site-packages\imblearn\over_sampling\_smote\filter.py` with provided `..\3rd_party\python_parsing\py_aug\filter.py`.
 You could run the code as follows: 
 ```
-.\semantic_urban_mesh_segmentation.exe [path to config.txt]
+.\semantic_urban_mesh_segmentation.exe [path to config.txt. For example, if your config.txt is saved in "C:\data\", you need to use "C:\data\" as the parameter]
 ```
 
 ### Operation modes
