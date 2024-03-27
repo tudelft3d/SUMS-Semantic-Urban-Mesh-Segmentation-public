@@ -1499,7 +1499,7 @@ namespace semantic_mesh_segmentation
 			//add test data 
 			std::vector<int> num_truth_label, num_test_label;
 			std::vector<float> face_area_weighted;
-			if (!ignored_labels_name.empty())
+			if (!ignored_labels_name.empty() && !with_texture_mask)
 				check_ignored_truth_labels();
 
 			for (std::size_t mi = 0; mi < base_names.size(); ++mi)

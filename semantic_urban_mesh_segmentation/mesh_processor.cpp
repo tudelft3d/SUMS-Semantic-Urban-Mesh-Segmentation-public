@@ -2036,7 +2036,7 @@ namespace semantic_mesh_segmentation
 			std::pair<double, double> uv_min;
 			enlarge_uv_triangle(UL_vec, VL_vec, uv_dis, uv_min, width, height);
 			std::vector<int> fd_label_votes;
-			fd_label_votes.resize(labels_name.size() + 1, 0);
+			fd_label_votes.resize(labels_name.size(), 0);
 
 			for (int u_i = 0; u_i < uv_dis.first; ++u_i)
 			{
@@ -2075,8 +2075,6 @@ namespace semantic_mesh_segmentation
 							texture_mask_maps_pred[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * texture_mask_maps_pred[texture_id].rows - 1, newcoord[0] * texture_mask_maps_pred[texture_id].cols) =
 								cv::Vec3b(int(tex_label_color.z), int(tex_label_color.y), int(tex_label_color.x));
 							fd_label_votes[tex_fd_label[cur_label - labels_color.size()]] += 1;
-							//easy3d::vec3 fd_label_color = labels_color[tex_fd_label[cur_label - labels_color.size() - 1]];
-							//mesh_in->get_face_color[fd] = fd_label_color;
 						}
 					}
 				}
@@ -2308,7 +2306,7 @@ namespace semantic_mesh_segmentation
 		// paring labels
 		for (auto& fd : mesh_in->faces())
 		{
-			if (mesh_in->get_face_truth_label[fd] != 0 && mesh_in->get_face_truth_label[fd] != -1)
+			if (mesh_in->get_face_truth_label[fd] - 1 >= 0)
 			{
 				mesh_in->get_face_property<easy3d::vec3>("f:color")[fd] = easy3d::vec3();
 				int texture_id = mesh_in->get_face_texnumber[fd];
@@ -2369,12 +2367,16 @@ namespace semantic_mesh_segmentation
 							float Gf = (float)gt_texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * gt_texture_mask_maps[texture_id].rows - 1, newcoord[0] * gt_texture_mask_maps[texture_id].cols)[1];
 							float Bf = (float)gt_texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * gt_texture_mask_maps[texture_id].rows - 1, newcoord[0] * gt_texture_mask_maps[texture_id].cols)[0];
 
-							bool label_equal = false, has_tex_label = false;
-							int gt_pix_label = mesh_in->get_face_truth_label[fd], pred_pix_label = mesh_in->get_face_predict_label[fd];
+							bool label_equal = false, has_gt_tex_label = false, has_pred_tex_label = false, may_has_tex_label = false;
+							int gt_pix_label = mesh_in->get_face_truth_label[fd] - 2; //remove: 0: unclassified; 1: terrian
+							int pred_pix_label = mesh_in->get_face_predict_label[fd] - 1 - label_minus;
 
 							float gt_Rf_mask = (float)gt_texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * gt_texture_mask_maps[texture_id].rows - 1, newcoord[0] * gt_texture_mask_maps[texture_id].cols)[2];
 							float gt_Gf_mask = (float)gt_texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * gt_texture_mask_maps[texture_id].rows - 1, newcoord[0] * gt_texture_mask_maps[texture_id].cols)[1];
 							float gt_Bf_mask = (float)gt_texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * gt_texture_mask_maps[texture_id].rows - 1, newcoord[0] * gt_texture_mask_maps[texture_id].cols)[0];
+							float pred_Rf_mask = (float)pred_texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * pred_texture_mask_maps[texture_id].rows - 1, newcoord[0] * pred_texture_mask_maps[texture_id].cols)[2];
+							float pred_Gf_mask = (float)pred_texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * pred_texture_mask_maps[texture_id].rows - 1, newcoord[0] * pred_texture_mask_maps[texture_id].cols)[1];
+							float pred_Bf_mask = (float)pred_texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * pred_texture_mask_maps[texture_id].rows - 1, newcoord[0] * pred_texture_mask_maps[texture_id].cols)[0];
 							
 							for (int tex_ci = 0; tex_ci < tex_labels_color.size(); ++tex_ci)
 							{
@@ -2382,36 +2384,35 @@ namespace semantic_mesh_segmentation
 									std::abs(gt_Gf_mask - 255.0f * tex_labels_color[tex_ci][1]) <= 1.0f &&
 									std::abs(gt_Bf_mask - 255.0f * tex_labels_color[tex_ci][2]) <= 1.0f)
 								{
-									gt_pix_label = labels_color.size() + tex_ci;
-									has_tex_label = true;
+									gt_pix_label = labels_color.size() + tex_ci - 1;
+									has_gt_tex_label = true;
 								}
 							}
 
-							if (!has_tex_label)
+							for (int tex_ci = 0; tex_ci < tex_labels_color.size(); ++tex_ci)
 							{
-								pix_truth_label.push_back(gt_pix_label - 1);
-								pix_test_label.push_back(pred_pix_label - label_minus);
+								if (std::abs(pred_Rf_mask - 255.0f * tex_labels_color[tex_ci][0]) <= 1.0f &&
+									std::abs(pred_Gf_mask - 255.0f * tex_labels_color[tex_ci][1]) <= 1.0f &&
+									std::abs(pred_Bf_mask - 255.0f * tex_labels_color[tex_ci][2]) <= 1.0f)
+								{
+									pred_pix_label = labels_color.size() + tex_ci - 1;
+									has_pred_tex_label = true;
+								}
+							}
 
-								if (gt_pix_label - 1 == pred_pix_label - label_minus)
+							if (may_has_tex_label && (has_gt_tex_label || has_pred_tex_label))
+							{
+								pix_truth_label.push_back(gt_pix_label);
+								pix_test_label.push_back(pred_pix_label);
+
+								if (gt_pix_label == pred_pix_label)
 									label_equal = true;
 							}
 							else
 							{
-								float pred_Rf_mask = (float)pred_texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * pred_texture_mask_maps[texture_id].rows - 1, newcoord[0] * pred_texture_mask_maps[texture_id].cols)[2];
-								float pred_Gf_mask = (float)pred_texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * pred_texture_mask_maps[texture_id].rows - 1, newcoord[0] * pred_texture_mask_maps[texture_id].cols)[1];
-								float pred_Bf_mask = (float)pred_texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * pred_texture_mask_maps[texture_id].rows - 1, newcoord[0] * pred_texture_mask_maps[texture_id].cols)[0];
-								for (int tex_ci = 0; tex_ci < tex_labels_color.size(); ++tex_ci)
-								{
-									if (std::abs(pred_Rf_mask - 255.0f * tex_labels_color[tex_ci][0]) <= 1.0f &&
-										std::abs(pred_Gf_mask - 255.0f * tex_labels_color[tex_ci][1]) <= 1.0f &&
-										std::abs(pred_Bf_mask - 255.0f * tex_labels_color[tex_ci][2]) <= 1.0f)
-									{
-										pred_pix_label = labels_color.size() + tex_ci;
-									}
-								}
-
 								pix_truth_label.push_back(gt_pix_label);
 								pix_test_label.push_back(pred_pix_label);
+
 								if (gt_pix_label == pred_pix_label)
 									label_equal = true;
 							}
