@@ -1663,7 +1663,7 @@ namespace semantic_mesh_segmentation
 						if (PointinTriangle(U_vec, V_vec, P))
 						{
 							has_pt_in_triangle = true;
-							fd_label_votes[get_pcl_labels[vd_nearst] - label_minus] += 1;
+							fd_label_votes[get_pcl_labels[vd_nearst] + ignored_labels_name.size() - label_minus] += 1;
 						}
 					}
 				}
@@ -1673,7 +1673,7 @@ namespace semantic_mesh_segmentation
 			{
 				auto vd_nearest_i = tree_3d->find_closest_point(fd_cen);
 				easy3d::PointCloud::Vertex vd_nearest(vd_nearest_i);
-				fd_label_votes[get_pcl_labels[vd_nearest] - label_minus] += 1;
+				fd_label_votes[get_pcl_labels[vd_nearest] + ignored_labels_name.size() - label_minus] += 1;
 			}
 
 			auto max_element_iter = std::max_element(fd_label_votes.begin(), fd_label_votes.end());
@@ -1952,21 +1952,17 @@ namespace semantic_mesh_segmentation
 						uv_to_3D_coordinates(uv_triangle, coord3d_triangle, newcoord, current_3d);
 						int vnearst_i = tree_3d->find_closest_point(current_3d);
 						easy3d::PointCloud::Vertex vd_nearst(vnearst_i);
-						int cur_label = get_pcl_label[vd_nearst] - label_minus;
+						int cur_label = get_pcl_label[vd_nearst] + ignored_labels_name.size() - label_minus; //-1 : remove unclassified, start from 0 for terrian
 						if (cur_label < labels_name.size())
 						{
 							fd_label_votes[cur_label] += 1;
 						}
 						else
 						{
-							easy3d::vec3 tex_label_color = 255.0f * tex_labels_color[cur_label - labels_color.size() - 1];
-
+							easy3d::vec3 tex_label_color = 255.0f * tex_labels_color[cur_label - labels_color.size()];
 							texture_mask_maps_pred[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * texture_mask_maps_pred[texture_id].rows - 1, newcoord[0] * texture_mask_maps_pred[texture_id].cols) =
 								cv::Vec3b(int(tex_label_color.z), int(tex_label_color.y), int(tex_label_color.x));
-
-							fd_label_votes[tex_fd_label[cur_label - labels_color.size() - 1]] += 1;
-							//easy3d::vec3 fd_label_color = labels_color[tex_fd_label[cur_label - labels_color.size() - 1]];
-							//mesh_in->get_face_color[fd] = fd_label_color;
+							fd_label_votes[tex_fd_label[cur_label - labels_color.size()]] += 1;
 						}
 					}
 				}
@@ -2064,7 +2060,7 @@ namespace semantic_mesh_segmentation
 
 						int current_spid = (int)texture_sps[texture_id].at<int>((1 - newcoord[1]) * texture_maps[texture_id].rows - 1, newcoord[0] * texture_maps[texture_id].cols);
 						easy3d::PointCloud::Vertex current_spvd(spid_vd_map[current_spid]);
-						int cur_label = get_pcl_label[current_spvd] + ignored_labels_name.size() - 1; //-1 : remove unclassified, start from 0 for terrian
+						int cur_label = get_pcl_label[current_spvd] + ignored_labels_name.size() - label_minus; //-1 : remove unclassified, start from 0 for terrian
 	
 						if (cur_label < labels_name.size())
 						{
