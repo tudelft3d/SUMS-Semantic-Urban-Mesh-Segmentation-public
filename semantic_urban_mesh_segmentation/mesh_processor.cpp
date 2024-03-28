@@ -2064,8 +2064,8 @@ namespace semantic_mesh_segmentation
 
 						int current_spid = (int)texture_sps[texture_id].at<int>((1 - newcoord[1]) * texture_maps[texture_id].rows - 1, newcoord[0] * texture_maps[texture_id].cols);
 						easy3d::PointCloud::Vertex current_spvd(spid_vd_map[current_spid]);
-						int cur_label = get_pcl_label[current_spvd] - label_minus;
-
+						int cur_label = get_pcl_label[current_spvd] + ignored_labels_name.size() - 1; //-1 : remove unclassified, start from 0 for terrian
+	
 						if (cur_label < labels_name.size())
 						{
 							fd_label_votes[cur_label] += 1;
@@ -2367,8 +2367,8 @@ namespace semantic_mesh_segmentation
 							float Bf = (float)gt_texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * gt_texture_mask_maps[texture_id].rows - 1, newcoord[0] * gt_texture_mask_maps[texture_id].cols)[0];
 
 							bool label_equal = false, has_gt_tex_label = false, has_pred_tex_label = false, may_has_tex_label = false;
-							int gt_pix_label = mesh_in->get_face_truth_label[fd] - 2; //remove: 0: unclassified; 1: terrian
-							int pred_pix_label = mesh_in->get_face_predict_label[fd] - 1 - label_minus;
+							int gt_pix_label = mesh_in->get_face_truth_label[fd] - 1 - ignored_labels_name.size(); //remove: 0: unclassified; 1: terrian
+							int pred_pix_label = mesh_in->get_face_predict_label[fd] - label_minus;
 
 							float gt_Rf_mask = (float)gt_texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * gt_texture_mask_maps[texture_id].rows - 1, newcoord[0] * gt_texture_mask_maps[texture_id].cols)[2];
 							float gt_Gf_mask = (float)gt_texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * gt_texture_mask_maps[texture_id].rows - 1, newcoord[0] * gt_texture_mask_maps[texture_id].cols)[1];
