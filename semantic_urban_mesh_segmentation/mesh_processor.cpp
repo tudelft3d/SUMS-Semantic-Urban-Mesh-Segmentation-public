@@ -1623,9 +1623,9 @@ namespace semantic_mesh_segmentation
 		Build_kdtree(semantic_pcl, tree_3d);
 
 		//get predict information from SOTA point cloud
-		bool has_pt_in_triangle = false;
 		for (auto fdx : smesh_in->faces())
 		{
+			bool has_pt_in_triangle = false;
 			std::vector<int> fd_label_votes;
 			fd_label_votes.resize(labels_name.size(), 0);
 
@@ -1634,23 +1634,24 @@ namespace semantic_mesh_segmentation
 				fd_cen += smesh_in->get_points_coord[vd];
 			fd_cen /= 3.0f;
 			
+			Plane plane_tri = Plane(Point_3(fd_cen.x, fd_cen.y, fd_cen.z),
+				Vector_3(smesh_in->get_face_normals[fdx].x, smesh_in->get_face_normals[fdx].y, smesh_in->get_face_normals[fdx].z));
+			double max_radius = 0.0f;
+			std::vector<double> U_vec, V_vec;
+			for (auto vd : smesh_in->vertices(fdx))
+			{
+				double dis_tmp = easy3d::distance2(smesh_in->get_points_coord[vd], fd_cen);
+				max_radius = max_radius > dis_tmp ? max_radius : dis_tmp;
+				Point_2 p_proj_cgal = plane_tri.to_2d(Point_3(smesh_in->get_points_coord[vd].x, smesh_in->get_points_coord[vd].y, smesh_in->get_points_coord[vd].z));
+				U_vec.push_back(p_proj_cgal.x());
+				V_vec.push_back(p_proj_cgal.y());
+			}
+
 			if (sampling_eval != 0)
 			{
-				Plane plane_tri = Plane(Point_3(fd_cen.x, fd_cen.y, fd_cen.z),
-					Vector_3(smesh_in->get_face_normals[fdx].x, smesh_in->get_face_normals[fdx].y, smesh_in->get_face_normals[fdx].z));
-				double max_radius = 0.0f;
-				std::vector<double> U_vec, V_vec;
-				for (auto vd : smesh_in->vertices(fdx))
-				{
-					double dis_tmp = easy3d::distance2(smesh_in->get_points_coord[vd], fd_cen);
-					max_radius = max_radius > dis_tmp ? max_radius : dis_tmp;
-					Point_2 p_proj_cgal = plane_tri.to_2d(Point_3(smesh_in->get_points_coord[vd].x, smesh_in->get_points_coord[vd].y, smesh_in->get_points_coord[vd].z));
-					U_vec.push_back(p_proj_cgal.x());
-					V_vec.push_back(p_proj_cgal.y());
-				}
-
 				std::vector<int> neighbors;
-				tree_3d->find_points_in_radius(fd_cen, max_radius, neighbors);
+				std::vector<float> squared_distanace;
+				tree_3d->find_points_in_radius(fd_cen, max_radius, neighbors, squared_distanace);
 				if (!neighbors.empty())
 				{
 					for (int ni = 0; ni < neighbors.size(); ++ni)
@@ -1662,7 +1663,7 @@ namespace semantic_mesh_segmentation
 						if (PointinTriangle(U_vec, V_vec, P))
 						{
 							has_pt_in_triangle = true;
-							fd_label_votes[get_pcl_labels[vd_nearst]] += 1;
+							fd_label_votes[get_pcl_labels[vd_nearst] - label_minus] += 1;
 						}
 					}
 				}
@@ -1672,12 +1673,12 @@ namespace semantic_mesh_segmentation
 			{
 				auto vd_nearest_i = tree_3d->find_closest_point(fd_cen);
 				easy3d::PointCloud::Vertex vd_nearest(vd_nearest_i);
-				fd_label_votes[get_pcl_labels[vd_nearest]] += 1;
+				fd_label_votes[get_pcl_labels[vd_nearest] - label_minus] += 1;
 			}
 
 			auto max_element_iter = std::max_element(fd_label_votes.begin(), fd_label_votes.end());
 			smesh_in->get_face_predict_label[fdx] = std::distance(fd_label_votes.begin(), max_element_iter);
-			smesh_in->get_face_color[fdx] = labels_color[smesh_in->get_face_predict_label[fdx] - label_minus];
+			smesh_in->get_face_color[fdx] = labels_color[smesh_in->get_face_predict_label[fdx]];
 		}
 
 		delete tree_3d;
@@ -1951,8 +1952,8 @@ namespace semantic_mesh_segmentation
 						uv_to_3D_coordinates(uv_triangle, coord3d_triangle, newcoord, current_3d);
 						int vnearst_i = tree_3d->find_closest_point(current_3d);
 						easy3d::PointCloud::Vertex vd_nearst(vnearst_i);
-						int cur_label = get_pcl_label[vd_nearst];
-						if (cur_label < labels_name.size() + 1)
+						int cur_label = get_pcl_label[vd_nearst] - label_minus;
+						if (cur_label < labels_name.size())
 						{
 							fd_label_votes[cur_label] += 1;
 						}
@@ -1973,7 +1974,7 @@ namespace semantic_mesh_segmentation
 
 			auto max_element_iter = std::max_element(fd_label_votes.begin(), fd_label_votes.end());
 			mesh_in->get_face_property<int>("f:label_predict")[fd] = std::distance(fd_label_votes.begin(), max_element_iter);
-			mesh_in->get_face_property<easy3d::vec3>("f:color")[fd] = labels_color[mesh_in->get_face_property<int>("f:label_predict")[fd] - 1];
+			mesh_in->get_face_property<easy3d::vec3>("f:color")[fd] = labels_color[mesh_in->get_face_property<int>("f:label_predict")[fd]];
 		}
 
 		delete tree_3d;
@@ -2063,7 +2064,7 @@ namespace semantic_mesh_segmentation
 
 						int current_spid = (int)texture_sps[texture_id].at<int>((1 - newcoord[1]) * texture_maps[texture_id].rows - 1, newcoord[0] * texture_maps[texture_id].cols);
 						easy3d::PointCloud::Vertex current_spvd(spid_vd_map[current_spid]);
-						int cur_label = get_pcl_label[current_spvd];
+						int cur_label = get_pcl_label[current_spvd] - label_minus;
 
 						if (cur_label < labels_name.size())
 						{
@@ -2196,14 +2197,12 @@ namespace semantic_mesh_segmentation
 		easy3d::PointCloud* sampled_pcl = read_sampled_pointcloud_data(mi);
 		//translate point clouds
 		if (translation_strategy > 0)
-		{
 			translate_point_clouds(semantic_pcl, sampled_pcl);
-			write_semantic_pointcloud_data(semantic_pcl, "_trans", mi);
-		}
 
 		//filter unclassified if there are any
 		if (filter_unknow)
 			filter_unclassified_points(semantic_pcl);
+		write_semantic_pointcloud_data(semantic_pcl, "_trans", mi);
 
 		if (with_texture_mask)
 		{
