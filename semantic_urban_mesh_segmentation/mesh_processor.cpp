@@ -1627,7 +1627,7 @@ namespace semantic_mesh_segmentation
 		for (auto fdx : smesh_in->faces())
 		{
 			std::vector<int> fd_label_votes;
-			fd_label_votes.resize(labels_name.size() + 1, 0);
+			fd_label_votes.resize(labels_name.size(), 0);
 
 			easy3d::vec3 fd_cen(0.0f, 0.0f, 0.0f);
 			for (auto vd : smesh_in->vertices(fdx))
@@ -1677,7 +1677,7 @@ namespace semantic_mesh_segmentation
 
 			auto max_element_iter = std::max_element(fd_label_votes.begin(), fd_label_votes.end());
 			smesh_in->get_face_predict_label[fdx] = std::distance(fd_label_votes.begin(), max_element_iter);
-			smesh_in->get_face_color[fdx] = labels_color[smesh_in->get_face_predict_label[fdx] - 1];
+			smesh_in->get_face_color[fdx] = labels_color[smesh_in->get_face_predict_label[fdx] - label_minus];
 		}
 
 		delete tree_3d;
@@ -1812,7 +1812,7 @@ namespace semantic_mesh_segmentation
 	{
 		for (auto &f : smesh_original->faces())
 		{
-			if (smesh_original->get_face_truth_label[f] == smesh_original->get_face_predict_label[f]
+			if (smesh_original->get_face_truth_label[f] - 1 == smesh_original->get_face_predict_label[f]
 				|| smesh_original->get_face_truth_label[f] == 0
 				|| smesh_original->get_face_truth_label[f] == -1)
 				smesh_original->get_face_error_color[f].x = 120.0;
@@ -1925,7 +1925,7 @@ namespace semantic_mesh_segmentation
 			std::pair<double, double> uv_min;
 			enlarge_uv_triangle(UL_vec, VL_vec, uv_dis, uv_min, width, height);
 			std::vector<int> fd_label_votes;
-			fd_label_votes.resize(labels_name.size() + 1, 0);
+			fd_label_votes.resize(labels_name.size(), 0);
 
 			for (int u_i = 0; u_i < uv_dis.first; ++u_i)
 			{
@@ -2247,7 +2247,7 @@ namespace semantic_mesh_segmentation
 
 		for (auto fd : smesh_test->faces())
 		{
-			if (smesh_test->get_face_truth_label[fd] != 0 && smesh_test->get_face_truth_label[fd] != -1)
+			if (smesh_test->get_face_truth_label[fd] > 0)
 			{
 				if (!ignored_labels_name.empty())
 				{
@@ -2264,7 +2264,7 @@ namespace semantic_mesh_segmentation
 				else
 				{
 					face_truth_label.push_back(smesh_test->get_face_truth_label[fd] - 1);
-					face_test_label.push_back(smesh_test->get_face_predict_label[fd] - 1);
+					face_test_label.push_back(smesh_test->get_face_predict_label[fd]);
 					face_area_weighted.push_back(FaceArea(smesh_test, fd));
 				}
 			}
