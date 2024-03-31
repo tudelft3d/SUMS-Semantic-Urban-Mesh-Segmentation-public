@@ -1882,7 +1882,8 @@ namespace semantic_mesh_segmentation
 		const std::vector<cv::Mat>& texture_maps
 	)
 	{
-		auto get_pcl_label = semantic_pcl->get_vertex_property<int>("v:label");
+		std::string label_s = "v:" + label_string;
+		auto get_pcl_label = semantic_pcl->get_vertex_property<int>(label_s);
 		easy3d::KdTree* tree_3d = new easy3d::KdTree;
 		Build_kdtree(semantic_pcl, tree_3d);
 
@@ -1987,8 +1988,9 @@ namespace semantic_mesh_segmentation
 	)
 	{
 		// build map
+		std::string label_s = "v:" + label_string;
 		auto get_pcl_sp_id = tex_sp_pcl->get_vertex_property<int>("v:sp_id");
-		auto get_pcl_label = semantic_pcl->get_vertex_property<int>("v:label");
+		auto get_pcl_label = semantic_pcl->get_vertex_property<int>(label_s);
 		std::map<int, int> spid_vd_map;
 		for (auto vd : tex_sp_pcl->vertices())
 			spid_vd_map[get_pcl_sp_id[vd]] = vd.idx();
@@ -2198,7 +2200,9 @@ namespace semantic_mesh_segmentation
 		//filter unclassified if there are any
 		if (filter_unknow)
 			filter_unclassified_points(semantic_pcl);
-		write_semantic_pointcloud_data(semantic_pcl, "_trans", mi);
+
+		if (translation_strategy > 0)
+			write_semantic_pointcloud_data(semantic_pcl, "_trans", mi);
 
 		if (with_texture_mask)
 		{
