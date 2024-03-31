@@ -2368,7 +2368,7 @@ namespace semantic_mesh_segmentation
 
 							bool label_equal = false, has_gt_tex_label = false, has_pred_tex_label = false, may_has_tex_label = false;
 							int gt_pix_label = mesh_in->get_face_truth_label[fd] - 1 - ignored_labels_name.size(); //remove: 0: unclassified; 1: terrian
-							int pred_pix_label = mesh_in->get_face_predict_label[fd] - label_minus;
+							int pred_pix_label = mesh_in->get_face_predict_label[fd] - ignored_labels_name.size();
 
 							float gt_Rf_mask = (float)gt_texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * gt_texture_mask_maps[texture_id].rows - 1, newcoord[0] * gt_texture_mask_maps[texture_id].cols)[2];
 							float gt_Gf_mask = (float)gt_texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * gt_texture_mask_maps[texture_id].rows - 1, newcoord[0] * gt_texture_mask_maps[texture_id].cols)[1];
