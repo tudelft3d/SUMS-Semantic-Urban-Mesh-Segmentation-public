@@ -824,6 +824,7 @@ namespace semantic_mesh_segmentation
 
 					std::vector<float> label_statistics(labels_name.size() + 1, 0);
 					std::vector<float> label_seg_statistics(labels_name.size() + 1, 0);
+					std::vector<float> label_tri_statistics(labels_name.size() + 1, 0);
 					for (std::size_t mi = 0; mi < base_names.size(); ++mi)
 					{
 						if (input_type_for_statistics == 0)
@@ -843,10 +844,12 @@ namespace semantic_mesh_segmentation
 								if (smesh_original->get_face_truth_label[fd] != 0 && smesh_original->get_face_truth_label[fd] != -1)
 								{
 									label_statistics[current_label_ind] += FaceArea(smesh_original, fd);
+									label_tri_statistics[current_label_ind] += 1;
 								}
 								else
 								{
 									label_statistics[0] += FaceArea(smesh_original, fd);
+									label_tri_statistics[0] += 1;
 								}
 							}
 
@@ -875,7 +878,7 @@ namespace semantic_mesh_segmentation
 						}
 					}
 
-					save_txt_statistics(label_statistics, label_seg_statistics);
+					save_txt_statistics(label_statistics, label_seg_statistics, label_tri_statistics);
 				}
 			}
 			
@@ -1301,6 +1304,7 @@ namespace semantic_mesh_segmentation
 				process_data_selection["validate"]
 			};
 
+			int total_num_pt = 0;
 			double sum_area = 0.0f;
 			std::vector<std::string> type_used_name = { "train" ,"test", "predict", "validate" };
 			std::vector<float> all_time_cost(5, 0.0f);//0: face center; 1: random pcl; 2: possion pcl; 3: texsp_pcl; 4: sp_gen
@@ -1335,6 +1339,7 @@ namespace semantic_mesh_segmentation
 						const double tex_sp_start = omp_get_wtime();
 						texture_cluster_pcl_generation(smesh, tex_sp_pcl, texture_maps, texture_mask_maps, texture_sps);
 						const int fixed_sampling_num = tex_sp_pcl->n_vertices();
+						total_num_pt += fixed_sampling_num;
 						all_time_cost[3] += omp_get_wtime() - tex_sp_start;
 
 						//--- generate face center cloud ---
@@ -1389,6 +1394,11 @@ namespace semantic_mesh_segmentation
 			if (with_texture_mask)
 				save_txt_statistics(tri_label_statistics, tex_label_statistics, sum_area);
 			save_txt_sampling_time_cost(all_time_cost);
+
+			std::cout << "sum area = " << std::fixed << std::showpoint << std::setprecision(6) <<sum_area
+				<< "; total_num_pt = " << total_num_pt 
+				<< "; density = " << std::fixed << std::showpoint << std::setprecision(6)<< double(total_num_pt) / double(sum_area)<< std::endl;
+
 			break;
 		}
 

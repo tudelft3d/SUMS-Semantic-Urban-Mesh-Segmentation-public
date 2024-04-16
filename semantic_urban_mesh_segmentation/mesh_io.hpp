@@ -232,7 +232,7 @@ namespace semantic_mesh_segmentation
 
 	void save_txt_batches(std::vector<std::vector<std::pair<int, std::string>>> &);
 
-	void save_txt_statistics(std::vector<float> &, std::vector<float> &);
+	void save_txt_statistics(std::vector<float> &, std::vector<float> &, std::vector<float>&);
 
 	void save_txt_statistics(std::vector<float>&, std::vector<int>&, const double);
 

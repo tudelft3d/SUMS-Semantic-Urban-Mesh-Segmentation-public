@@ -2720,7 +2720,8 @@ namespace semantic_mesh_segmentation
 	void save_txt_statistics
 	(
 		std::vector<float> &label_statistics,
-		std::vector<float> &label_seg_statistics
+		std::vector<float> &label_seg_statistics,
+		std::vector<float> &label_tri_statistics
 	)
 	{
 		const double t_total = omp_get_wtime();
@@ -2821,6 +2822,24 @@ namespace semantic_mesh_segmentation
 		{
 			fout << std::fixed << std::showpoint << std::setprecision(4) << float(label_seg_statistics[li]) / float(sum_segs);
 			std::cout << std::fixed << std::showpoint << std::setprecision(4) << float(label_seg_statistics[li]) / float(sum_segs);
+			if (li != labels_name.size())
+			{
+				fout << "\t";
+				std::cout << "\t";
+			}
+			else
+			{
+				fout << "\n";
+				std::cout << "\n";
+			}
+		}
+
+		fout << "triangle_num" << "\t";
+		std::cout << "triangle_num" << "\t";
+		for (int li = 0; li < label_tri_statistics.size(); ++li)
+		{
+			fout << label_tri_statistics[li];
+			std::cout << label_tri_statistics[li];
 			if (li != labels_name.size())
 			{
 				fout << "\t";
