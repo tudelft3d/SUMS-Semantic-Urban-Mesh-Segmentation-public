@@ -1879,6 +1879,7 @@ namespace semantic_mesh_segmentation
 		SFMesh* mesh_in,
 		PointCloud* semantic_pcl,
 		std::vector<cv::Mat>& texture_mask_maps_pred,
+		std::vector<cv::Mat>& texture_mask_maps_full,
 		const std::vector<cv::Mat>& texture_maps
 	)
 	{
@@ -1890,9 +1891,13 @@ namespace semantic_mesh_segmentation
 		// initialize texture mask
 		for (int ti = 0; ti < texture_maps.size(); ++ti)
 		{
-			cv::Mat ti_mask = cv::Mat::zeros(texture_maps[ti].rows, texture_maps[ti].cols, texture_maps[ti].type());
-			ti_mask.setTo(cv::Scalar(255, 255, 255));
-			texture_mask_maps_pred.push_back(ti_mask);
+			cv::Mat pred_mask = cv::Mat::zeros(texture_maps[ti].rows, texture_maps[ti].cols, texture_maps[ti].type());
+			pred_mask.setTo(cv::Scalar(255, 255, 255));
+			texture_mask_maps_pred.push_back(pred_mask);
+
+			cv::Mat full_mask = cv::Mat::zeros(texture_maps[ti].rows, texture_maps[ti].cols, texture_maps[ti].type());
+			full_mask.setTo(cv::Scalar(255, 255, 255));
+			texture_mask_maps_full.push_back(full_mask);
 		}
 
 		// paring labels
@@ -1957,11 +1962,16 @@ namespace semantic_mesh_segmentation
 						if (cur_label < labels_name.size())
 						{
 							fd_label_votes[cur_label] += 1;
+							easy3d::vec3 tex_label_color = 255.0f * labels_color[cur_label];
+							texture_mask_maps_full[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * texture_mask_maps_pred[texture_id].rows - 1, newcoord[0] * texture_mask_maps_pred[texture_id].cols) =
+								cv::Vec3b(int(tex_label_color.z), int(tex_label_color.y), int(tex_label_color.x));
 						}
 						else
 						{
 							easy3d::vec3 tex_label_color = 255.0f * tex_labels_color[cur_label - labels_color.size()];
 							texture_mask_maps_pred[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * texture_mask_maps_pred[texture_id].rows - 1, newcoord[0] * texture_mask_maps_pred[texture_id].cols) =
+								cv::Vec3b(int(tex_label_color.z), int(tex_label_color.y), int(tex_label_color.x));
+							texture_mask_maps_full[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * texture_mask_maps_pred[texture_id].rows - 1, newcoord[0] * texture_mask_maps_pred[texture_id].cols) =
 								cv::Vec3b(int(tex_label_color.z), int(tex_label_color.y), int(tex_label_color.x));
 							fd_label_votes[tex_fd_label[cur_label - labels_color.size()]] += 1;
 						}
@@ -1983,6 +1993,7 @@ namespace semantic_mesh_segmentation
 		PointCloud* semantic_pcl,
 		easy3d::PointCloud* tex_sp_pcl,
 		std::vector<cv::Mat>& texture_mask_maps_pred,
+		std::vector<cv::Mat>& texture_mask_maps_full,
 		const std::vector<cv::Mat>& texture_maps,
 		const std::vector<cv::Mat>& texture_sps
 	)
@@ -1998,9 +2009,13 @@ namespace semantic_mesh_segmentation
 		// initialize texture mask
 		for (int ti = 0; ti < texture_maps.size(); ++ti)
 		{
-			cv::Mat ti_mask = cv::Mat::zeros(texture_maps[ti].rows, texture_maps[ti].cols, texture_maps[ti].type());
-			ti_mask.setTo(cv::Scalar(255, 255, 255));
-			texture_mask_maps_pred.push_back(ti_mask);
+			cv::Mat pred_mask = cv::Mat::zeros(texture_maps[ti].rows, texture_maps[ti].cols, texture_maps[ti].type());
+			pred_mask.setTo(cv::Scalar(255, 255, 255));
+			texture_mask_maps_pred.push_back(pred_mask);
+
+			cv::Mat full_mask = cv::Mat::zeros(texture_maps[ti].rows, texture_maps[ti].cols, texture_maps[ti].type());
+			full_mask.setTo(cv::Scalar(255, 255, 255));
+			texture_mask_maps_full.push_back(full_mask);
 		}
 
 		// paring labels
@@ -2067,11 +2082,17 @@ namespace semantic_mesh_segmentation
 						if (cur_label < labels_name.size())
 						{
 							fd_label_votes[cur_label] += 1;
+
+							easy3d::vec3 tex_label_color = 255.0f * labels_color[cur_label];
+							texture_mask_maps_full[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * texture_mask_maps_full[texture_id].rows - 1, newcoord[0] * texture_mask_maps_full[texture_id].cols) =
+								cv::Vec3b(int(tex_label_color.z), int(tex_label_color.y), int(tex_label_color.x));
 						}
 						else
 						{
 							easy3d::vec3 tex_label_color = 255.0f * tex_labels_color[cur_label - labels_color.size()];
 							texture_mask_maps_pred[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * texture_mask_maps_pred[texture_id].rows - 1, newcoord[0] * texture_mask_maps_pred[texture_id].cols) =
+								cv::Vec3b(int(tex_label_color.z), int(tex_label_color.y), int(tex_label_color.x));
+							texture_mask_maps_full[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * texture_mask_maps_full[texture_id].rows - 1, newcoord[0] * texture_mask_maps_full[texture_id].cols) =
 								cv::Vec3b(int(tex_label_color.z), int(tex_label_color.y), int(tex_label_color.x));
 							fd_label_votes[tex_fd_label[cur_label - labels_color.size()]] += 1;
 						}
@@ -2173,7 +2194,6 @@ namespace semantic_mesh_segmentation
 		delete spg_semantic_pcl;
 	}
 
-
 	//--- processing semantic pcl single tiles ---
 	void semantic_pcl_process_single_tiles_v2
 	(
@@ -2181,8 +2201,7 @@ namespace semantic_mesh_segmentation
 	)
 	{
 		SFMesh* smesh_in = new SFMesh;
-		std::vector<cv::Mat> texture_maps, 
-			texture_mask_maps_pred, texture_sps;
+		std::vector<cv::Mat> texture_maps, texture_mask_maps_pred, texture_mask_maps_full, texture_sps;
 		std::cout << "Start to extract from mesh " << base_names[mi] << std::endl;
 
 		//read .ply semantic point cloud
@@ -2211,14 +2230,14 @@ namespace semantic_mesh_segmentation
 			if (sampling_eval == 3)
 			{
 				read_texsp_bin(smesh_in, texture_maps, texture_sps, mi);
-				processing_semantic_pcl_with_texture_sp(smesh_in, semantic_pcl, sampled_pcl, texture_mask_maps_pred, texture_maps, texture_sps);
+				processing_semantic_pcl_with_texture_sp(smesh_in, semantic_pcl, sampled_pcl, texture_mask_maps_pred, texture_mask_maps_full, texture_maps, texture_sps);
 			}
 			else
 			{
-				processing_semantic_pcl_with_texture_masks(smesh_in, semantic_pcl, texture_mask_maps_pred, texture_maps);
+				processing_semantic_pcl_with_texture_masks(smesh_in, semantic_pcl, texture_mask_maps_pred, texture_mask_maps_full,  texture_maps);
 			}
 
-			write_semantic_mesh_data(smesh_in, mi, texture_mask_maps_pred);
+			write_semantic_mesh_data(smesh_in, mi, texture_mask_maps_pred, texture_mask_maps_full);
 		}
 		else
 		{

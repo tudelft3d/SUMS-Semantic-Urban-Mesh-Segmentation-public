@@ -655,6 +655,7 @@ namespace semantic_mesh_segmentation
 	(
 		SFMesh*,
 		easy3d::PointCloud*,
+		std::vector<cv::Mat>&,
 		const std::vector<cv::Mat>,
 		const std::vector<cv::Mat>,
 		const std::vector<cv::Mat>

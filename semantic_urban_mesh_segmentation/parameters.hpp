@@ -260,6 +260,7 @@ namespace semantic_mesh_segmentation
 	extern bool enable_MohaVer_region_growing;
 	extern bool enable_joint_labeling;
 	extern bool save_texture_pcl;
+	extern bool replace_gt_label;
 }
 
 #endif // 

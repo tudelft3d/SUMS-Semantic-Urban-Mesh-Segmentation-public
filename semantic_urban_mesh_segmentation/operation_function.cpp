@@ -1081,7 +1081,7 @@ namespace semantic_mesh_segmentation
 		{
 			current_mode = operating_mode::Evaluation_SOTA_v2;
 			processing_mode = 1;
-
+			replace_gt_label = false;
 			run(operating_mode::Process_semantic_pcl_v2);
 			run(operating_mode::Data_evaluation_for_all_tiles_config_v2);
 			break;
@@ -1212,7 +1212,7 @@ namespace semantic_mesh_segmentation
 					{
 						std::cout << "	- Process " << base_names[pi] << std::endl;
 						SFMesh* smesh = new SFMesh;
-						std::vector<cv::Mat> texture_maps, texture_mask_maps, texture_sps;
+						std::vector<cv::Mat> texture_maps, texture_mask_maps, full_texture_mask_maps, texture_sps;
 
 						//--- read mesh *.ply data ---
 						read_mesh_with_texture_and_masks(smesh, texture_maps, texture_mask_maps, pi);
@@ -1222,11 +1222,13 @@ namespace semantic_mesh_segmentation
 
 						//--- generate texture cluster cloud ---
 						easy3d::PointCloud* tex_sp_pcl = new easy3d::PointCloud;
-						texture_cluster_pcl_generation(smesh, tex_sp_pcl, texture_maps, texture_mask_maps, texture_sps);
+						texture_cluster_pcl_generation(smesh, tex_sp_pcl, full_texture_mask_maps, texture_maps, texture_mask_maps, texture_sps);
 
 						//--- save files ---
 						write_sampled_pointcloud_data(tex_sp_pcl, 3, pi);
 						write_texsp_bin(smesh, texture_sps, pi);
+
+						// write full texture masks : to do
 
 						delete smesh;
 						delete tex_sp_pcl;
@@ -1321,7 +1323,7 @@ namespace semantic_mesh_segmentation
 					{
 						std::cout << "	- Process " << base_names[pi] << std::endl;
 						SFMesh* smesh = new SFMesh;
-						std::vector<cv::Mat> texture_maps, texture_mask_maps, texture_sps;
+						std::vector<cv::Mat> texture_maps, texture_mask_maps, full_texture_mask_maps, texture_sps;
 
 						//--- read mesh *.ply data ---
 						read_mesh_with_texture_and_masks(smesh, texture_maps, texture_mask_maps, pi);
@@ -1337,7 +1339,7 @@ namespace semantic_mesh_segmentation
 						std::cout << "		- generate texture cluster cloud " << std::endl;
 						easy3d::PointCloud* tex_sp_pcl = new easy3d::PointCloud;
 						const double tex_sp_start = omp_get_wtime();
-						texture_cluster_pcl_generation(smesh, tex_sp_pcl, texture_maps, texture_mask_maps, texture_sps);
+						texture_cluster_pcl_generation(smesh, tex_sp_pcl, full_texture_mask_maps, texture_maps, texture_mask_maps, texture_sps);
 						const int fixed_sampling_num = tex_sp_pcl->n_vertices();
 						total_num_pt += fixed_sampling_num;
 						all_time_cost[3] += omp_get_wtime() - tex_sp_start;
@@ -1381,6 +1383,8 @@ namespace semantic_mesh_segmentation
 						write_sampled_pointcloud_data(possion_pcl, 2, pi);
 						write_sampled_pointcloud_data(tex_sp_pcl, 3, pi);
 						write_texsp_bin(smesh, texture_sps, pi);
+						if (with_texture_mask)
+							write_full_texture_mask(smesh, full_texture_mask_maps, pi);
 
 						delete smesh;
 						delete tex_sp_pcl;

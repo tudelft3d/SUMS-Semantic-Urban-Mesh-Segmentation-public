@@ -216,6 +216,7 @@ namespace semantic_mesh_segmentation
 	bool use_face_pixels_color_aggregation = false;
 	bool use_merged_segments = false;
 	bool save_texture_pcl = false;//semantic component 
+	bool replace_gt_label = false;
 
 	//feature cutoff values
 	int cutoff_spf_vertex_count = 10000;

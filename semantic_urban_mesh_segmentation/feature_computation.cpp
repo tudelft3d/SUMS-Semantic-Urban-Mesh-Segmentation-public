@@ -535,6 +535,7 @@ namespace semantic_mesh_segmentation
 	(
 		SFMesh* mesh_in,
 		easy3d::PointCloud* tex_sp_pcl,
+		std::vector<cv::Mat>& full_texture_mask_maps,
 		const std::vector<cv::Mat> texture_maps,
 		const std::vector<cv::Mat> texture_mask_maps,
 		const std::vector<cv::Mat> texture_sps
@@ -542,6 +543,17 @@ namespace semantic_mesh_segmentation
 	{
 		std::map<int, int> sp_id_index_map;
 		std::vector<Superpixel> superpixel_vec;
+
+		if (with_texture_mask && !texture_mask_maps.empty())
+		{
+			// initialize texture mask
+			for (int ti = 0; ti < texture_maps.size(); ++ti)
+			{
+				cv::Mat ti_mask = cv::Mat::zeros(texture_maps[ti].rows, texture_maps[ti].cols, texture_maps[ti].type());
+				ti_mask.setTo(cv::Scalar(255, 255, 255));
+				full_texture_mask_maps.push_back(ti_mask);
+			}
+		}
 
 		for (auto& fd : mesh_in->faces())
 		{
@@ -609,6 +621,12 @@ namespace semantic_mesh_segmentation
 						++count_pix;
 
 						int fdtex_label = mesh_in->get_face_truth_label[fd];
+						easy3d::vec3 tex_label_color(0, 0, 0);
+						if (fdtex_label > 0)
+							tex_label_color = 255.0f * labels_color[fdtex_label - 1];
+						full_texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * full_texture_mask_maps[texture_id].rows - 1, newcoord[0] * full_texture_mask_maps[texture_id].cols) =
+							cv::Vec3b(int(tex_label_color.z), int(tex_label_color.y), int(tex_label_color.x));
+
 						if (with_texture_mask && !texture_mask_maps.empty())
 						{
 							float Rf_mask = (float)texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * texture_mask_maps[texture_id].rows - 1, newcoord[0] * texture_mask_maps[texture_id].cols)[2];
@@ -621,6 +639,8 @@ namespace semantic_mesh_segmentation
 									std::abs(Bf_mask - 255.0f * tex_labels_color[tex_ci][2]) <= 1.0f)
 								{
 									fdtex_label = labels_color.size() + tex_ci + 1;
+									full_texture_mask_maps[texture_id].at<cv::Vec3b>((1 - newcoord[1]) * full_texture_mask_maps[texture_id].rows - 1, newcoord[0] * full_texture_mask_maps[texture_id].cols) =
+										cv::Vec3b(int(255.0f * tex_labels_color[tex_ci][2]), int(255.0f * tex_labels_color[tex_ci][1]), int(255.0f * tex_labels_color[tex_ci][0]));
 								}
 							}
 						}

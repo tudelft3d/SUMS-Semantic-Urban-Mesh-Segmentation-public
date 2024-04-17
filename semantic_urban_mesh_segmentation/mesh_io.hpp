@@ -174,7 +174,7 @@ namespace semantic_mesh_segmentation
 	void read_txt_config(const std::string &path);
 
 	//-----------------write data-----------------//
-	void rply_output(SFMesh*, const char*, const std::vector<std::string> &);
+	void rply_output(SFMesh*, const char*, const std::vector<std::string> &, bool save_binary = true);
 
 	void rply_output(SFMesh*, char*);
 
@@ -215,6 +215,13 @@ namespace semantic_mesh_segmentation
 		const int 
 	);
 
+	void write_full_texture_mask
+	(
+		easy3d::SurfaceMesh* ,
+		std::vector<cv::Mat> ,
+		const int 
+	);
+
 	void write_error_mesh_texture_masks
 	(
 		SFMesh* ,
@@ -222,7 +229,13 @@ namespace semantic_mesh_segmentation
 		const int 
 	);
 
-	void write_semantic_mesh_data(SFMesh*, const int, std::vector<cv::Mat>& texture_mask_maps = std::vector<cv::Mat>());
+	void write_semantic_mesh_data
+	(
+		SFMesh*, 
+		const int, 
+		std::vector<cv::Mat>& texture_mask_maps_pred = std::vector<cv::Mat>(),
+		std::vector<cv::Mat>& texture_mask_maps_full = std::vector<cv::Mat>()
+	);
 
 	void write_semantic_mesh_component(SFMesh*, const std::string, const int);
 

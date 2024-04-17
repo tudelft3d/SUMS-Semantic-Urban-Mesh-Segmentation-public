@@ -1842,6 +1842,16 @@ namespace semantic_mesh_segmentation
 								save_texture_pcl = false;
 						}
 					}
+					else if (param_name == "replace_gt_label")
+					{
+						if (param_value != "default")
+						{
+							if (param_value == "true" || param_value == "True" || param_value == "TRUE")
+								replace_gt_label = true;
+							else if (param_value == "false" || param_value == "False" || param_value == "FALSE")
+								replace_gt_label = false;
+						}
+					}
 					else if (param_name == "pcl_distance_to_plane")
 					{
 						if (param_value != "default")
@@ -1901,10 +1911,11 @@ namespace semantic_mesh_segmentation
 	(
 		SFMesh* smesh_out,
 		const char* file,
-		const std::vector<std::string> &comment
+		const std::vector<std::string> &comment,
+		bool save_binary
 	)
 	{
-		bool success = easy3d::MeshIO::save(file, smesh_out, comment);
+		bool success = easy3d::MeshIO::save(file, smesh_out, comment, save_binary);
 		if (success)
 			std::cout << "mesh saved" << std::endl;
 		else
@@ -2066,6 +2077,33 @@ namespace semantic_mesh_segmentation
 			std::ofstream outFile(Path_temp, std::ios::binary);
 			outFile.write(reinterpret_cast<const char*>(texture_sps[ti].data), texture_sps[ti].total() * texture_sps[ti].elemSize());
 			outFile.close();
+		}
+	}
+
+	void write_full_texture_mask
+	(
+		easy3d::SurfaceMesh* smesh_in,
+		std::vector<cv::Mat> texture_mask_maps_full,
+		const int mi
+	)
+	{
+		for (int ti = 0; ti < smesh_in->textures.size(); ++ti)
+		{
+			auto tex_i = smesh_in->textures[ti];
+			if (!tex_i.empty() && tex_i[tex_i.size() - 1] == '\r')
+				tex_i.erase(tex_i.size() - 1);
+			std::string mask_path_tmp_full;
+			std::vector<std::string> texture_name_splits = Split(tex_i, ".", false);
+
+			if (file_folders.size() > 1)
+				mask_path_tmp_full = file_folders[mi] + "full_mask_" + texture_name_splits[0] + ".png";
+			else
+				mask_path_tmp_full = file_folders[0] + "full_mask_" + texture_name_splits[0] + ".png";
+
+			std::ostringstream texture_mask_str_ostemp_full;
+			texture_mask_str_ostemp_full << mask_path_tmp_full;
+			std::string texture_mask_str_temp_full = texture_mask_str_ostemp_full.str().data();
+			cv::imwrite(texture_mask_str_temp_full, texture_mask_maps_full[ti]);
 		}
 	}
 
@@ -2346,7 +2384,8 @@ namespace semantic_mesh_segmentation
 	(
 		SFMesh* smesh_out,
 		const int mi,
-		std::vector<cv::Mat>& texture_mask_maps
+		std::vector<cv::Mat>& texture_mask_maps_pred, 
+		std::vector<cv::Mat>& texture_mask_maps_full
 	)
 	{
 		const double t_total = omp_get_wtime();
@@ -2396,22 +2435,37 @@ namespace semantic_mesh_segmentation
 		}
 
 		std::vector<std::string> comment;
-		comment = std::vector<std::string>(labels_name.size() + smesh_out->texture_names.size() + 1, std::string());
+		comment = std::vector<std::string>(labels_name.size() +  smesh_out->texture_names.size() + 1, std::string());
+		if (with_texture_mask)
+			comment = std::vector<std::string>(labels_name.size() + tex_labels_name.size() + smesh_out->texture_names.size() + 1, std::string());
 		for (int ti = 0; ti < smesh_out->texture_names.size(); ++ti)
 		{
 			comment[ti] = ply_comment_element[0] + " " + smesh_out->texture_names[ti];
 		}
-		comment[smesh_out->texture_names.size()] = ply_comment_element[1] + " -1 " + ply_comment_element[3];
+		//comment[smesh_out->texture_names.size()] = ply_comment_element[1] + " -1 " + ply_comment_element[3];
 		comment[smesh_out->texture_names.size()] = ply_comment_element[1] + " 0 " + ply_comment_element[2];
 
-		for (int cmi = smesh_out->texture_names.size() + 1; cmi < comment.size(); ++cmi)
+		for (int cmi = smesh_out->texture_names.size() + 1; cmi < labels_name.size() + smesh_out->texture_names.size() + 1; ++cmi)
 		{
 			comment[cmi] = ply_comment_element[1] + " " +
 				std::to_string(cmi - smesh_out->texture_names.size()) + " " +
 				labels_name[cmi - smesh_out->texture_names.size() - 1];
 		}
 
-		if (train_test_predict_val == 2)
+		if (with_texture_mask)
+		{
+			for (int cmi = smesh_out->texture_names.size() + labels_name.size() + 1; cmi < comment.size(); ++cmi)
+			{
+				comment[cmi] = ply_comment_element[4] + " " +
+					std::to_string(cmi - smesh_out->texture_names.size()) + " " +
+					tex_labels_name[cmi - smesh_out->texture_names.size() - labels_name.size() - 1] + " " +
+					std::to_string(int(tex_labels_color[cmi - smesh_out->texture_names.size() - labels_name.size() - 1][0] * 255.0f)) + " " +
+					std::to_string(int(tex_labels_color[cmi - smesh_out->texture_names.size() - labels_name.size() - 1][1] * 255.0f)) + " " +
+					std::to_string(int(tex_labels_color[cmi - smesh_out->texture_names.size() - labels_name.size() - 1][2] * 255.0f));
+			}
+		}
+
+		if (train_test_predict_val == 2 || replace_gt_label)
 		{
 			if (!smesh_out->get_face_property<int>("f:" + label_definition))
 				smesh_out->add_face_property<int>("f:" + label_definition, -1);
@@ -2420,28 +2474,35 @@ namespace semantic_mesh_segmentation
 			for (int fi = 0; fi < smesh_out->faces_size(); ++fi)
 			{
 				SFMesh::Face fdx(fi);
-				if (!ignored_labels_name.empty() && smesh_out->get_face_truth_label[fdx] != -1)
+				if (replace_gt_label)
 				{
-					bool is_ignore = false;
-					for (int ig_i = 0; ig_i < ignored_labels_name.size(); ++ig_i)
-					{
-						if (ignored_labels_name[ig_i] == labels_name[smesh_out->get_face_truth_label[fdx] - 1])
-						{
-							is_ignore = true;
-							break;
-						}
-					}
-
-					if (!is_ignore)
-						smesh_out->get_face_truth_label[fdx] = smesh_out->get_face_predict_label[fdx];
-				}
-				else if (!ignored_labels_name.empty() && smesh_out->get_face_truth_label[fdx] < 0)
-				{
-					smesh_out->get_face_truth_label[fdx] = 0;
+					smesh_out->get_face_truth_label[fdx] = smesh_out->get_face_predict_label[fdx] + 1;
 				}
 				else
 				{
-					smesh_out->get_face_truth_label[fdx] = smesh_out->get_face_predict_label[fdx];
+					if (!ignored_labels_name.empty() && smesh_out->get_face_truth_label[fdx] != -1)
+					{
+						bool is_ignore = false;
+						for (int ig_i = 0; ig_i < ignored_labels_name.size(); ++ig_i)
+						{
+							if (ignored_labels_name[ig_i] == labels_name[smesh_out->get_face_truth_label[fdx] - 1])
+							{
+								is_ignore = true;
+								break;
+							}
+						}
+
+						if (!is_ignore)
+							smesh_out->get_face_truth_label[fdx] = smesh_out->get_face_predict_label[fdx];
+					}
+					else if (!ignored_labels_name.empty() && smesh_out->get_face_truth_label[fdx] < 0)
+					{
+						smesh_out->get_face_truth_label[fdx] = 0;
+					}
+					else
+					{
+						smesh_out->get_face_truth_label[fdx] = smesh_out->get_face_predict_label[fdx];
+					}
 				}
 			}
 			smesh_out->remove_face_property(smesh_out->get_face_predict_label);
@@ -2451,9 +2512,11 @@ namespace semantic_mesh_segmentation
 		char * meshPath_temp = (char *)mesh_str_temp.data();
 		smesh_out->remove_common_non_used_properties();
 		smesh_out->remove_non_used_properties_for_semantic_mesh();
-		rply_output(smesh_out, meshPath_temp, comment);
+		if (!use_batch_processing)
+			smesh_out->remove_face_property(smesh_out->get_face_tile_index);
+		rply_output(smesh_out, meshPath_temp, comment, false);
 
-		if (!texture_mask_maps.empty())
+		if (!texture_mask_maps_pred.empty() && !texture_mask_maps_full.empty())
 		{
 			for (int ti = 0; ti < smesh_out->textures.size(); ++ti)
 			{
@@ -2461,12 +2524,18 @@ namespace semantic_mesh_segmentation
 				if (!tex_i.empty() && tex_i[tex_i.size() - 1] == '\r')
 					tex_i.erase(tex_i.size() - 1);
 				std::vector<std::string> texture_name_splits = Split(tex_i, ".", false);
-				std::string mask_path_tmp = basic_write_path + "pred_mask_" + texture_name_splits[0] + ".png";
 
-				std::ostringstream texture_mask_str_ostemp;
-				texture_mask_str_ostemp << mask_path_tmp;
-				std::string texture_mask_str_temp = texture_mask_str_ostemp.str().data();
-				cv::imwrite(texture_mask_str_temp, texture_mask_maps[ti]);
+				std::string mask_path_tmp_pred = basic_write_path + "pred_mask_" + texture_name_splits[0] + ".png";
+				std::ostringstream texture_mask_str_ostemp_pred;
+				texture_mask_str_ostemp_pred << mask_path_tmp_pred;
+				std::string texture_mask_str_temp_pred = texture_mask_str_ostemp_pred.str().data();
+				cv::imwrite(texture_mask_str_temp_pred, texture_mask_maps_pred[ti]);
+
+				std::string mask_path_tmp_full = basic_write_path + "full_pred_mask_" + texture_name_splits[0] + ".png";
+				std::ostringstream texture_mask_str_ostemp_full;
+				texture_mask_str_ostemp_full << mask_path_tmp_full;
+				std::string texture_mask_str_temp_full = texture_mask_str_ostemp_full.str().data();
+				cv::imwrite(texture_mask_str_temp_full, texture_mask_maps_full[ti]);
 			}
 		}
 

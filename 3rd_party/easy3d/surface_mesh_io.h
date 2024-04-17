@@ -39,7 +39,7 @@ namespace easy3d {
 		// save the mesh to a file. return false if failed.
 		static bool	save(const std::string& file_name, const SurfaceMesh* mesh, const bool);
 	
-		static bool	save(const std::string& file_name, const SurfaceMesh* mesh, const std::vector<std::string> &comment);
+		static bool	save(const std::string& file_name, const SurfaceMesh* mesh, const std::vector<std::string> &comment, bool save_binary = true);
         //
         static bool load(const std::string& file_name, SurfaceMesh* mesh);
     };
