@@ -1366,7 +1366,7 @@ namespace semantic_mesh_segmentation
 						easy3d::PointCloud* random_pcl = new easy3d::PointCloud;
 						mesh_random_sampling(smesh, random_pcl, fixed_sampling_num);
 						all_time_cost[1] += omp_get_wtime() - random_pcl_start;
-						assign_texpcl_properties(random_pcl, tex_pcl);
+						assign_texpcl_properties(random_pcl, tex_pcl);//tex_pcl or tex_sp_pcl to avoid kdtree failed
 		
 						//--- generate possion sampled cloud ---
 						std::cout << "		- generate possion cloud : " << fixed_sampling_num << std::endl;
@@ -1374,7 +1374,7 @@ namespace semantic_mesh_segmentation
 						easy3d::PointCloud* possion_pcl = new easy3d::PointCloud;
 						poission_sampling_with_fixed_number(smesh, possion_pcl, fixed_sampling_num);
 						all_time_cost[2] += omp_get_wtime() - possion_pcl_start;
-						assign_texpcl_properties(possion_pcl, tex_pcl);
+						assign_texpcl_properties(possion_pcl, tex_pcl);//tex_pcl or tex_sp_pcl to avoid kdtree failed
 
 						//--- save files ---
 						if (!with_texture_mask)
