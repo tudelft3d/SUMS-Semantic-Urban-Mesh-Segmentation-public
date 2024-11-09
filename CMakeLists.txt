@@ -35,3 +35,13 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/cmake)
 
 add_subdirectory(3rd_party)
 add_subdirectory(semantic_urban_mesh_segmentation)
+
+#boost
+#C:/dev/boost_1_86_0/stage/lib/cmake/Boost-1.86.0
+#C:/dev/boost_1_86_0
+#C:/dev/boost_1_86_0/stage/lib/cmake/boost_headers-1.86.0
+#
+#Python
+#C:/Program Files/Python38/python.exe
+#C:/Program Files/Python38/include
+#C:/Program Files/Python38/libs/python38.lib
