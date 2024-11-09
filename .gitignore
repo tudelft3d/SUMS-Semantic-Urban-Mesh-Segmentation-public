@@ -287,3 +287,4 @@ src/cmake-build-release
 build/
 /data
 /competing_methods/my_KPConv.zip
+/3rd_party/python_parsing/py_aug/libpp.pyd
