@@ -49,6 +49,7 @@ find_package(PythonLibs REQUIRED)
 
 set(boost_linked_libraries)
 set(boost_compile_definitions)
+set(Boost_NO_BOOST_CMAKE ON)  # Disable the search for BoostConfig.cmake
 find_package(Boost COMPONENTS thread system filesystem serialization iostreams bzip2 zlib)
 if (Boost_SERIALIZATION_FOUND AND Boost_IOSTREAMS_FOUND AND Boost_ZLIB_FOUND)
 	set(_Boost_BZIP2_HEADERS             "boost/iostreams/filter/bzip2.hpp")
